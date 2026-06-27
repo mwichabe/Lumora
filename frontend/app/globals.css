@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: #eceaf3;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* The whole product is mobile-first (375px frames in the spec). On wider
+   screens we centre a phone-sized column so the experience stays faithful. */
+.app-frame {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: #fafaf7; /* cream */
+  position: relative;
+  overflow-x: hidden;
+  box-shadow: 0 0 40px rgba(15, 15, 36, 0.12);
+}
+
+@media (min-width: 480px) {
+  body {
+    background: radial-gradient(circle at top, #1f1640 0%, #0f0f24 100%);
+  }
+  .app-frame {
+    min-height: 100dvh;
+  }
+}
+
+/* Tidy, on-brand scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(108, 63, 197, 0.35);
+  border-radius: 9999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Reusable starfield used by the galaxy map */
+.starfield {
+  background-color: #0f0f24;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 20%, #cdbcf5, transparent),
+    radial-gradient(1px 1px at 40% 70%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 85% 60%, #f5d68a, transparent),
+    radial-gradient(1px 1px at 60% 85%, #9fe9df, transparent),
+    radial-gradient(1px 1px at 15% 80%, #fff, transparent);
+  background-repeat: no-repeat;
+}

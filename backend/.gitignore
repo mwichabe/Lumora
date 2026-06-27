@@ -1,0 +1,4 @@
+.env
+lumora.db
+*.db
+bin/
