@@ -35,17 +35,23 @@ func Seed(db *gorm.DB) {
 	if listening == 0 {
 		seedListening(db)
 	}
+
+	var reading int64
+	db.Model(&models.ReadingSession{}).Where("language = ?", "es").Count(&reading)
+	if reading == 0 {
+		seedReading(db)
+	}
 }
 
 func seedCharacters(db *gorm.DB) {
 	characters := []models.Character{
 		{Name: "Lumora", Species: "Fennec Fox", Role: "Your Guide", Personality: "Curious, playful, endlessly supportive.", Color: "#6C3FC5", Emoji: "🦊"},
-		{Name: "Professor Finch", Species: "Tawny Owl", Role: "Grammar Teacher", Personality: "Strict but secretly warm. Sighs dramatically at errors.", Color: "#8B6F47", Emoji: "🦉"},
+		{Name: "Professor Finch", Species: "Eagle", Role: "Grammar Teacher", Personality: "Strict but secretly warm. Sighs dramatically at errors.", Color: "#8B6F47", Emoji: "🦅"},
 		{Name: "Cora", Species: "Octopus", Role: "Vocabulary Friend", Personality: "Goofy, chaotic, can't stop making puns.", Color: "#00C2A8", Emoji: "🐙"},
-		{Name: "Blaze", Species: "Fire Salamander", Role: "Speaking Coach", Personality: "Hypes you up. MORE FIRE!", Color: "#FF5C5C", Emoji: "🦎"},
+		{Name: "Blaze", Species: "Fire Spirit", Role: "Speaking Coach", Personality: "Hypes you up. MORE FIRE!", Color: "#FF5C5C", Emoji: "🔥"},
 		{Name: "Mira", Species: "Snow Leopard", Role: "Listening Guide", Personality: "Serene and wise. Loves music and poetry.", Color: "#9090A0", Emoji: "🐆"},
 		{Name: "Riko", Species: "Red Panda", Role: "Your Rival", Personality: "Smug but lovable. Secretly rooting for you.", Color: "#F5A623", Emoji: "🐼"},
-		{Name: "Zephyr", Species: "Wind Spirit", Role: "Writing Mentor", Personality: "Philosophical, poetic, occasionally pretentious.", Color: "#17A3DD", Emoji: "🦅"},
+		{Name: "Zephyr", Species: "Wind Spirit", Role: "Writing Mentor", Personality: "Philosophical, poetic, occasionally pretentious.", Color: "#17A3DD", Emoji: "🌬️"},
 		{Name: "Nana", Species: "Giant Tortoise", Role: "Wise Elder", Personality: "Slow-spoken and reassuring. Every journey takes time.", Color: "#06AECE", Emoji: "🐢"},
 		{Name: "Pip", Species: "Hedgehog", Role: "Quest Giver", Personality: "Frantic, fast-talking, perpetually late.", Color: "#F5A623", Emoji: "🦔"},
 	}
@@ -360,6 +366,12 @@ func addListening(db *gorm.DB, unit, title, desc string, order, xp int, matches 
 func seedListening(db *gorm.DB) {
 	addListening(db, "Basics", "A Friendly Hello",
 		"Listen to Lumora greet Professor Finch, then answer.", 1, 15,
+		[]models.ListeningMatch{
+			lm("Buenos días", "Good morning"),
+			lm("¿Cómo estás?", "How are you?"),
+			lm("gracias", "thank you"),
+			lm("Adiós", "Goodbye"),
+		},
 		[]models.ListeningLine{
 			ln("Lumora", "¡Hola, profesor! Buenos días.", "Hello, professor! Good morning."),
 			ln("Professor Finch", "Buenos días. ¿Cómo estás?", "Good morning. How are you?"),
@@ -375,6 +387,12 @@ func seedListening(db *gorm.DB) {
 
 	addListening(db, "Everyday Life", "At the Cafe",
 		"Blaze orders for the table. Listen, then answer.", 2, 15,
+		[]models.ListeningMatch{
+			lm("café con leche", "coffee with milk"),
+			lm("agua", "water"),
+			lm("¿Cuánto cuesta?", "How much is it?"),
+			lm("la cuenta", "the bill"),
+		},
 		[]models.ListeningLine{
 			ln("Blaze", "¡Hola! Un café con leche, por favor.", "Hello! A coffee with milk, please."),
 			ln("Cora", "Para mí, un agua, por favor.", "For me, a water, please."),
@@ -390,6 +408,12 @@ func seedListening(db *gorm.DB) {
 
 	addListening(db, "Getting Around", "Finding the Gate",
 		"Mira helps a traveller at the airport. Listen, then answer.", 3, 15,
+		[]models.ListeningMatch{
+			lm("la puerta", "the gate"),
+			lm("a la derecha", "to the right"),
+			lm("todo recto", "straight ahead"),
+			lm("el vuelo", "the flight"),
+		},
 		[]models.ListeningLine{
 			ln("Mira", "Disculpe, ¿dónde está la puerta?", "Excuse me, where is the gate?"),
 			ln("Riko", "A la derecha, luego todo recto.", "To the right, then straight ahead."),
@@ -405,6 +429,12 @@ func seedListening(db *gorm.DB) {
 
 	addListening(db, "Connecting", "Nice to Meet You",
 		"Riko and Zephyr make small talk. Listen, then answer.", 4, 20,
+		[]models.ListeningMatch{
+			lm("¿cómo te llamas?", "what's your name?"),
+			lm("me llamo", "my name is"),
+			lm("¿de dónde eres?", "where are you from?"),
+			lm("mucho gusto", "nice to meet you"),
+		},
 		[]models.ListeningLine{
 			ln("Riko", "Hola, ¿cómo te llamas?", "Hi, what's your name?"),
 			ln("Zephyr", "Me llamo Zephyr. ¿Y tú?", "My name is Zephyr. And you?"),
@@ -415,6 +445,86 @@ func seedListening(db *gorm.DB) {
 			lq("What is the second speaker's name?", "Zephyr", "Zephyr", "Riko", "Ana", "Mira"),
 			lq("Where is Zephyr from?", "Spain", "Spain", "Mexico", "France", "Peru"),
 			lq("What does the first speaker ask first?", "What's your name?", "What's your name?", "How are you?", "How old are you?", "Where do you live?"),
+		},
+	)
+}
+
+// --- reading sessions --------------------------------------------------------
+
+func rl(text, translation string) models.ReadingLine {
+	return models.ReadingLine{Text: text, Translation: translation}
+}
+func rq(question, correct string, options ...string) models.ReadingQuestion {
+	return models.ReadingQuestion{Prompt: "Read, then answer", Question: question, CorrectAnswer: correct, OptionsJSON: opts(options...)}
+}
+
+func addReading(db *gorm.DB, unit, title, desc string, order, xp int, lines []models.ReadingLine, qs []models.ReadingQuestion) {
+	s := models.ReadingSession{Language: "es", Unit: unit, Title: title, Description: desc, OrderIndex: order, XPReward: xp}
+	db.Create(&s)
+	for i := range lines {
+		lines[i].SessionID = s.ID
+		lines[i].OrderIndex = i + 1
+	}
+	db.Create(&lines)
+	for i := range qs {
+		qs[i].SessionID = s.ID
+		qs[i].OrderIndex = i + 1
+	}
+	db.Create(&qs)
+}
+
+// seedReading adds one short reading passage per unit, each in Spanish with a
+// sentence-by-sentence translation and comprehension questions.
+func seedReading(db *gorm.DB) {
+	addReading(db, "Basics", "Una nota de Ana",
+		"Read Ana's little note, then answer.", 1, 15,
+		[]models.ReadingLine{
+			rl("¡Hola! Me llamo Ana.", "Hello! My name is Ana."),
+			rl("Buenos días a todos.", "Good morning, everyone."),
+			rl("Gracias y adiós.", "Thank you and goodbye."),
+		},
+		[]models.ReadingQuestion{
+			rq("What is the writer's name?", "Ana", "Ana", "Lumora", "Cora", "Mira"),
+			rq("What time of day does she greet?", "Morning", "Morning", "Night", "Afternoon", "Evening"),
+		},
+	)
+
+	addReading(db, "Everyday Life", "En el café",
+		"Read the cafe scene, then answer.", 2, 15,
+		[]models.ReadingLine{
+			rl("Quiero un café con leche.", "I want a coffee with milk."),
+			rl("También quiero un agua, por favor.", "I also want a water, please."),
+			rl("¿Cuánto cuesta? La cuenta, por favor.", "How much is it? The bill, please."),
+		},
+		[]models.ReadingQuestion{
+			rq("What does the person want to drink first?", "Coffee with milk", "Coffee with milk", "Tea", "Juice", "Wine"),
+			rq("What do they ask for at the end?", "The bill", "The bill", "The menu", "A table", "A spoon"),
+		},
+	)
+
+	addReading(db, "Getting Around", "En el aeropuerto",
+		"Read the airport notice, then answer.", 3, 15,
+		[]models.ReadingLine{
+			rl("El aeropuerto está a la derecha.", "The airport is to the right."),
+			rl("La puerta nueve está todo recto.", "Gate nine is straight ahead."),
+			rl("El vuelo es a las tres.", "The flight is at three."),
+		},
+		[]models.ReadingQuestion{
+			rq("Where is gate nine?", "Straight ahead", "Straight ahead", "To the left", "Behind", "Upstairs"),
+			rq("When is the flight?", "At three", "At three", "At two", "At nine", "At noon"),
+		},
+	)
+
+	addReading(db, "Connecting", "Mucho gusto",
+		"Read the introduction, then answer.", 4, 20,
+		[]models.ReadingLine{
+			rl("Hola, me llamo Zephyr.", "Hello, my name is Zephyr."),
+			rl("Soy de España.", "I am from Spain."),
+			rl("Mucho gusto. Te quiero, amigo.", "Nice to meet you. I love you, friend."),
+		},
+		[]models.ReadingQuestion{
+			rq("Where is Zephyr from?", "Spain", "Spain", "Mexico", "Peru", "Chile"),
+			rq("How does Zephyr end the note?", "Nice to meet you", "Nice to meet you", "Goodbye forever", "See you never", "Good night"),
 		},
 	)
 }

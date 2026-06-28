@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"math/rand"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -99,5 +100,69 @@ func (l *LessonController) GetLesson(c *fiber.Ctx) error {
 		lesson.Exercises[i].Options = o
 	}
 
+	// The learner can't type the target language yet, so turn typed exercises
+	// (translate / fill) into multiple choice by generating plausible options.
+	addChoiceOptions(&lesson)
+
 	return c.JSON(fiber.Map{"lesson": lesson})
+}
+
+// addChoiceOptions gives translate/fill exercises a set of multiple-choice
+// options (correct answer + distractors drawn from the lesson, then padded).
+func addChoiceOptions(lesson *models.Lesson) {
+	var phrasePool, wordPool []string
+	for _, e := range lesson.Exercises {
+		switch e.Type {
+		case models.ExerciseTranslate:
+			phrasePool = append(phrasePool, e.CorrectAnswer)
+		case models.ExerciseFill:
+			wordPool = append(wordPool, e.CorrectAnswer)
+		}
+	}
+	for _, v := range lesson.Vocab {
+		wordPool = append(wordPool, v.Word)
+		phrasePool = append(phrasePool, v.Word)
+	}
+
+	phraseFiller := []string{"Buenos días", "Por favor", "Hasta luego", "No lo sé", "Mucho gusto"}
+	wordFiller := []string{"gracias", "hola", "casa", "agua", "bien", "sí"}
+
+	for i := range lesson.Exercises {
+		e := &lesson.Exercises[i]
+		if len(e.Options) > 0 {
+			continue
+		}
+		if e.Type != models.ExerciseTranslate && e.Type != models.ExerciseFill {
+			continue
+		}
+		pool, filler := phrasePool, phraseFiller
+		if e.Type == models.ExerciseFill {
+			pool, filler = wordPool, wordFiller
+		}
+		e.Options = buildOptions(e.CorrectAnswer, pool, filler, 4)
+	}
+}
+
+func buildOptions(correct string, pool, filler []string, n int) []string {
+	seen := map[string]bool{correct: true}
+	out := []string{correct}
+
+	take := func(src []string) {
+		for _, s := range src {
+			if len(out) >= n {
+				return
+			}
+			if s == "" || seen[s] {
+				continue
+			}
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	take(pool)
+	take(filler)
+
+	// Shuffle so the answer isn't always first.
+	rand.Shuffle(len(out), func(i, j int) { out[i], out[j] = out[j], out[i] })
+	return out
 }

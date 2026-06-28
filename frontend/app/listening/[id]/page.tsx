@@ -13,17 +13,17 @@ import type { ListeningSession } from "@/lib/types";
 
 const CHAR_EMOJI: Record<string, string> = {
   Lumora: "🦊",
-  "Professor Finch": "🦉",
+  "Professor Finch": "🦅",
   Cora: "🐙",
-  Blaze: "🦎",
+  Blaze: "🔥",
   Mira: "🐆",
   Riko: "🐼",
-  Zephyr: "🦅",
+  Zephyr: "🌬️",
   Nana: "🐢",
   Pip: "🦔",
 };
 
-type Phase = "listen" | "quiz" | "done";
+type Phase = "match" | "listen" | "quiz" | "done";
 
 export default function ListeningPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,12 +31,16 @@ export default function ListeningPage() {
   const { setUser } = useAuth();
 
   const [session, setSession] = useState<ListeningSession | null>(null);
-  const [phase, setPhase] = useState<Phase>("listen");
+  const [phase, setPhase] = useState<Phase>("match");
 
   useEffect(() => {
     api
       .listeningSession(id)
-      .then((d) => setSession(d.session))
+      .then((d) => {
+        setSession(d.session);
+        // Skip the warm-up if a session has no matching pairs.
+        setPhase(d.session.matches && d.session.matches.length ? "match" : "listen");
+      })
       .catch(() => {});
     return () => stopSpeaking();
   }, [id]);
@@ -73,6 +77,9 @@ export default function ListeningPage() {
         </header>
 
         <div className="flex flex-1 flex-col px-5 pb-8 pt-2 lg:px-8">
+          {phase === "match" && (
+            <MatchPhase session={session} onDone={() => setPhase("listen")} />
+          )}
           {phase === "listen" && (
             <ListenPhase session={session} onDone={() => setPhase("quiz")} />
           )}
@@ -97,6 +104,111 @@ export default function ListeningPage() {
             />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MatchPhase({
+  session,
+  onDone,
+}: {
+  session: ListeningSession;
+  onDone: () => void;
+}) {
+  const pairs = session.matches || [];
+
+  // Stable shuffle of the target-word column (seeded by id so it doesn't
+  // re-order on every render).
+  const shuffled = useRef(
+    [...pairs].sort((a, b) => ((a.id * 7) % 5) - ((b.id * 7) % 5))
+  ).current;
+
+  const [selected, setSelected] = useState<number | null>(null); // left (English) id
+  const [matched, setMatched] = useState<Set<number>>(new Set());
+  const [wrong, setWrong] = useState<number | null>(null); // right id flashing red
+
+  const allDone = matched.size === pairs.length && pairs.length > 0;
+
+  function tapRight(rightId: number, word: string) {
+    if (selected == null || matched.has(rightId)) return;
+    const left = pairs.find((p) => p.id === selected);
+    if (left && left.word === word) {
+      const next = new Set(matched);
+      next.add(rightId); // right id === pair id
+      setMatched(next);
+      setSelected(null);
+      speakAs(undefined, word);
+    } else {
+      setWrong(rightId);
+      setTimeout(() => setWrong(null), 500);
+    }
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <p className="text-label-sm font-bold uppercase tracking-wide text-gray-500">
+        Warm-up · match the words
+      </p>
+      <p className="mt-1 text-body-md text-slatey">
+        These words appear in the conversation you&apos;re about to hear.
+      </p>
+
+      <div className="mt-5 grid flex-1 grid-cols-2 gap-3">
+        {/* English column */}
+        <div className="space-y-2">
+          {pairs.map((p) => {
+            const done = matched.has(p.id);
+            const active = selected === p.id;
+            return (
+              <button
+                key={p.id}
+                disabled={done}
+                onClick={() => setSelected(p.id)}
+                className={`flex h-14 w-full items-center rounded-xl border-2 px-3 text-left text-body-md font-semibold transition ${
+                  done
+                    ? "border-teal bg-teal-light text-teal"
+                    : active
+                    ? "border-purple bg-purple-light"
+                    : "border-gray-100 bg-white"
+                }`}
+              >
+                {p.translation}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Target-language column */}
+        <div className="space-y-2">
+          {shuffled.map((p) => {
+            const done = matched.has(p.id);
+            const isWrong = wrong === p.id;
+            return (
+              <button
+                key={p.id}
+                disabled={done}
+                onClick={() => tapRight(p.id, p.word)}
+                className={`flex h-14 w-full items-center justify-between gap-2 rounded-xl border-2 px-3 text-left text-body-md font-semibold transition ${
+                  done
+                    ? "border-teal bg-teal-light text-teal"
+                    : isWrong
+                    ? "border-coral bg-coral-light"
+                    : "border-gray-100 bg-white"
+                }`}
+              >
+                <span className="truncate">{p.word}</span>
+                {done && <Check size={16} className="shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <Button full disabled={!allDone} onClick={onDone}>
+          {allDone ? "Listen to the conversation" : "Match all the words"}
+        </Button>
       </div>
     </div>
   );
@@ -212,10 +324,14 @@ function QuizPhase({
   const [feedback, setFeedback] = useState<null | "correct" | "incorrect">(null);
 
   const q = questions[qi];
-  if (!q) {
-    onDone();
-    return null;
-  }
+
+  // If there are no questions, finish — but do it in an effect, never during
+  // render (calling onDone() in render updates the parent mid-render = crash).
+  useEffect(() => {
+    if (!q) onDone();
+  }, [q, onDone]);
+
+  if (!q) return null;
 
   function check() {
     if (!answer) return;

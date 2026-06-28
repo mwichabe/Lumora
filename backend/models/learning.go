@@ -50,6 +50,40 @@ type ListeningLine struct {
 	Translation string `json:"translation"` // native translation (revealed in transcript)
 }
 
+// ReadingSession is a unit-level reading passage in the target language with
+// comprehension questions — a "read it yourself" complement to listening.
+type ReadingSession struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	Language    string `json:"language"`
+	Unit        string `json:"unit"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	OrderIndex  int    `json:"orderIndex"`
+	XPReward    int    `json:"xpReward"`
+
+	Lines     []ReadingLine     `gorm:"foreignKey:SessionID" json:"lines,omitempty"`
+	Questions []ReadingQuestion `gorm:"foreignKey:SessionID" json:"questions,omitempty"`
+}
+
+type ReadingLine struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	SessionID   uint   `json:"sessionId"`
+	OrderIndex  int    `json:"orderIndex"`
+	Text        string `json:"text"`        // target-language sentence
+	Translation string `json:"translation"` // native translation (revealable)
+}
+
+type ReadingQuestion struct {
+	ID            uint     `gorm:"primaryKey" json:"id"`
+	SessionID     uint     `json:"sessionId"`
+	OrderIndex    int      `json:"orderIndex"`
+	Prompt        string   `json:"prompt"`
+	Question      string   `json:"question"`
+	OptionsJSON   string   `gorm:"column:options" json:"-"`
+	Options       []string `gorm:"-" json:"options"`
+	CorrectAnswer string   `json:"correctAnswer"`
+}
+
 // ListeningQuestion is a comprehension check asked after the dialogue.
 type ListeningQuestion struct {
 	ID            uint     `gorm:"primaryKey" json:"id"`

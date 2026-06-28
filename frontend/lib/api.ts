@@ -7,6 +7,7 @@ import type {
   LeaderRow,
   HomeData,
   ListeningSession,
+  ReadingSession,
 } from "./types";
 
 const API_URL =
@@ -153,6 +154,17 @@ export const api = {
 
   completeListening: (id: number | string) =>
     request<{ xpEarned: number; user: User }>(`/api/listening/${id}/complete`, {
+      method: "POST",
+    }),
+
+  readingSessions: () =>
+    request<{ sessions: ReadingSession[] }>("/api/reading"),
+
+  readingSession: (id: number | string) =>
+    request<{ session: ReadingSession }>(`/api/reading/${id}`),
+
+  completeReading: (id: number | string) =>
+    request<{ xpEarned: number; user: User }>(`/api/reading/${id}/complete`, {
       method: "POST",
     }),
 

@@ -39,6 +39,11 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/listening/:id", listening.Get)
 	protected.Post("/listening/:id/complete", listening.Complete)
 
+	reading := &controllers.ReadingController{}
+	protected.Get("/reading", reading.List)
+	protected.Get("/reading/:id", reading.Get)
+	protected.Post("/reading/:id/complete", reading.Complete)
+
 	quests := &controllers.QuestController{}
 	protected.Get("/quests/daily", quests.Daily)
 

@@ -80,6 +80,44 @@ export interface ListeningQuestion {
   correctAnswer: string;
 }
 
+export interface ReadingLine {
+  id: number;
+  sessionId: number;
+  orderIndex: number;
+  text: string;
+  translation: string;
+}
+
+export interface ReadingQuestion {
+  id: number;
+  sessionId: number;
+  orderIndex: number;
+  prompt: string;
+  question: string;
+  options: string[] | null;
+  correctAnswer: string;
+}
+
+export interface ReadingSession {
+  id: number;
+  language: string;
+  unit: string;
+  title: string;
+  description: string;
+  orderIndex: number;
+  xpReward: number;
+  lines?: ReadingLine[];
+  questions?: ReadingQuestion[];
+}
+
+export interface ListeningMatch {
+  id: number;
+  sessionId: number;
+  orderIndex: number;
+  word: string;
+  translation: string;
+}
+
 export interface ListeningSession {
   id: number;
   language: string;
@@ -88,6 +126,7 @@ export interface ListeningSession {
   description: string;
   orderIndex: number;
   xpReward: number;
+  matches?: ListeningMatch[];
   lines?: ListeningLine[];
   questions?: ListeningQuestion[];
 }

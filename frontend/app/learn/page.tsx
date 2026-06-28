@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Lock, Check, Play, ChevronRight, Headphones } from "lucide-react";
+import { Lock, Check, Play, ChevronRight, Headphones, BookText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SkillIcon } from "@/components/SkillIcon";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import type { Skill, ListeningSession } from "@/lib/types";
+import type { Skill, ListeningSession, ReadingSession } from "@/lib/types";
 
 const LANGUAGE_NAMES: Record<string, string> = {
   es: "Spanish",
@@ -39,6 +39,7 @@ function CourseScreen() {
   const router = useRouter();
   const [skills, setSkills] = useState<Skill[] | null>(null);
   const [sessions, setSessions] = useState<ListeningSession[]>([]);
+  const [readings, setReadings] = useState<ReadingSession[]>([]);
   const [error, setError] = useState(false);
 
   const load = useCallback(() => {
@@ -51,6 +52,10 @@ function CourseScreen() {
       .listeningSessions()
       .then((d) => setSessions(d.sessions))
       .catch(() => setSessions([]));
+    api
+      .readingSessions()
+      .then((d) => setReadings(d.sessions))
+      .catch(() => setReadings([]));
   }, []);
 
   useEffect(() => {
@@ -131,7 +136,12 @@ function CourseScreen() {
                   ))}
                 </div>
 
-                {/* Unit listening sessions */}
+                {/* Unit reading + listening sessions */}
+                {readings
+                  .filter((rs) => rs.unit === u.name)
+                  .map((rs) => (
+                    <ReadingCard key={rs.id} session={rs} />
+                  ))}
                 {sessions
                   .filter((ls) => ls.unit === u.name)
                   .map((ls) => (
@@ -143,6 +153,35 @@ function CourseScreen() {
         )}
       </div>
     </div>
+  );
+}
+
+function ReadingCard({ session }: { session: ReadingSession }) {
+  return (
+    <Link
+      href={`/reading/${session.id}`}
+      className="mt-3 flex items-center gap-3 rounded-2xl border border-teal/20 bg-teal-light/50 p-4 transition hover:shadow-card"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal text-white">
+        <BookText size={22} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-heading-sm font-extrabold text-ink">
+            {session.title}
+          </p>
+          <span className="rounded-full bg-white px-2 py-0.5 text-label-sm font-bold text-teal">
+            Reading
+          </span>
+        </div>
+        <p className="truncate text-body-sm text-slatey">
+          {session.description}
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full bg-amber/20 px-2 py-0.5 text-label-md font-bold text-amber">
+        +{session.xpReward} XP
+      </span>
+    </Link>
   );
 }
 

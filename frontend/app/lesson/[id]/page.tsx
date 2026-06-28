@@ -9,7 +9,13 @@ import { SpeechBubble, HeartIndicator } from "@/components/widgets";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { speakAs, stopSpeaking } from "@/lib/voices";
+import {
+  speakAs,
+  stopSpeaking,
+  recognizeSpeech,
+  scorePronunciation,
+  speechRecognitionSupported,
+} from "@/lib/voices";
 import type { Lesson, Exercise } from "@/lib/types";
 
 type Feedback = null | "correct" | "incorrect";
@@ -49,10 +55,17 @@ export default function LessonPage() {
   const progress = total ? (idx / total) * 100 : 0;
 
   const isNarrative = ex?.type === "character";
-  const needsTyping = ex && ["translate", "fill"].includes(ex.type);
-  const needsChoice =
-    ex && ["multiple_choice", "listen", "match"].includes(ex.type);
   const isSpeak = ex?.type === "speak";
+  // Translate/fill now arrive with generated options, so render them as choices
+  // too. Only fall back to typing if no options were provided.
+  const hasOptions = !!(ex?.options && ex.options.length > 0);
+  const needsChoice =
+    !!ex &&
+    !isNarrative &&
+    !isSpeak &&
+    (["multiple_choice", "listen", "match"].includes(ex.type) || hasOptions);
+  const needsTyping =
+    !!ex && ["translate", "fill"].includes(ex.type) && !hasOptions;
 
   const canCheck = useMemo(() => {
     if (!ex || feedback) return false;
@@ -406,6 +419,33 @@ function ChoiceList({
 }
 
 function SpeakControl({ phrase, disabled }: { phrase: string; disabled: boolean }) {
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
+  const [score, setScore] = useState<number | null>(null);
+  const [supported] = useState(() => speechRecognitionSupported());
+
+  async function record() {
+    if (listening || disabled) return;
+    setHeard(null);
+    setScore(null);
+    setListening(true);
+    try {
+      const said = await recognizeSpeech("es-ES");
+      setHeard(said);
+      setScore(scorePronunciation(phrase, said));
+    } catch {
+      setHeard("");
+      setScore(null);
+    } finally {
+      setListening(false);
+    }
+  }
+
+  const tone =
+    score == null ? "" : score >= 80 ? "text-teal" : score >= 50 ? "text-amber" : "text-coral";
+  const label =
+    score == null ? "" : score >= 80 ? "Excellent!" : score >= 50 ? "Good try!" : "Keep practising";
+
   return (
     <div className="flex flex-col items-center gap-3 py-2">
       <p className="text-label-sm font-bold uppercase tracking-wide text-coral">
@@ -423,18 +463,43 @@ function SpeakControl({ phrase, disabled }: { phrase: string; disabled: boolean 
           <Volume2 size={22} />
         </button>
         <button
-          onClick={() => speakAs("Lumora", phrase)}
-          disabled={disabled}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-coral text-white shadow-float disabled:opacity-40"
-          aria-label="Speak"
+          onClick={record}
+          disabled={disabled || listening || !supported}
+          className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-float disabled:opacity-40 ${
+            listening ? "animate-pulse bg-coral" : "bg-coral"
+          }`}
+          aria-label="Tap to speak"
         >
           <Mic size={28} />
         </button>
       </div>
 
-      <p className="text-body-sm text-slatey">
-        Listen, then say it out loud and tap &ldquo;I said it!&rdquo;
-      </p>
+      {supported ? (
+        <p className="text-body-sm text-slatey">
+          {listening ? "Listening… say the phrase" : "Tap the mic and say it out loud"}
+        </p>
+      ) : (
+        <p className="text-body-sm text-slatey">
+          Speech scoring needs Chrome/Edge. Say it aloud, then tap “I said it!”
+        </p>
+      )}
+
+      {/* Fluency measure */}
+      {score != null && (
+        <div className="mt-1 w-full max-w-xs rounded-xl bg-gray-50 p-3 text-center">
+          <p className={`text-display-lg font-extrabold ${tone}`}>{score}%</p>
+          <p className={`text-label-md font-bold uppercase tracking-wide ${tone}`}>
+            {label} · fluency
+          </p>
+          {heard ? (
+            <p className="mt-1 text-body-sm text-slatey">You said: “{heard}”</p>
+          ) : (
+            <p className="mt-1 text-body-sm text-slatey">
+              Didn&apos;t catch that — try again.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -488,12 +553,12 @@ function FeedbackBar({
 function CharacterAvatar({ name }: { name: string }) {
   const map: Record<string, string> = {
     Lumora: "🦊",
-    "Professor Finch": "🦉",
+    "Professor Finch": "🦅",
     Cora: "🐙",
-    Blaze: "🦎",
+    Blaze: "🔥",
     Mira: "🐆",
     Riko: "🐼",
-    Zephyr: "🦅",
+    Zephyr: "🌬️",
     Nana: "🐢",
     Pip: "🦔",
   };
