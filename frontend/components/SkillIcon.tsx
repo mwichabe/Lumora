@@ -10,6 +10,13 @@ import {
   Compass,
   Hash,
   BookOpen,
+  GraduationCap,
+  PenLine,
+  Quote,
+  Languages,
+  Layers,
+  Clock,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +34,13 @@ const ICONS: Record<string, LucideIcon> = {
   Compass,
   Hash,
   BookOpen,
+  GraduationCap,
+  PenLine,
+  Quote,
+  Languages,
+  Layers,
+  Clock,
+  Link2,
 };
 
 export function SkillIcon({

@@ -1,15 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BellOff } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { useAuth } from "@/lib/auth";
-import {
-  AppNotification,
-  buildNotifications,
-  markAllRead,
-} from "@/lib/notifications";
+import { api } from "@/lib/api";
+import type { AppNotification } from "@/lib/types";
+
+const SYNC_EVENT = "lumora:notifications";
+
+function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!t) return "";
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 export default function NotificationsPage() {
   return (
@@ -20,30 +32,41 @@ export default function NotificationsPage() {
 }
 
 function NotificationsContent() {
-  const { user } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState<AppNotification[]>([]);
 
-  // Snapshot the feed for display (keeps "new" grouping during this visit).
   useEffect(() => {
-    setItems(buildNotifications(user));
-  }, [user]);
+    let active = true;
+    api
+      .notifications()
+      .then((d) => {
+        if (active) setItems(d.notifications);
+      })
+      .catch(() => {});
 
-  // Clear the unread badge shortly after the screen is viewed.
-  useEffect(() => {
-    const t = setTimeout(
-      () => markAllRead(buildNotifications(user).map((n) => n.id)),
-      800
-    );
-    return () => clearTimeout(t);
-  }, [user]);
+    // Clear the unread badge shortly after the screen is viewed.
+    const t = setTimeout(() => {
+      api
+        .markNotificationsRead()
+        .then(() => window.dispatchEvent(new Event(SYNC_EVENT)))
+        .catch(() => {});
+    }, 800);
+
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, []);
 
   const unread = items.filter((n) => !n.read).length;
   const newItems = useMemo(() => items.filter((n) => !n.read), [items]);
   const earlierItems = useMemo(() => items.filter((n) => n.read), [items]);
 
   function clearHighlights() {
-    markAllRead(items.map((n) => n.id));
+    api
+      .markNotificationsRead()
+      .then(() => window.dispatchEvent(new Event(SYNC_EVENT)))
+      .catch(() => {});
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
@@ -115,16 +138,13 @@ function Section({
 }
 
 function NotificationItem({ n }: { n: AppNotification }) {
-  return (
-    <li
-      className={`relative flex items-start gap-3 px-4 py-4 transition hover:bg-gray-50 lg:px-6 ${
-        n.read ? "" : "bg-purple-light/40"
-      }`}
-    >
-      {/* unread accent */}
-      {!n.read && (
-        <span className="absolute left-0 top-0 h-full w-1 bg-purple" />
-      )}
+  const cls = `relative flex items-start gap-3 px-4 py-4 transition hover:bg-gray-50 lg:px-6 ${
+    n.read ? "" : "bg-purple-light/40"
+  }`;
+
+  const content = (
+    <>
+      {!n.read && <span className="absolute left-0 top-0 h-full w-1 bg-purple" />}
 
       <span
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl"
@@ -142,13 +162,27 @@ function NotificationItem({ n }: { n: AppNotification }) {
           >
             {n.title}
           </p>
-          <span className="shrink-0 text-label-md text-gray-500">{n.time}</span>
+          <span className="shrink-0 text-label-md text-gray-500">
+            {timeAgo(n.createdAt)}
+          </span>
         </div>
         <p className="mt-0.5 text-body-sm leading-snug text-slatey">{n.body}</p>
       </div>
 
       {!n.read && (
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-purple" />
+      )}
+    </>
+  );
+
+  return (
+    <li>
+      {n.link ? (
+        <Link href={n.link} className={cls}>
+          {content}
+        </Link>
+      ) : (
+        <div className={cls}>{content}</div>
       )}
     </li>
   );

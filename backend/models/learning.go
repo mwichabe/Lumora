@@ -1,5 +1,28 @@
 package models
 
+import "time"
+
+// Enrollment records a language a user is learning. A user can be enrolled in
+// several languages; User.TargetLanguage holds the currently active one.
+type Enrollment struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index" json:"userId"`
+	Language  string    `json:"language"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// Mistake records an exercise a user got wrong, so it can be resurfaced in the
+// "Review Mistakes" practice mode and cleared once answered correctly.
+type Mistake struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	UserID        uint      `gorm:"index" json:"userId"`
+	Language      string    `json:"language"`
+	Prompt        string    `json:"prompt"`
+	Question      string    `json:"question"`
+	CorrectAnswer string    `json:"correctAnswer"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
 // VocabItem is a new word/phrase taught at the START of a lesson, before any
 // questions — the "learn the words first" phase.
 type VocabItem struct {

@@ -16,7 +16,9 @@ import { AppShell } from "@/components/AppShell";
 import { FoxMascot } from "@/components/FoxMascot";
 import { XPBar, StreakFlame, GemCounter } from "@/components/widgets";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ChatBell } from "@/components/ChatBell";
 import { SkillIcon } from "@/components/SkillIcon";
+import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -74,11 +76,8 @@ function HomeContent() {
       <header className="bg-purple px-5 pb-5 pt-12 text-white lg:px-8 lg:pt-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/60 text-sm font-bold"
-              style={{ background: u.avatarColor }}
-            >
-              {(u.name || "L").slice(0, 1).toUpperCase()}
+            <span className="rounded-full border-2 border-white/60">
+              <Avatar name={u.name} color={u.avatarColor} url={u.avatarUrl} size={40} />
             </span>
             <p className="text-heading-sm font-bold">
               {greeting()}, {u.name || "friend"}!
@@ -87,6 +86,7 @@ function HomeContent() {
           <div className="flex items-center gap-2">
             <GemCounter gems={u.gems} />
             <StreakFlame streak={u.streak} light />
+            <ChatBell />
             <NotificationBell />
           </div>
         </div>

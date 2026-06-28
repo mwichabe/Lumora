@@ -40,6 +40,7 @@ const (
 	ExerciseMatch          ExerciseType = "match"
 	ExerciseSpeak          ExerciseType = "speak"
 	ExerciseFill           ExerciseType = "fill"
+	ExerciseWrite          ExerciseType = "write"     // free-text writing (e.g. an email)
 	ExerciseCharacter      ExerciseType = "character" // a narrative interjection
 )
 

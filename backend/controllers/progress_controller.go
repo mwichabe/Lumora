@@ -38,9 +38,6 @@ func (p *ProgressController) Home(c *fiber.Ctx) error {
 
 	var skills []models.Skill
 	database.DB.Where("language = ?", lang).Preload("Lessons").Order("order_index asc").Find(&skills)
-	if len(skills) == 0 && lang != "es" {
-		database.DB.Where("language = ?", "es").Preload("Lessons").Order("order_index asc").Find(&skills)
-	}
 
 	var nextLesson *models.Lesson
 	var nextSkill *models.Skill
@@ -110,16 +107,11 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 	user.Gems += 5
 	user.FluencyScore = clamp(user.FluencyScore+in.Accuracy/10, 0, 1000)
 
-	// Streak: only advance the first time we see activity today.
-	today := time.Now().Format("2006-01-02")
-	if user.LastActiveDate != today {
-		user.Streak++
-		user.LastActiveDate = today
-		user.XPToday = xpGain
-	}
+	touchStreak(user)
 
 	// CEFR promotion every 100 XP (demo-friendly thresholds).
 	promoteLevel(user)
+	user.League = leagueForXP(user.XP)
 
 	database.DB.Save(user)
 
@@ -137,6 +129,30 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 }
 
 // --- helpers ---
+
+// touchStreak records activity for "today" and keeps the streak correct:
+//   - first ever activity (or after a gap) → streak = 1
+//   - activity on the day after the last one → streak + 1
+//   - more activity the same day → unchanged (but never left at 0)
+// It is self-healing: even if LastActiveDate was pre-set to today (as it is at
+// registration) a studying user's streak still becomes at least 1.
+func touchStreak(user *models.User) {
+	today := time.Now().Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+
+	if user.LastActiveDate == today {
+		if user.Streak < 1 {
+			user.Streak = 1
+		}
+		return
+	}
+	if user.LastActiveDate == yesterday {
+		user.Streak++
+	} else {
+		user.Streak = 1
+	}
+	user.LastActiveDate = today
+}
 
 // rollOverDay resets XPToday when a new calendar day begins. If a full day was
 // missed the streak breaks.
@@ -182,4 +198,35 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// --- leagues -----------------------------------------------------------------
+
+// Leagues are XP bands. A user's league is derived from their total XP so the
+// "Bronze League" label always matches who they're actually competing against.
+var leagueOrder = []string{"Bronze", "Silver", "Gold", "Sapphire", "Ruby", "Emerald", "Amethyst", "Obsidian"}
+var leagueFloors = []int{0, 100, 300, 600, 1000, 1500, 2500, 4000}
+
+func leagueIndexForXP(xp int) int {
+	idx := 0
+	for i, f := range leagueFloors {
+		if xp >= f {
+			idx = i
+		}
+	}
+	return idx
+}
+
+func leagueForXP(xp int) string {
+	return leagueOrder[leagueIndexForXP(xp)]
+}
+
+// leagueBand returns the [lo, hi) XP range for the league containing xp.
+func leagueBand(xp int) (int, int) {
+	i := leagueIndexForXP(xp)
+	hi := 1 << 30
+	if i+1 < len(leagueFloors) {
+		hi = leagueFloors[i+1]
+	}
+	return leagueFloors[i], hi
 }

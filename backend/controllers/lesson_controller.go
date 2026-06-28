@@ -39,15 +39,6 @@ func (l *LessonController) GalaxyMap(c *fiber.Ctx) error {
 		Order("order_index asc").
 		Find(&skills)
 
-	// Fall back to the fully-authored Spanish course for languages that are
-	// still previews in the MVP, so the learner always has content.
-	if len(skills) == 0 && lang != "es" {
-		database.DB.Where("language = ?", "es").
-			Preload("Lessons").
-			Order("order_index asc").
-			Find(&skills)
-	}
-
 	// Gather the set of lessons this user has completed.
 	var done []models.LessonProgress
 	database.DB.Where("user_id = ? AND completed = ?", user.ID, true).Find(&done)

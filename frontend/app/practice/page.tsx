@@ -1,86 +1,218 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { MessageCircle, Headphones, Repeat } from "lucide-react";
+import {
+  ListChecks,
+  Headphones,
+  Mic,
+  RefreshCw,
+  ChevronRight,
+  Sparkles,
+  BookMarked,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SpeechBubble } from "@/components/widgets";
-
-const MODES = [
-  {
-    title: "AI Conversation",
-    desc: "Chat with Blaze to practise speaking in real scenarios.",
-    icon: MessageCircle,
-    tint: "#6C3FC5",
-    soon: true,
-  },
-  {
-    title: "Listening Drills",
-    desc: "Sharpen your ear with Mira's audio challenges.",
-    icon: Headphones,
-    tint: "#00C2A8",
-    soon: true,
-  },
-  {
-    title: "Review Mistakes",
-    desc: "Revisit tricky words Cora has saved for you.",
-    icon: Repeat,
-    tint: "#F5A623",
-    soon: true,
-  },
-];
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { languageName } from "@/lib/languages";
 
 export default function PracticePage() {
   return (
     <AppShell tabs>
-      <div className="bg-cream pb-24 lg:pb-10">
-        <header className="px-6 pb-2 pt-14">
-          <h1 className="text-display-lg font-extrabold text-ink">Practice</h1>
-          <p className="mt-1 text-body-md text-slatey">
-            Strengthen your skills between lessons.
+      <PracticeContent />
+    </AppShell>
+  );
+}
+
+function PracticeContent() {
+  const { user } = useAuth();
+  const [vocabCount, setVocabCount] = useState<number | null>(null);
+  const [mistakeCount, setMistakeCount] = useState(0);
+
+  useEffect(() => {
+    api
+      .practice()
+      .then((d) => {
+        setVocabCount(d.vocab.length);
+        setMistakeCount(d.mistakes.length);
+      })
+      .catch(() => setVocabCount(0));
+  }, [user?.targetLanguage]);
+
+  const hasVocab = (vocabCount ?? 0) > 0;
+
+  const modes = [
+    {
+      key: "quiz",
+      title: "Vocabulary Quiz",
+      desc: "Match words to their meaning.",
+      icon: ListChecks,
+      tint: "#6C3FC5",
+      disabled: !hasVocab,
+    },
+    {
+      key: "listen",
+      title: "Listening Drill",
+      desc: "Hear a word, choose what it means.",
+      icon: Headphones,
+      tint: "#00C2A8",
+      disabled: !hasVocab,
+    },
+    {
+      key: "speak",
+      title: "Speaking Practice",
+      desc: "Say phrases aloud and get a fluency score.",
+      icon: Mic,
+      tint: "#FF5C5C",
+      disabled: !hasVocab,
+    },
+    {
+      key: "mistakes",
+      title: "Review Mistakes",
+      desc:
+        mistakeCount > 0
+          ? `${mistakeCount} to review`
+          : "Anything you miss appears here.",
+      icon: RefreshCw,
+      tint: "#F5A623",
+      disabled: mistakeCount === 0,
+      badge: mistakeCount > 0 ? mistakeCount : undefined,
+    },
+  ];
+
+  return (
+    <div className="bg-cream pb-24 lg:pb-10">
+      <header className="px-6 pb-2 pt-14 lg:px-8 lg:pt-8">
+        <h1 className="text-display-lg font-extrabold text-ink">Practice</h1>
+        <p className="mt-1 text-body-md text-slatey">
+          Strengthen your {languageName(user?.targetLanguage)} between lessons.
+        </p>
+      </header>
+
+      <div className="px-6 pt-2 lg:px-8">
+        <SpeechBubble className="max-w-none">
+          <span className="font-extrabold text-coral">Blaze:</span> Ready to warm
+          up? Pick a drill and let&apos;s get fluent! 🔥
+        </SpeechBubble>
+      </div>
+
+      {/* Stats */}
+      <div className="mt-5 grid grid-cols-2 gap-3 px-6 lg:px-8">
+        <div className="rounded-2xl bg-white p-4 shadow-card">
+          <div className="flex items-center gap-2 text-purple">
+            <BookMarked size={18} />
+            <span className="text-label-md font-bold uppercase tracking-wide">
+              Words ready
+            </span>
+          </div>
+          <p className="mt-1 text-display-md font-extrabold text-ink">
+            {vocabCount === null ? "—" : vocabCount}
           </p>
-        </header>
-
-        <div className="px-6 pt-2">
-          <SpeechBubble className="max-w-none">
-            <span className="font-extrabold text-purple">Blaze:</span> Ready to
-            warm up? Pick a practice mode and let&apos;s get fluent! 🔥
-          </SpeechBubble>
+          <p className="text-body-sm text-slatey">grows as you unlock units</p>
         </div>
+        <div className="rounded-2xl bg-white p-4 shadow-card">
+          <div className="flex items-center gap-2 text-amber">
+            <RefreshCw size={18} />
+            <span className="text-label-md font-bold uppercase tracking-wide">
+              To review
+            </span>
+          </div>
+          <p className="mt-1 text-display-md font-extrabold text-ink">
+            {mistakeCount}
+          </p>
+          <p className="text-body-sm text-slatey">
+            {mistakeCount > 0 ? "mistakes to fix" : "all caught up"}
+          </p>
+        </div>
+      </div>
 
-        <div className="mt-5 space-y-3 px-6">
-          {MODES.map((m, i) => {
-            const Icon = m.icon;
-            return (
-              <motion.button
-                key={m.title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-card"
-              >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: m.tint + "1A", color: m.tint }}
-                >
-                  <Icon size={24} />
+      {/* Daily Mix hero */}
+      {hasVocab && (
+        <div className="mt-3 px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Link href="/practice/run?mode=mix">
+              <div className="flex items-center gap-4 rounded-2xl bg-purple p-5 text-left text-white shadow-card-lg transition hover:brightness-105">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                  <Sparkles size={28} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-ink">{m.title}</span>
-                    {m.soon && (
-                      <span className="rounded-full bg-amber-light px-2 py-0.5 text-label-sm font-extrabold text-amber">
-                        Soon
-                      </span>
-                    )}
+                    <span className="text-heading-md font-extrabold">
+                      Daily Mix
+                    </span>
+                    <span className="rounded-full bg-white/25 px-2 py-0.5 text-label-sm font-extrabold">
+                      Recommended
+                    </span>
                   </div>
-                  <p className="mt-0.5 text-body-sm text-slatey">{m.desc}</p>
+                  <p className="mt-0.5 text-body-sm text-white/85">
+                    A fresh blend of new words — quiz, listening &amp; speaking.
+                  </p>
                 </div>
-              </motion.button>
-            );
-          })}
+                <ChevronRight size={22} className="text-white/70" />
+              </div>
+            </Link>
+          </motion.div>
         </div>
+      )}
+
+      <div className="mt-3 grid gap-3 px-6 lg:grid-cols-2 lg:px-8">
+        {modes.map((m, i) => {
+          const Icon = m.icon;
+          const card = (
+            <div
+              className={`flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-card transition ${
+                m.disabled ? "opacity-60" : "hover:shadow-card-lg"
+              }`}
+            >
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: m.tint + "1A", color: m.tint }}
+              >
+                <Icon size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-ink">{m.title}</span>
+                  {m.badge && (
+                    <span className="rounded-full bg-amber px-2 py-0.5 text-label-sm font-extrabold text-ink">
+                      {m.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-body-sm text-slatey">{m.desc}</p>
+              </div>
+              {!m.disabled && <ChevronRight size={20} className="text-gray-300" />}
+            </div>
+          );
+
+          if (m.disabled) {
+            return (
+              <div key={m.key}>{card}</div>
+            );
+          }
+          return (
+            <motion.div
+              key={m.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06 }}
+            >
+              <Link href={`/practice/run?mode=${m.key}`}>{card}</Link>
+            </motion.div>
+          );
+        })}
       </div>
-    </AppShell>
+
+      {vocabCount === 0 && (
+        <p className="mt-5 px-6 text-center text-body-sm text-slatey lg:px-8">
+          Complete a lesson first to unlock practice drills.
+        </p>
+      )}
+    </div>
   );
 }

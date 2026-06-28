@@ -56,6 +56,7 @@ export default function LessonPage() {
 
   const isNarrative = ex?.type === "character";
   const isSpeak = ex?.type === "speak";
+  const isWrite = ex?.type === "write";
   // Translate/fill now arrive with generated options, so render them as choices
   // too. Only fall back to typing if no options were provided.
   const hasOptions = !!(ex?.options && ex.options.length > 0);
@@ -63,15 +64,19 @@ export default function LessonPage() {
     !!ex &&
     !isNarrative &&
     !isSpeak &&
+    !isWrite &&
     (["multiple_choice", "listen", "match"].includes(ex.type) || hasOptions);
   const needsTyping =
     !!ex && ["translate", "fill"].includes(ex.type) && !hasOptions;
 
+  const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+
   const canCheck = useMemo(() => {
     if (!ex || feedback) return false;
     if (isNarrative || isSpeak) return true;
+    if (isWrite) return wordCount >= 12;
     return answer.trim().length > 0;
-  }, [ex, feedback, answer, isNarrative, isSpeak]);
+  }, [ex, feedback, answer, isNarrative, isSpeak, isWrite, wordCount]);
 
   function normalise(s: string) {
     return s.trim().toLowerCase().replace(/[.,!¡¿?]/g, "");
@@ -79,7 +84,7 @@ export default function LessonPage() {
 
   function check() {
     if (!ex) return;
-    if (isNarrative || isSpeak) {
+    if (isNarrative || isSpeak || isWrite) {
       advance();
       return;
     }
@@ -91,6 +96,14 @@ export default function LessonPage() {
     } else {
       setHearts((h) => Math.max(0, h - 1));
       setFeedback("incorrect");
+      // Remember the miss so it shows up in Practice → Review Mistakes.
+      api
+        .recordMistake({
+          prompt: ex.prompt || "Choose the correct answer",
+          question: ex.question,
+          correctAnswer: ex.correctAnswer,
+        })
+        .catch(() => {});
     }
   }
 
@@ -201,6 +214,14 @@ export default function LessonPage() {
                   />
                 )}
                 {isSpeak && <SpeakControl phrase={ex.question} disabled={!!feedback} />}
+                {isWrite && (
+                  <WriteControl
+                    value={answer}
+                    onChange={setAnswer}
+                    words={wordCount}
+                    example={ex.correctAnswer}
+                  />
+                )}
               </div>
             )}
           </>
@@ -224,7 +245,13 @@ export default function LessonPage() {
                 loading={submitting}
                 onClick={check}
               >
-                {isNarrative ? "Continue" : isSpeak ? "I said it!" : "Check"}
+                {isNarrative
+                  ? "Continue"
+                  : isSpeak
+                  ? "I said it!"
+                  : isWrite
+                  ? "Done"
+                  : "Check"}
               </Button>
             )}
           </AnimatePresence>
@@ -414,6 +441,50 @@ function ChoiceList({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function WriteControl({
+  value,
+  onChange,
+  words,
+  example,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  words: number;
+  example: string;
+}) {
+  const [showExample, setShowExample] = useState(false);
+  return (
+    <div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={6}
+        placeholder="Schreib hier… (write here)"
+        className="w-full rounded-xl border border-gray-100 bg-white p-4 text-body-lg outline-none transition focus:border-purple"
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-body-sm text-slatey">
+          {words} words {words < 12 ? "· aim for 12+" : "· nice!"}
+        </span>
+        {example && (
+          <button
+            type="button"
+            onClick={() => setShowExample((s) => !s)}
+            className="text-body-sm font-semibold text-teal"
+          >
+            {showExample ? "Hide example" : "Show example"}
+          </button>
+        )}
+      </div>
+      {showExample && example && (
+        <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-gray-50 p-3 text-body-sm text-slatey">
+          {example}
+        </pre>
+      )}
     </div>
   );
 }

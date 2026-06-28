@@ -10,6 +10,7 @@ type User struct {
 	PasswordHash string    `gorm:"not null" json:"-"`
 	Name         string    `json:"name"`
 	AvatarColor  string    `json:"avatarColor"` // hex used for the placeholder avatar ring
+	AvatarURL    string    `json:"avatarUrl"`   // uploaded profile photo (served from /uploads)
 
 	// Learning setup (chosen during onboarding)
 	TargetLanguage string `json:"targetLanguage"` // e.g. "es"

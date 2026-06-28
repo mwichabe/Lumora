@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	"lumora/backend/config"
+	"lumora/backend/controllers"
 	"lumora/backend/database"
 	"lumora/backend/routes"
 )
@@ -30,7 +31,13 @@ func main() {
 		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	}))
 
+	// Serve uploaded profile photos.
+	app.Static("/uploads", "./uploads")
+
 	routes.Register(app, cfg)
+
+	// Background loop that casually pushes tips / announcements to users.
+	controllers.StartNotificationScheduler()
 
 	log.Printf("Lumora API listening on :%s", cfg.Port)
 	if err := app.Listen(":" + cfg.Port); err != nil {

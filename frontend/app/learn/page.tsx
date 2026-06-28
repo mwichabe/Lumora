@@ -4,9 +4,22 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Lock, Check, Play, ChevronRight, Headphones, BookText } from "lucide-react";
+import {
+  Lock,
+  Check,
+  Play,
+  ChevronRight,
+  Headphones,
+  BookText,
+  RefreshCw,
+  GraduationCap,
+  Map,
+  BookOpen,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SkillIcon } from "@/components/SkillIcon";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { RoadmapView } from "@/components/RoadmapView";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -41,6 +54,7 @@ function CourseScreen() {
   const [sessions, setSessions] = useState<ListeningSession[]>([]);
   const [readings, setReadings] = useState<ReadingSession[]>([]);
   const [error, setError] = useState(false);
+  const [view, setView] = useState<"course" | "roadmap">("course");
 
   const load = useCallback(() => {
     setError(false);
@@ -88,10 +102,15 @@ function CourseScreen() {
     <div className="flex flex-col bg-cream">
       {/* Header */}
       <header className="bg-purple px-5 pb-6 pt-12 text-white lg:px-8 lg:pt-8">
-        <p className="text-label-lg font-bold uppercase tracking-wide text-white/60">
-          {languageName} course
-        </p>
-        <h1 className="mt-0.5 text-heading-xl font-extrabold">Your path</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-label-lg font-bold uppercase tracking-wide text-white/60">
+              {languageName} course
+            </p>
+            <h1 className="mt-0.5 text-heading-xl font-extrabold">Your path</h1>
+          </div>
+          <LanguageSwitcher onChanged={load} />
+        </div>
 
         <div className="mt-4 flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/20">
@@ -109,6 +128,26 @@ function CourseScreen() {
         <p className="mt-1 text-body-sm text-white/70">
           {user?.xp ?? 0} XP · {user?.levelName || "Spark"}
         </p>
+
+        {/* Tab view: Course list vs. Roadmap */}
+        <div className="mt-4 flex gap-1 rounded-full bg-white/15 p-1">
+          <button
+            onClick={() => setView("course")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-label-lg font-bold transition ${
+              view === "course" ? "bg-white text-purple" : "text-white/80"
+            }`}
+          >
+            <BookOpen size={16} /> Course
+          </button>
+          <button
+            onClick={() => setView("roadmap")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-label-lg font-bold transition ${
+              view === "roadmap" ? "bg-white text-purple" : "text-white/80"
+            }`}
+          >
+            <Map size={16} /> Roadmap
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 px-4 py-5 lg:px-8 lg:py-7">
@@ -118,37 +157,65 @@ function CourseScreen() {
           <LoadingState />
         ) : skills.length === 0 ? (
           <EmptyState />
+        ) : view === "roadmap" ? (
+          <RoadmapView
+            skills={skills}
+            userXp={user?.xp ?? 0}
+            onOpen={(id) => router.push(`/lesson/${id}`)}
+          />
         ) : (
           <div className="space-y-8">
-            {units.map((u) => (
-              <section key={u.name}>
-                <h2 className="mb-3 px-1 text-label-lg font-bold uppercase tracking-wide text-gray-500">
-                  {u.name}
-                </h2>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {u.skills.map((s) => (
-                    <SkillCard
-                      key={s.id}
-                      skill={s}
-                      onOpen={(id) => router.push(`/lesson/${id}`)}
-                      userXp={user?.xp ?? 0}
-                    />
-                  ))}
-                </div>
+            {units.map((u) => {
+              // Reading & listening unlock as soon as the unit itself is
+              // unlocked (reachable) — locked units keep their sessions locked.
+              const unitUnlocked = u.skills.some((s) => s.unlocked);
+              // A unit is complete when all its skills are completed.
+              const unitComplete =
+                u.skills.length > 0 && u.skills.every((s) => s.completed);
+              return (
+                <section key={u.name}>
+                  <h2 className="mb-3 px-1 text-label-lg font-bold uppercase tracking-wide text-gray-500">
+                    {u.name}
+                  </h2>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {u.skills.map((s) => (
+                      <SkillCard
+                        key={s.id}
+                        skill={s}
+                        onOpen={(id) => router.push(`/lesson/${id}`)}
+                        userXp={user?.xp ?? 0}
+                      />
+                    ))}
+                  </div>
 
-                {/* Unit reading + listening sessions */}
-                {readings
-                  .filter((rs) => rs.unit === u.name)
-                  .map((rs) => (
-                    <ReadingCard key={rs.id} session={rs} />
-                  ))}
-                {sessions
-                  .filter((ls) => ls.unit === u.name)
-                  .map((ls) => (
-                    <ListeningCard key={ls.id} session={ls} />
-                  ))}
-              </section>
-            ))}
+                  {/* Unit reading + listening — locked only while the unit is */}
+                  {readings
+                    .filter((rs) => rs.unit === u.name)
+                    .map((rs) => (
+                      <ReadingCard
+                        key={rs.id}
+                        session={rs}
+                        locked={!unitUnlocked}
+                        unit={u.name}
+                      />
+                    ))}
+                  {sessions
+                    .filter((ls) => ls.unit === u.name)
+                    .map((ls) => (
+                      <ListeningCard
+                        key={ls.id}
+                        session={ls}
+                        locked={!unitUnlocked}
+                        unit={u.name}
+                      />
+                    ))}
+
+                  {/* Once the unit is complete, offer a review + the exam. */}
+                  {unitComplete && <ReviewMistakesCard />}
+                  {unitComplete && <DoExamCard />}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>
@@ -156,7 +223,96 @@ function CourseScreen() {
   );
 }
 
-function ReadingCard({ session }: { session: ReadingSession }) {
+function LockedSessionCard({
+  title,
+  kind,
+  unit,
+}: {
+  title: string;
+  kind: "Reading" | "Listening";
+  unit: string;
+}) {
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 opacity-90 shadow-card">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
+        <Lock size={20} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-heading-sm font-extrabold text-ink">
+            {title}
+          </p>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-label-sm font-bold text-gray-500">
+            {kind}
+          </span>
+        </div>
+        <p className="truncate text-body-sm text-slatey">
+          Reach the {unit} unit to unlock
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DoExamCard() {
+  return (
+    <Link
+      href="/exam"
+      className="mt-3 flex items-center gap-3 rounded-2xl bg-purple p-4 text-white shadow-float transition hover:bg-purple-dark"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
+        <GraduationCap size={22} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-heading-sm font-extrabold">Ready? Take the exam</p>
+        <p className="truncate text-body-sm text-white/80">
+          Test all four skills and earn your certificate.
+        </p>
+      </div>
+      <ChevronRight size={18} className="shrink-0 text-white/70" />
+    </Link>
+  );
+}
+
+function ReviewMistakesCard() {
+  return (
+    <Link
+      href="/practice/run?mode=mistakes"
+      className="mt-3 flex items-center gap-3 rounded-2xl border border-amber/30 bg-amber-light/60 p-4 transition hover:shadow-card"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber text-ink">
+        <RefreshCw size={22} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-heading-sm font-extrabold text-ink">
+            Review your mistakes
+          </p>
+          <span className="rounded-full bg-white px-2 py-0.5 text-label-sm font-bold text-amber">
+            Unit done
+          </span>
+        </div>
+        <p className="truncate text-body-sm text-slatey">
+          Turn the words you missed into a quick refresher.
+        </p>
+      </div>
+      <ChevronRight size={18} className="shrink-0 text-gray-300" />
+    </Link>
+  );
+}
+
+function ReadingCard({
+  session,
+  locked,
+  unit,
+}: {
+  session: ReadingSession;
+  locked?: boolean;
+  unit: string;
+}) {
+  if (locked) {
+    return <LockedSessionCard title={session.title} kind="Reading" unit={unit} />;
+  }
   return (
     <Link
       href={`/reading/${session.id}`}
@@ -185,7 +341,18 @@ function ReadingCard({ session }: { session: ReadingSession }) {
   );
 }
 
-function ListeningCard({ session }: { session: ListeningSession }) {
+function ListeningCard({
+  session,
+  locked,
+  unit,
+}: {
+  session: ListeningSession;
+  locked?: boolean;
+  unit: string;
+}) {
+  if (locked) {
+    return <LockedSessionCard title={session.title} kind="Listening" unit={unit} />;
+  }
   return (
     <Link
       href={`/listening/${session.id}`}

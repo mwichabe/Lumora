@@ -40,7 +40,7 @@ export default function SetGoalScreen() {
   }
 
   return (
-    <div className="app-frame flex flex-col bg-cream px-5 pt-10">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col bg-cream px-5 pt-10 lg:my-8 lg:min-h-[calc(100dvh-4rem)] lg:rounded-3xl lg:px-10 lg:shadow-card-lg">
       <div className="flex items-start gap-2">
         <FoxMascot size={64} />
         <SpeechBubble>How much time can you give me each day?</SpeechBubble>

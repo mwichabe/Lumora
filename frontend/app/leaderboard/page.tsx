@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Flame } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Avatar } from "@/components/Avatar";
 import { api } from "@/lib/api";
 import { LeaderRow } from "@/lib/types";
+import { languageMeta } from "@/lib/languages";
 
 const LEAGUE_TINTS: Record<string, string> = {
   Bronze: "#CD7F32",
@@ -21,6 +23,7 @@ const LEAGUE_TINTS: Record<string, string> = {
 export default function LeaderboardPage() {
   const [rows, setRows] = useState<LeaderRow[]>([]);
   const [league, setLeague] = useState("Bronze");
+  const [userRank, setUserRank] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +32,7 @@ export default function LeaderboardPage() {
       .then((r) => {
         setRows(r.rows);
         setLeague(r.league);
+        setUserRank(r.userRank);
       })
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
@@ -49,7 +53,9 @@ export default function LeaderboardPage() {
           </div>
           <h1 className="mt-3 text-heading-xl font-extrabold">{league} League</h1>
           <p className="mt-1 text-body-sm text-white/80">
-            Top 3 advance to the next league this week
+            {userRank > 0
+              ? `You're ranked #${userRank} — earn XP to climb!`
+              : "Earn XP to climb the league."}
           </p>
         </div>
 
@@ -74,12 +80,12 @@ export default function LeaderboardPage() {
                 <div className="w-7 text-center">
                   <RankBadge rank={row.rank} />
                 </div>
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-body-lg font-extrabold text-white"
-                  style={{ backgroundColor: row.avatarColor || "#6C3FC5" }}
-                >
-                  {row.name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar
+                  name={row.name}
+                  color={row.avatarColor}
+                  url={row.avatarUrl}
+                  size={44}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-extrabold text-ink">
                     {row.name}
@@ -87,8 +93,11 @@ export default function LeaderboardPage() {
                       <span className="ml-2 text-label-sm text-purple">(you)</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 text-label-md text-slatey">
-                    <Flame size={12} className="text-coral" /> {row.streak} day streak
+                  <div className="flex items-center gap-2 text-label-md text-slatey">
+                    <span className="flex items-center gap-1">
+                      <Flame size={12} className="text-coral" /> {row.streak}
+                    </span>
+                    <LangBadge code={row.language} />
                   </div>
                 </div>
                 <div className="text-right">
@@ -108,6 +117,23 @@ export default function LeaderboardPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function LangBadge({ code }: { code: string }) {
+  const m = languageMeta(code);
+  if (!m) {
+    return (
+      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-label-sm font-bold text-gray-500">
+        New learner
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-label-sm font-bold text-slatey">
+      <span>{m.flag}</span>
+      {m.name}
+    </span>
   );
 }
 

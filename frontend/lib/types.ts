@@ -5,6 +5,7 @@ export interface User {
   email: string;
   name: string;
   avatarColor: string;
+  avatarUrl: string;
   targetLanguage: string;
   nativeLanguage: string;
   cefrLevel: string;
@@ -26,6 +27,7 @@ export type ExerciseType =
   | "match"
   | "speak"
   | "fill"
+  | "write"
   | "character";
 
 export interface Exercise {
@@ -49,6 +51,106 @@ export interface VocabItem {
   example: string;
   exampleTranslation: string;
   speaker: string;
+}
+
+export interface Mistake {
+  id: number;
+  userId: number;
+  language: string;
+  prompt: string;
+  question: string;
+  correctAnswer: string;
+}
+
+export interface Certificate {
+  id: number;
+  userId: number;
+  userName: string;
+  language: string;
+  level: string;
+  score: number;
+  listening: number;
+  reading: number;
+  writing: number;
+  speaking: number;
+  serial: string;
+  issuedAt: string;
+}
+
+export interface ExamSectionWeights {
+  listening: number;
+  reading: number;
+  writing: number;
+  speaking: number;
+}
+
+export interface ExamResult {
+  passed: boolean;
+  alreadyTaken?: boolean;
+  overall: number;
+  level: string;
+  passMark?: number;
+  weights?: ExamSectionWeights;
+  sections?: {
+    listening: number;
+    reading: number;
+    writing: number;
+    speaking: number;
+  };
+  certificate?: Certificate;
+}
+
+export interface ExamMeta {
+  weights: ExamSectionWeights;
+  levels: Record<string, { passMark: number; durationSeconds: number }>;
+}
+
+export interface CertVerification {
+  valid: boolean;
+  certificate?: {
+    userName: string;
+    language: string;
+    level: string;
+    score: number;
+    serial: string;
+    issuedAt: string;
+  };
+}
+
+export interface AppNotification {
+  id: number;
+  kind: string;
+  emoji: string;
+  tint: string;
+  title: string;
+  body: string;
+  link: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface ChatUser {
+  id: number;
+  name: string;
+  avatarColor: string;
+  avatarUrl: string;
+  levelName: string;
+}
+
+export interface ChatMessage {
+  id: number;
+  senderId: number;
+  recipientId: number;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface ChatThread {
+  user: ChatUser;
+  lastMessage: string;
+  lastAt: string;
+  unread: number;
 }
 
 export interface Lesson {
@@ -183,6 +285,8 @@ export interface LeaderRow {
   xp: number;
   streak: number;
   avatarColor: string;
+  avatarUrl: string;
+  language: string;
   isUser: boolean;
   rank: number;
 }

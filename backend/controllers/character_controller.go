@@ -45,52 +45,71 @@ func (cc *CharacterController) List(c *fiber.Ctx) error {
 type LeaderboardController struct{}
 
 type leaderRow struct {
-	ID       uint   `json:"id"`
-	Name     string `json:"name"`
-	XP       int    `json:"xp"`
-	Streak   int    `json:"streak"`
-	Avatar   string `json:"avatarColor"`
-	IsUser   bool   `json:"isUser"`
-	Rank     int    `json:"rank"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	XP        int    `json:"xp"`
+	Streak    int    `json:"streak"`
+	Avatar    string `json:"avatarColor"`
+	AvatarURL string `json:"avatarUrl"` // uploaded profile photo, if any
+	Language  string `json:"language"`  // language they're learning (badge)
+	IsUser    bool   `json:"isUser"`
+	Rank      int    `json:"rank"`
 }
 
-// League returns the top users by total XP, marking the current user's row.
-// To make a fresh database feel alive, a few synthetic rivals are blended in.
+// League returns a global ranking of all learners by total XP, each tagged with
+// the language they're studying. The current user is always included.
 func (lc *LeaderboardController) League(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 
-	var users []models.User
-	database.DB.Order("xp desc").Limit(20).Find(&users)
+	// Keep the user's league badge in sync with their XP.
+	if l := leagueForXP(user.XP); user.League != l {
+		user.League = l
+		database.DB.Save(user)
+	}
 
-	rows := make([]leaderRow, 0, len(users))
+	var users []models.User
+	database.DB.Order("xp desc, id asc").Limit(100).Find(&users)
+
+	rows := make([]leaderRow, 0, len(users)+1)
+	included := false
 	for _, u := range users {
+		if u.ID == user.ID {
+			included = true
+		}
 		rows = append(rows, leaderRow{
-			ID: u.ID, Name: displayName(u), XP: u.XP, Streak: u.Streak,
-			Avatar: u.AvatarColor, IsUser: u.ID == user.ID,
+			ID: int(u.ID), Name: displayName(u), XP: u.XP, Streak: u.Streak,
+			Avatar: u.AvatarColor, AvatarURL: u.AvatarURL,
+			Language: u.TargetLanguage, IsUser: u.ID == user.ID,
 		})
 	}
 
-	// Blend in lovable rivals so an early leaderboard isn't lonely.
-	rivals := []leaderRow{
-		{Name: "Riko 🐼", XP: 240, Streak: 12, Avatar: "#F5A623"},
-		{Name: "Cora 🐙", XP: 180, Streak: 7, Avatar: "#00C2A8"},
-		{Name: "Zephyr 🦅", XP: 95, Streak: 4, Avatar: "#17A3DD"},
+	// Always show the current user, even if they're beyond the top 100.
+	if !included {
+		rows = append(rows, leaderRow{
+			ID: int(user.ID), Name: displayName(*user), XP: user.XP, Streak: user.Streak,
+			Avatar: user.AvatarColor, AvatarURL: user.AvatarURL,
+			Language: user.TargetLanguage, IsUser: true,
+		})
 	}
-	rows = append(rows, rivals...)
 
-	// Sort by XP desc (simple insertion since the list is tiny).
+	// Sort by XP desc and assign ranks.
 	for i := 1; i < len(rows); i++ {
 		for j := i; j > 0 && rows[j].XP > rows[j-1].XP; j-- {
 			rows[j], rows[j-1] = rows[j-1], rows[j]
 		}
 	}
+	userRank := 0
 	for i := range rows {
 		rows[i].Rank = i + 1
+		if rows[i].IsUser {
+			userRank = rows[i].Rank
+		}
 	}
 
 	return c.JSON(fiber.Map{
-		"league": user.League,
-		"rows":   rows,
+		"league":   user.League,
+		"rows":     rows,
+		"userRank": userRank,
 	})
 }
 

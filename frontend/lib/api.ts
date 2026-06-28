@@ -8,10 +8,27 @@ import type {
   HomeData,
   ListeningSession,
   ReadingSession,
+  VocabItem,
+  Mistake,
+  AppNotification,
+  Certificate,
+  ExamResult,
+  ExamMeta,
+  CertVerification,
+  ChatUser,
+  ChatMessage,
+  ChatThread,
 } from "./types";
 
-const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+/** Resolve a backend-relative media path (e.g. an avatar URL) to an absolute URL. */
+export function mediaUrl(path?: string): string {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return `${API_URL}${path}`;
+}
 
 const TOKEN_KEY = "lumora_token";
 const USER_KEY = "lumora_user";
@@ -127,6 +144,52 @@ export const api = {
       body: JSON.stringify({ targetLanguage, dailyGoalXp, reason }),
     }),
 
+  updateProfile: (body: {
+    name?: string;
+    avatarColor?: string;
+    dailyGoalXp?: number;
+  }) =>
+    request<{ user: User }>("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  uploadAvatar: async (file: File): Promise<{ user: User }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const token = getToken();
+    const res = await fetch(`${API_URL}/api/auth/avatar`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    if (!res.ok) {
+      let msg = "upload failed";
+      try {
+        msg = (await res.json())?.error || msg;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(msg, res.status);
+    }
+    return res.json();
+  },
+
+  removeAvatar: () =>
+    request<{ user: User }>("/api/auth/avatar", { method: "DELETE" }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/api/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
+  deleteAccount: (password: string) =>
+    request<{ ok: boolean }>("/api/auth/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
+
   // Content & progress
   home: () => request<HomeData>("/api/home"),
 
@@ -168,13 +231,109 @@ export const api = {
       method: "POST",
     }),
 
+  enrollments: () =>
+    request<{ languages: string[]; active: string }>("/api/enrollments"),
+
+  enrollLanguage: (language: string) =>
+    request<{ languages: string[]; active: string; user: User }>(
+      "/api/enrollments",
+      { method: "POST", body: JSON.stringify({ language }) }
+    ),
+
+  switchLanguage: (language: string) =>
+    request<{ languages: string[]; active: string; user: User }>(
+      "/api/enrollments/active",
+      { method: "POST", body: JSON.stringify({ language }) }
+    ),
+
+  practice: () =>
+    request<{ vocab: VocabItem[]; mistakes: Mistake[] }>("/api/practice"),
+
+  recordMistake: (m: { prompt: string; question: string; correctAnswer: string }) =>
+    request<{ ok: boolean }>("/api/mistakes", {
+      method: "POST",
+      body: JSON.stringify(m),
+    }),
+
+  resolveMistakes: (ids: number[]) =>
+    request<{ ok: boolean }>("/api/mistakes/resolve", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
+
+  completePractice: (xp: number) =>
+    request<{ xpEarned: number; user: User }>("/api/practice/complete", {
+      method: "POST",
+      body: JSON.stringify({ xp }),
+    }),
+
+  notifications: () =>
+    request<{ notifications: AppNotification[]; unread: number }>(
+      "/api/notifications"
+    ),
+
+  markNotificationsRead: () =>
+    request<{ ok: boolean }>("/api/notifications/read", { method: "POST" }),
+
+  submitExam: (body: {
+    language: string;
+    level: string;
+    listening: number;
+    reading: number;
+    writing: number;
+    speaking: number;
+  }) =>
+    request<ExamResult>("/api/exam/submit", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  examMeta: () => request<ExamMeta>("/api/exam/meta"),
+
+  certificates: () =>
+    request<{ certificates: Certificate[] }>("/api/certificates"),
+
+  certificate: (id: number | string) =>
+    request<{ certificate: Certificate }>(`/api/certificates/${id}`),
+
+  // Public — no auth header needed; anyone can verify a certificate by serial.
+  verifyCertificate: async (serial: string): Promise<CertVerification> => {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/verify/${encodeURIComponent(serial)}`
+      );
+      if (!res.ok) return { valid: false };
+      return (await res.json()) as CertVerification;
+    } catch {
+      return { valid: false };
+    }
+  },
+
+  chatContacts: () =>
+    request<{ contacts: ChatUser[] }>("/api/chat/contacts"),
+
+  chatThreads: () => request<{ threads: ChatThread[] }>("/api/chat/threads"),
+
+  chatUnread: () => request<{ count: number }>("/api/chat/unread"),
+
+  chatMessages: (id: number | string) =>
+    request<{ messages: ChatMessage[]; user: ChatUser }>(`/api/chat/with/${id}`),
+
+  sendChatMessage: (id: number | string, body: string) =>
+    request<{ message: ChatMessage }>(`/api/chat/with/${id}`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
+
   quests: () => request<{ quests: UserQuest[] }>("/api/quests/daily"),
 
   characters: () =>
     request<{ characters: CharacterWithFriendship[] }>("/api/characters"),
 
   leaderboard: () =>
-    request<{ league: string; rows: LeaderRow[] }>("/api/leaderboard"),
+    request<{ league: string; rows: LeaderRow[]; userRank: number }>(
+      "/api/leaderboard"
+    ),
 };
 
 export { ApiError };

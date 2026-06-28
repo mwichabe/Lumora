@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -45,9 +44,6 @@ func (l *ListeningController) List(c *fiber.Ctx) error {
 		Order("order_index asc")
 
 	q.Where("language = ?", lang).Find(&sessions)
-	if len(sessions) == 0 && lang != "es" {
-		q.Where("language = ?", "es").Find(&sessions)
-	}
 
 	for i := range sessions {
 		hydrateQuestions(sessions[i].Questions)
@@ -91,12 +87,7 @@ func (l *ListeningController) Complete(c *fiber.Ctx) error {
 	user.XPToday += xpGain
 	user.Gems += 3
 
-	today := time.Now().Format("2006-01-02")
-	if user.LastActiveDate != today {
-		user.Streak++
-		user.LastActiveDate = today
-		user.XPToday = xpGain
-	}
+	touchStreak(user)
 
 	promoteLevel(user)
 	database.DB.Save(user)

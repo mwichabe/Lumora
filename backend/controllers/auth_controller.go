@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -68,6 +71,11 @@ func (a *AuthController) Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not create user"})
 	}
 
+	// Send the welcome email in the background — never block registration on it.
+	go utils.SendWelcomeEmail(a.Cfg, user.Email, user.Name)
+	// Drop an in-app welcome notification from Lumora.
+	DeliverWelcome(user.ID)
+
 	return a.tokenResponse(c, user)
 }
 
@@ -111,12 +119,137 @@ func (a *AuthController) Setup(c *fiber.Ctx) error {
 	}
 	if in.TargetLanguage != "" {
 		user.TargetLanguage = in.TargetLanguage
+		EnsureEnrollment(user.ID, in.TargetLanguage)
 	}
 	if in.DailyGoalXP > 0 {
 		user.DailyGoalXP = in.DailyGoalXP
 	}
 	database.DB.Save(user)
 	return c.JSON(fiber.Map{"user": user})
+}
+
+type profileInput struct {
+	Name        string `json:"name"`
+	AvatarColor string `json:"avatarColor"`
+	DailyGoalXP int    `json:"dailyGoalXp"`
+}
+
+// UpdateProfile edits the user's display name, avatar colour and daily goal.
+func (a *AuthController) UpdateProfile(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	var in profileInput
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	if name := strings.TrimSpace(in.Name); name != "" {
+		user.Name = name
+	}
+	if in.AvatarColor != "" {
+		user.AvatarColor = in.AvatarColor
+	}
+	if in.DailyGoalXP > 0 {
+		user.DailyGoalXP = in.DailyGoalXP
+	}
+	database.DB.Save(user)
+	return c.JSON(fiber.Map{"user": user})
+}
+
+var allowedImageExt = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
+}
+
+// UploadAvatar accepts a profile photo (multipart "file"), stores it on disk
+// and points the user's AvatarURL at it. No third-party service required.
+func (a *AuthController) UploadAvatar(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "no file uploaded"})
+	}
+	if fh.Size > 5<<20 { // 5 MB
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "image must be under 5MB"})
+	}
+	ext := strings.ToLower(filepath.Ext(fh.Filename))
+	if !allowedImageExt[ext] {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "unsupported image type"})
+	}
+
+	dir := "uploads/avatars"
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not store image"})
+	}
+	name := fmt.Sprintf("user_%d_%d%s", user.ID, time.Now().Unix(), ext)
+	if err := c.SaveFile(fh, filepath.Join(dir, name)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not save image"})
+	}
+
+	user.AvatarURL = "/uploads/avatars/" + name
+	database.DB.Save(user)
+	return c.JSON(fiber.Map{"user": user})
+}
+
+// RemoveAvatar clears the user's uploaded photo (reverting to the colour
+// initial) and best-effort deletes the file from disk.
+func (a *AuthController) RemoveAvatar(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	if user.AvatarURL != "" {
+		_ = os.Remove(strings.TrimPrefix(user.AvatarURL, "/"))
+		user.AvatarURL = ""
+		database.DB.Save(user)
+	}
+	return c.JSON(fiber.Map{"user": user})
+}
+
+type passwordInput struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+// ChangePassword verifies the current password and sets a new one.
+func (a *AuthController) ChangePassword(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	var in passwordInput
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.CurrentPassword)) != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "current password is incorrect"})
+	}
+	if len(in.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "new password must be at least 6 characters"})
+	}
+	hash, _ := bcrypt.GenerateFromPassword([]byte(in.NewPassword), bcrypt.DefaultCost)
+	user.PasswordHash = string(hash)
+	database.DB.Save(user)
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+type deleteInput struct {
+	Password string `json:"password"`
+}
+
+// DeleteAccount permanently removes the user and all of their data.
+func (a *AuthController) DeleteAccount(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	var in deleteInput
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)) != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password is incorrect"})
+	}
+
+	uid := user.ID
+	database.DB.Where("user_id = ?", uid).Delete(&models.Enrollment{})
+	database.DB.Where("user_id = ?", uid).Delete(&models.Mistake{})
+	database.DB.Where("user_id = ?", uid).Delete(&models.Notification{})
+	database.DB.Where("user_id = ?", uid).Delete(&models.LessonProgress{})
+	database.DB.Where("user_id = ?", uid).Delete(&models.Friendship{})
+	database.DB.Where("user_id = ?", uid).Delete(&models.UserQuest{})
+	database.DB.Delete(&models.User{}, uid)
+
+	return c.JSON(fiber.Map{"ok": true})
 }
 
 func (a *AuthController) tokenResponse(c *fiber.Ctx, user models.User) error {

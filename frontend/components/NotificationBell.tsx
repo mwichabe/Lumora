@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Bell } from "lucide-react";
-import { useAuth } from "@/lib/auth";
 import { useUnreadCount } from "@/lib/notifications";
 
 /**
@@ -10,8 +9,7 @@ import { useUnreadCount } from "@/lib/notifications";
  * Designed to sit in a coloured header (white icon) by default.
  */
 export function NotificationBell({ className = "" }: { className?: string }) {
-  const { user } = useAuth();
-  const count = useUnreadCount(user);
+  const count = useUnreadCount();
 
   return (
     <Link

@@ -1,29 +1,72 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Flame, Zap, BookOpen, Globe, LogOut, ChevronRight } from "lucide-react";
+import {
+  Flame,
+  Zap,
+  BookOpen,
+  Globe,
+  LogOut,
+  ChevronRight,
+  Plus,
+  Check,
+  GraduationCap,
+  Award,
+  Camera,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Avatar } from "@/components/Avatar";
+import { CropModal } from "@/components/CropModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { CharacterWithFriendship } from "@/lib/types";
+import { languageMeta, languageName } from "@/lib/languages";
+import { CharacterWithFriendship, Certificate, User } from "@/lib/types";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const [characters, setCharacters] = useState<CharacterWithFriendship[]>([]);
   const [lessonsDone, setLessonsDone] = useState(0);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [switching, setSwitching] = useState(false);
+  const [confirmOut, setConfirmOut] = useState(false);
 
   useEffect(() => {
     api
       .characters()
       .then((r) => setCharacters(r.characters))
       .catch(() => setCharacters([]));
+    api
+      .enrollments()
+      .then((r) => setLanguages(r.languages))
+      .catch(() => setLanguages([]));
+    api
+      .certificates()
+      .then((r) => setCertificates(r.certificates))
+      .catch(() => setCertificates([]));
     // Lessons completed is derived from total XP as a friendly estimate.
     api
       .home()
       .then(() => {})
       .catch(() => {});
   }, []);
+
+  async function switchTo(code: string) {
+    if (code === user?.targetLanguage || switching) return;
+    setSwitching(true);
+    try {
+      const r = await api.switchLanguage(code);
+      setUser(r.user);
+      setLanguages(r.languages);
+    } catch {
+      /* ignore */
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   useEffect(() => {
     if (user) setLessonsDone(Math.max(0, Math.floor(user.xp / 10)));
@@ -39,12 +82,12 @@ export default function ProfilePage() {
         {/* Purple header */}
         <div className="relative rounded-b-[32px] bg-gradient-to-b from-purple to-purple-dark px-6 pb-8 pt-14 text-white">
           <div className="flex items-center gap-4">
-            <div
-              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/30 text-4xl font-extrabold"
-              style={{ backgroundColor: user.avatarColor || "#6C3FC5" }}
-            >
-              {user.name?.charAt(0).toUpperCase() || "L"}
-            </div>
+            <AvatarUploader
+              name={user.name}
+              color={user.avatarColor}
+              url={user.avatarUrl}
+              onUploaded={setUser}
+            />
             <div className="min-w-0">
               <h1 className="truncate text-heading-xl font-extrabold">
                 {user.name}
@@ -81,7 +124,117 @@ export default function ProfilePage() {
           <StatTile icon={<Flame size={20} />} label="Day Streak" value={user.streak} tint="#FF5C5C" />
           <StatTile icon={<Zap size={20} />} label="Total XP" value={user.xp} tint="#F5A623" />
           <StatTile icon={<BookOpen size={20} />} label="Lessons" value={lessonsDone} tint="#6C3FC5" />
-          <StatTile icon={<Globe size={20} />} label="Languages" value={user.targetLanguage ? 1 : 0} tint="#00C2A8" />
+          <StatTile icon={<Globe size={20} />} label="Languages" value={languages.length || (user.targetLanguage ? 1 : 0)} tint="#00C2A8" />
+        </div>
+
+        {/* My Languages */}
+        <div className="mt-7 px-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-heading-md font-extrabold text-ink">
+              My Languages
+            </h2>
+            <Link
+              href="/onboarding/language?add=1"
+              className="flex items-center gap-1.5 rounded-full bg-purple-light px-3 py-1.5 text-label-lg font-bold text-purple transition hover:brightness-95"
+            >
+              <Plus size={16} /> Add
+            </Link>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl bg-white shadow-card">
+            {languages.length === 0 && (
+              <p className="px-5 py-4 text-body-sm text-slatey">
+                No languages yet. Tap “Add” to start a course.
+              </p>
+            )}
+            {languages.map((code, i) => {
+              const m = languageMeta(code);
+              const active = code === user.targetLanguage;
+              return (
+                <button
+                  key={code}
+                  onClick={() => switchTo(code)}
+                  disabled={switching}
+                  className={`flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-gray-50 ${
+                    i > 0 ? "border-t border-gray-100" : ""
+                  } ${active ? "bg-purple-light/40" : ""}`}
+                >
+                  <span className="text-2xl">{m?.flag || "🌐"}</span>
+                  <div className="flex-1">
+                    <p className="font-extrabold text-ink">{m?.name || code}</p>
+                    <p className="text-body-sm text-slatey">
+                      {active ? "Active course" : "Tap to switch"}
+                    </p>
+                  </div>
+                  {active ? (
+                    <span className="flex items-center gap-1 rounded-full bg-purple px-2.5 py-0.5 text-label-md font-bold text-white">
+                      <Check size={14} /> Active
+                    </span>
+                  ) : (
+                    <ChevronRight size={18} className="text-gray-300" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Certificates */}
+        <div className="mt-7 px-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-heading-md font-extrabold text-ink">
+              Certificates
+            </h2>
+            <Link
+              href="/exam"
+              className="flex items-center gap-1.5 rounded-full bg-purple px-3 py-1.5 text-label-lg font-bold text-white transition hover:bg-purple-dark"
+            >
+              <GraduationCap size={16} /> Get certified
+            </Link>
+          </div>
+
+          {certificates.length === 0 ? (
+            <Link
+              href="/exam"
+              className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-purple/30 bg-white p-4 transition hover:border-purple/60"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-light text-purple">
+                <Award size={24} />
+              </span>
+              <div>
+                <p className="font-extrabold text-ink">Earn your first certificate</p>
+                <p className="text-body-sm text-slatey">
+                  Take the proficiency exam to certify your level.
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="space-y-2">
+              {certificates.map((cert) => (
+                <Link
+                  key={cert.id}
+                  href={`/certificates/${cert.id}`}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-card transition hover:shadow-card-lg"
+                >
+                  <span className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-purple text-white">
+                    <span className="text-body-md font-extrabold leading-none">
+                      {cert.level}
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-extrabold text-ink">
+                      {languageName(cert.language)} · {cert.level}
+                    </p>
+                    <p className="text-body-sm text-slatey">
+                      Score {cert.score}% ·{" "}
+                      {new Date(cert.issuedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="text-gray-300" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Characters */}
@@ -130,11 +283,11 @@ export default function ProfilePage() {
         {/* Settings */}
         <div className="mt-7 px-6">
           <div className="overflow-hidden rounded-2xl bg-white shadow-card">
-            <SettingsRow label="Account Settings" />
-            <SettingsRow label="Notifications" />
-            <SettingsRow label="Help & Support" />
+            <SettingsRow label="Account Settings" href="/profile/settings" />
+            <SettingsRow label="Notifications" href="/notifications" />
+            <SettingsRow label="Help & Support" href="/profile/help" />
             <button
-              onClick={logout}
+              onClick={() => setConfirmOut(true)}
               className="flex w-full items-center justify-between px-5 py-4 text-coral hover:bg-coral-light"
             >
               <span className="flex items-center gap-3 font-extrabold">
@@ -144,8 +297,86 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={confirmOut}
+          title="Sign out?"
+          message="You'll need to sign in again to continue learning."
+          confirmLabel="Sign out"
+          danger
+          onConfirm={() => {
+            setConfirmOut(false);
+            logout();
+          }}
+          onCancel={() => setConfirmOut(false)}
+        />
       </div>
     </AppShell>
+  );
+}
+
+function AvatarUploader({
+  name,
+  color,
+  url,
+  onUploaded,
+}: {
+  name: string;
+  color: string;
+  url: string;
+  onUploaded: (u: User) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<File | null>(null);
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (file) setPending(file); // open the cropper
+  }
+
+  async function uploadCropped(file: File) {
+    setPending(null);
+    setBusy(true);
+    try {
+      const r = await api.uploadAvatar(file);
+      onUploaded(r.user);
+    } catch {
+      /* ignore — could surface a toast */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <label className="relative cursor-pointer" aria-label="Change profile photo">
+        <span className="block rounded-full border-4 border-white/30">
+          <Avatar name={name} color={color} url={url} size={80} />
+        </span>
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-purple bg-white text-purple">
+          {busy ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-purple/40 border-t-purple" />
+          ) : (
+            <Camera size={14} />
+          )}
+        </span>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          onChange={onPick}
+          className="hidden"
+        />
+      </label>
+
+      {pending && (
+        <CropModal
+          file={pending}
+          onCancel={() => setPending(null)}
+          onCropped={uploadCropped}
+        />
+      )}
+    </>
   );
 }
 
@@ -206,11 +437,14 @@ function StatTile({
   );
 }
 
-function SettingsRow({ label }: { label: string }) {
+function SettingsRow({ label, href }: { label: string; href: string }) {
   return (
-    <button className="flex w-full items-center justify-between border-b border-gray-100 px-5 py-4 text-ink hover:bg-gray-50">
+    <Link
+      href={href}
+      className="flex w-full items-center justify-between border-b border-gray-100 px-5 py-4 text-ink hover:bg-gray-50"
+    >
       <span className="font-semibold">{label}</span>
       <ChevronRight size={18} className="text-gray-300" />
-    </button>
+    </Link>
   );
 }

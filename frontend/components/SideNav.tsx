@@ -2,16 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Mic, Trophy, User, Bell, LogOut } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  Mic,
+  Trophy,
+  User,
+  Bell,
+  MessageCircle,
+} from "lucide-react";
 import { FoxMascot } from "./FoxMascot";
+import { Avatar } from "./Avatar";
 import { useAuth } from "@/lib/auth";
 import { useUnreadCount } from "@/lib/notifications";
+import { useChatUnread } from "@/lib/chat";
 
 const navItems = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/learn", label: "Learn", icon: BookOpen },
   { href: "/practice", label: "Practice", icon: Mic },
   { href: "/leaderboard", label: "Leagues", icon: Trophy },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/profile", label: "Profile", icon: User },
 ];
@@ -23,8 +34,9 @@ const navItems = [
  */
 export function SideNav() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
-  const unread = useUnreadCount(user);
+  const { user } = useAuth();
+  const unread = useUnreadCount();
+  const chatUnread = useChatUnread();
 
   return (
     <aside className="sticky top-0 hidden h-[100dvh] w-64 shrink-0 flex-col border-r border-gray-100 bg-white px-4 py-6 lg:flex">
@@ -61,6 +73,11 @@ export function SideNav() {
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
+              {href === "/chat" && chatUnread > 0 && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-coral px-1 text-label-sm font-extrabold text-white">
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -68,31 +85,25 @@ export function SideNav() {
 
       {/* User card pinned to bottom */}
       {user && (
-        <div className="mt-auto">
-          <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-3">
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-              style={{ backgroundColor: user.avatarColor || "#6C3FC5" }}
-            >
-              {(user.name || "L").slice(0, 1).toUpperCase()}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-body-md font-extrabold text-ink">
-                {user.name || "Learner"}
-              </p>
-              <p className="truncate text-label-md text-slatey">
-                {user.levelName || "Spark"}
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              aria-label="Sign out"
-              className="text-gray-300 transition hover:text-coral"
-            >
-              <LogOut size={18} />
-            </button>
+        <Link
+          href="/profile"
+          className="mt-auto flex items-center gap-3 rounded-2xl bg-gray-50 p-3 transition hover:bg-gray-100"
+        >
+          <Avatar
+            name={user.name}
+            color={user.avatarColor}
+            url={user.avatarUrl}
+            size={40}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body-md font-extrabold text-ink">
+              {user.name || "Learner"}
+            </p>
+            <p className="truncate text-label-md text-slatey">
+              {user.levelName || "Spark"}
+            </p>
           </div>
-        </div>
+        </Link>
       )}
     </aside>
   );
