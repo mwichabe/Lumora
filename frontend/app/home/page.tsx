@@ -176,7 +176,7 @@ function HomeContent() {
                 Your learning path
               </p>
               <Link
-                href="/learn"
+                href="/learn?view=roadmap"
                 className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card transition hover:shadow-card-lg"
               >
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-teal-light text-teal">
@@ -290,7 +290,7 @@ function StartHero({ data, isNewUser }: { data: HomeData; isNewUser: boolean }) 
             Great work. Unlock new skills on your learning path.
           </p>
         </div>
-        <Link href="/learn">
+        <Link href="/learn?view=roadmap">
           <Button variant="primary" className="h-12 px-6">
             Explore the map
           </Button>

@@ -6,18 +6,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Volume2, Mic, Check } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
+import { MistakesReview, ReviewItem } from "@/components/MistakesReview";
+import { SpeakerChip } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import {
   speakAs,
+  speakSequence,
   stopSpeaking,
   recognizeSpeech,
   scorePronunciation,
   speechRecognitionSupported,
 } from "@/lib/voices";
-import type { VocabItem, Mistake } from "@/lib/types";
+import type {
+  VocabItem,
+  Mistake,
+  ListeningSession,
+  ReadingSession,
+} from "@/lib/types";
 
-type Mode = "mix" | "quiz" | "listen" | "speak" | "mistakes";
+type Mode =
+  | "mix"
+  | "quiz"
+  | "listen"
+  | "speak"
+  | "mistakes"
+  | "listening"
+  | "reading";
 
 interface Drill {
   kind: "choose" | "speak";
@@ -36,6 +51,8 @@ const MODE_TITLE: Record<Mode, string> = {
   listen: "Listening Drill",
   speak: "Speaking Practice",
   mistakes: "Review Mistakes",
+  listening: "Listening Comprehension",
+  reading: "Reading Comprehension",
 };
 
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
@@ -136,15 +153,22 @@ function buildDrills(
 export default function PracticeRunnerPage() {
   return (
     <Suspense fallback={null}>
-      <Runner />
+      <RunnerDispatch />
     </Suspense>
   );
 }
 
-function Runner() {
-  const router = useRouter();
+function RunnerDispatch() {
   const params = useSearchParams();
   const mode = (params.get("mode") as Mode) || "quiz";
+  if (mode === "listening" || mode === "reading") {
+    return <SessionRunner mode={mode} />;
+  }
+  return <DrillRunner mode={mode} />;
+}
+
+function DrillRunner({ mode }: { mode: Mode }) {
+  const router = useRouter();
   const { user, setUser } = useAuth();
   const lang = user?.targetLanguage || "es";
 
@@ -153,6 +177,8 @@ function Runner() {
   const [idx, setIdx] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [resolved, setResolved] = useState<number[]>([]);
+  const [misses, setMisses] = useState<ReviewItem[]>([]);
+  const [reviewing, setReviewing] = useState(false);
   const [done, setDone] = useState(false);
   const [xp, setXp] = useState(0);
 
@@ -169,6 +195,7 @@ function Runner() {
     async (finalCorrect: number, resolvedIds: number[]) => {
       const earned = Math.min(50, 5 + finalCorrect * 3);
       setXp(earned);
+      setReviewing(false);
       setDone(true);
       try {
         const r = await api.completePractice(earned);
@@ -184,16 +211,53 @@ function Runner() {
   );
 
   function next(wasCorrect: boolean, mistakeId?: number) {
+    const d = drills[idx];
     const nc = correct + (wasCorrect ? 1 : 0);
     const nr = wasCorrect && mistakeId ? [...resolved, mistakeId] : resolved;
+
+    // On a miss: record it for Practice → Review Mistakes (skip drills that are
+    // already mistakes), and collect it for this session's review recap.
+    let nm = misses;
+    if (!wasCorrect && d) {
+      if (d.kind === "choose" && !d.mistakeId) {
+        api
+          .recordMistake({
+            prompt: d.prompt,
+            question: d.question,
+            correctAnswer: d.correct,
+          })
+          .catch(() => {});
+      }
+      nm = [
+        ...misses,
+        {
+          prompt: d.prompt,
+          question: d.question,
+          correctAnswer: d.correct,
+          playText: d.mistakeId ? undefined : d.question,
+          speaker: d.speaker,
+        },
+      ];
+    }
+
     setCorrect(nc);
     setResolved(nr);
+    setMisses(nm);
+
     if (idx + 1 < drills.length) {
       setIdx((i) => i + 1);
+    } else if (nm.length > 0) {
+      setFinalResult({ nc, nr });
+      setReviewing(true); // study misses before the completion screen
     } else {
       finish(nc, nr);
     }
   }
+
+  const [finalResult, setFinalResult] = useState<{
+    nc: number;
+    nr: number[];
+  } | null>(null);
 
   if (loading) {
     return (
@@ -201,6 +265,18 @@ function Runner() {
         <div className="flex flex-1 items-center justify-center">
           <FoxMascot size={110} glow />
         </div>
+      </Shell>
+    );
+  }
+
+  if (reviewing && finalResult) {
+    return (
+      <Shell title={MODE_TITLE[mode]} onClose={() => router.push("/practice")}>
+        <MistakesReview
+          items={misses}
+          finishLabel="Finish practice"
+          onDone={() => finish(finalResult.nc, finalResult.nr)}
+        />
       </Shell>
     );
   }
@@ -333,6 +409,7 @@ function ChooseDrill({
 
       {drill.listen ? (
         <div className="mt-5 flex flex-col items-center gap-3 py-4">
+          <SpeakerChip name={drill.speaker || "Mira"} />
           <button
             onClick={() => speakAs(drill.speaker || "Mira", drill.question)}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-purple text-white shadow-float"
@@ -421,7 +498,7 @@ function SpeakDrill({
     setHeard(null);
     setListening(true);
     try {
-      const said = await recognizeSpeech("es-ES");
+      const said = await recognizeSpeech();
       setHeard(said);
       setScore(scorePronunciation(drill.correct, said));
     } catch {
@@ -440,6 +517,7 @@ function SpeakDrill({
       </p>
 
       <div className="mt-6 flex flex-1 flex-col items-center justify-center text-center">
+        <SpeakerChip name={drill.speaker || "Lumora"} className="mb-4" />
         <p className="text-heading-lg font-extrabold text-purple">
           &ldquo;{drill.question}&rdquo;
         </p>
@@ -490,5 +568,289 @@ function SpeakDrill({
         )}
       </div>
     </div>
+  );
+}
+
+/* ---------- listening / reading comprehension ---------- */
+
+function SessionRunner({ mode }: { mode: "listening" | "reading" }) {
+  const router = useRouter();
+  const { user, setUser } = useAuth();
+  const lang = user?.targetLanguage || "es";
+
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<(ListeningSession | ReadingSession)[]>([]);
+  const [current, setCurrent] = useState<ListeningSession | ReadingSession | null>(
+    null
+  );
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const [score, setScore] = useState(0);
+  const [xp, setXp] = useState(0);
+  const [played, setPlayed] = useState(false);
+
+  // Rotate through unlocked sessions so practice never feels static — avoid
+  // repeating the one just done (remembered per mode + language).
+  const pick = useCallback(
+    (list: (ListeningSession | ReadingSession)[]) => {
+      if (!list.length) return null;
+      const key = `lumora_practice_sess_${mode}_${lang}`;
+      let last = 0;
+      try {
+        last = Number(localStorage.getItem(key) || 0);
+      } catch {
+        last = 0;
+      }
+      const pool = list.length > 1 ? list.filter((s) => s.id !== last) : list;
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      try {
+        localStorage.setItem(key, String(chosen.id));
+      } catch {
+        /* ignore */
+      }
+      return chosen;
+    },
+    [mode, lang]
+  );
+
+  useEffect(() => {
+    const fetcher =
+      mode === "listening" ? api.practiceListening() : api.practiceReading();
+    fetcher
+      .then((d) => {
+        const list = d.sessions || [];
+        setSessions(list);
+        setCurrent(pick(list));
+      })
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false));
+    return () => stopSpeaking();
+  }, [mode, pick]);
+
+  function practiceAnother() {
+    setAnswers({});
+    setSubmitted(false);
+    setReviewing(false);
+    setReviewItems([]);
+    setScore(0);
+    setXp(0);
+    setPlayed(false);
+    stopSpeaking();
+    setCurrent(pick(sessions));
+  }
+
+  const questions = current?.questions || [];
+  const allAnswered =
+    questions.length > 0 && questions.every((_, i) => answers[i]);
+
+  async function submit() {
+    const correct = questions.filter(
+      (q, i) => answers[i] === q.correctAnswer
+    ).length;
+    const pct = questions.length
+      ? Math.round((correct / questions.length) * 100)
+      : 0;
+    setScore(pct);
+    setSubmitted(true);
+    stopSpeaking();
+    // wrong answers feed the Review Mistakes pile + this session's recap
+    const wrong: ReviewItem[] = [];
+    questions.forEach((q, i) => {
+      if (answers[i] && answers[i] !== q.correctAnswer) {
+        api
+          .recordMistake({
+            prompt: q.prompt || MODE_TITLE[mode],
+            question: q.question,
+            correctAnswer: q.correctAnswer,
+          })
+          .catch(() => {});
+        wrong.push({
+          prompt: q.prompt || MODE_TITLE[mode],
+          question: q.question,
+          correctAnswer: q.correctAnswer,
+        });
+      }
+    });
+    if (wrong.length) {
+      setReviewItems(wrong);
+      setReviewing(true); // study misses before the score screen
+    }
+    const earned = Math.min(45, 8 + correct * 4);
+    setXp(earned);
+    try {
+      const r = await api.completePractice(earned);
+      setUser(r.user);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const close = () => {
+    stopSpeaking();
+    router.push("/practice");
+  };
+
+  if (loading) {
+    return (
+      <Shell title={MODE_TITLE[mode]} onClose={close}>
+        <div className="flex flex-1 items-center justify-center">
+          <FoxMascot size={110} glow />
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!current) {
+    return (
+      <Shell title={MODE_TITLE[mode]} onClose={close}>
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <FoxMascot size={110} glow />
+          <p className="mt-4 text-heading-sm font-extrabold text-ink">
+            Nothing unlocked yet
+          </p>
+          <p className="mt-1 max-w-xs text-body-md text-slatey">
+            Complete more lessons to unlock{" "}
+            {mode === "listening" ? "listening conversations" : "reading passages"}{" "}
+            for practice.
+          </p>
+          <div className="mt-6 w-full max-w-sm">
+            <Button full variant="outline" onClick={() => router.push("/learn")}>
+              Go to lessons
+            </Button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (reviewing) {
+    return (
+      <Shell title={MODE_TITLE[mode]} onClose={close}>
+        <MistakesReview
+          items={reviewItems}
+          finishLabel="See my score"
+          onDone={() => setReviewing(false)}
+        />
+      </Shell>
+    );
+  }
+
+  if (submitted) {
+    const tone = score >= 80 ? "text-teal" : score >= 50 ? "text-amber" : "text-coral";
+    return (
+      <Shell title={MODE_TITLE[mode]} onClose={close}>
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <FoxMascot size={130} glow bounce />
+          <h2 className="mt-4 text-heading-xl font-extrabold text-ink">
+            {score >= 60 ? "Nicely done!" : "Keep going!"}
+          </h2>
+          <p className={`mt-2 text-display-lg font-extrabold ${tone}`}>{score}%</p>
+          <p className="mt-1 text-body-md text-slatey">on “{current.title}”</p>
+          <span className="mt-4 flex h-9 items-center gap-1.5 rounded-full bg-amber px-4 font-extrabold text-ink">
+            <Check size={16} /> +{xp} XP
+          </span>
+          <div className="mt-8 w-full max-w-sm space-y-2">
+            <Button full onClick={practiceAnother}>
+              Practice another
+            </Button>
+            <Button full variant="outline" onClick={close}>
+              Back to practice
+            </Button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  const listeningLines =
+    mode === "listening" ? (current as ListeningSession).lines || [] : [];
+  const readingLines =
+    mode === "reading" ? (current as ReadingSession).lines || [] : [];
+
+  return (
+    <Shell title={MODE_TITLE[mode]} onClose={close}>
+      <div className="flex flex-1 flex-col">
+        <p className="text-label-sm font-bold uppercase tracking-wide text-gray-500">
+          {mode === "listening" ? "Listen and answer" : "Read and answer"}
+        </p>
+        <h2 className="mt-1 text-heading-md font-extrabold text-ink">
+          {current.title}
+        </h2>
+
+        {mode === "listening" ? (
+          <div className="mt-4">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {Array.from(new Set(listeningLines.map((l) => l.character))).map(
+                (speaker) => (
+                  <SpeakerChip key={speaker} name={speaker} />
+                )
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setPlayed(true);
+                speakSequence(
+                  listeningLines.map((l) => ({
+                    character: l.character,
+                    text: l.text,
+                  }))
+                );
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-purple py-3 font-extrabold text-white shadow-float"
+            >
+              <Volume2 size={20} />{" "}
+              {played ? "Play again" : "Play the conversation"}
+            </button>
+            <p className="mt-2 text-center text-body-sm text-slatey">
+              Replay as many times as you need.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2 rounded-2xl border border-gray-100 bg-white p-4 shadow-card">
+            {readingLines.map((l) => (
+              <p key={l.id} className="text-body-lg leading-relaxed text-ink/90">
+                {l.text}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 space-y-4">
+          {questions.map((q, qi) => (
+            <div key={qi}>
+              <p className="mb-2 text-body-md font-extrabold text-ink">
+                {qi + 1}. {q.question}
+              </p>
+              <div className="space-y-2">
+                {(q.options || []).map((opt) => {
+                  const sel = answers[qi] === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => setAnswers((a) => ({ ...a, [qi]: opt }))}
+                      className={`flex w-full items-center rounded-md border-2 px-4 py-3 text-left text-body-md font-semibold transition ${
+                        sel
+                          ? "border-purple bg-purple-light"
+                          : "border-gray-100 bg-white"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 pb-2">
+          <Button full disabled={!allAnswered} onClick={submit}>
+            Submit answers
+          </Button>
+        </div>
+      </div>
+    </Shell>
   );
 }

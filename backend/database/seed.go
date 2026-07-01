@@ -2567,6 +2567,1698 @@ func seedSpanish(db *gorm.DB) {
 		vw("mi amor", "my love", "Buenas noches, mi amor.", "Good night, my love.", "Zephyr"),
 		vw("hermosa", "beautiful", "Eres muy hermosa.", "You are very beautiful.", "Lumora"),
 	)
+
+	// The essential A1 grammar, writing & speaking — the foundation that turns
+	// memorised phrases into sentences you can build yourself.
+	seedSpanishA1Grammar(db)
+}
+
+// seedSpanishA1Grammar adds the grammar-focused A1 unit: ser/estar, articles &
+// gender, the present tense (-ar/-er/-ir + key irregulars), gustar, numbers &
+// time, daily routine (reflexives), directions, questions & negation, and the
+// productive skills (writing an email, speaking an introduction).
+func seedSpanishA1Grammar(db *gorm.DB) {
+	const u = "A1 · Gramática Esencial"
+
+	// ── Ser vs Estar ──
+	s := addSkill(db, u, "Ser y Estar", "Two ways to say 'to be'.", "Sparkles", "#00C2A8", 9, 210)
+	l := addLesson(db, s, "Ser o Estar", 1, 18,
+		char("Professor Finch", "Both mean 'to be'. SER is who you are; ESTAR is how or where you are."),
+		mc("Profession uses ser", "Yo ___ profesor.", "soy", "soy", "estoy", "eres", "está"),
+		mc("Location uses estar", "Yo ___ en Madrid.", "estoy", "estoy", "soy", "es", "están"),
+		tr("Translate this sentence", "She is tired", "Está cansada"),
+		mc("Which verb for location?", "¿Dónde estás? →", "estar", "estar", "ser", "tener", "ir"),
+		fill("Fill in the blank", "Nosotros ___ estudiantes. (ser)", "somos"),
+		speak("Blaze", "Soy de España. Estoy en Madrid."),
+	)
+	addVocab(db, l,
+		vw("ser", "to be (essence)", "Soy profesor.", "I am a teacher.", "Professor Finch"),
+		vw("estar", "to be (state/place)", "Estoy bien.", "I am fine.", "Professor Finch"),
+		vw("soy", "I am (ser)", "Soy de México.", "I'm from Mexico.", "Cora"),
+		vw("estoy", "I am (estar)", "Estoy cansado.", "I'm tired.", "Cora"),
+		vw("es", "he/she/it is", "Ella es alta.", "She is tall.", "Lumora"),
+	)
+
+	// ── Articles & gender ──
+	s = addSkill(db, u, "Artículos y Género", "el / la / un / una.", "Hash", "#F5A623", 10, 226)
+	l = addLesson(db, s, "El, La, Un, Una", 1, 18,
+		char("Cora", "Every noun has a gender! 'el' for masculine, 'la' for feminine — and plurals too."),
+		mc("the book (masculine)", "___ libro", "el", "el", "la", "los", "las"),
+		mc("the house (feminine)", "___ casa", "la", "la", "el", "un", "unos"),
+		tr("Translate: a friend (female)", "a female friend", "una amiga"),
+		fill("Fill in the blank", "___ niños juegan. (the, masc. plural)", "los"),
+		mc("indefinite plural feminine", "___ casas", "unas", "unas", "unos", "una", "un"),
+		speak("Blaze", "el libro, la casa, un amigo, una amiga."),
+	)
+	addVocab(db, l,
+		vw("el / la", "the (m / f)", "el libro, la mesa", "the book, the table", "Cora"),
+		vw("un / una", "a (m / f)", "un café, una silla", "a coffee, a chair", "Cora"),
+		vw("los / las", "the (plural)", "los niños, las niñas", "the boys, the girls", "Lumora"),
+		vw("unos / unas", "some", "unos libros, unas casas", "some books, some houses", "Lumora"),
+	)
+
+	// ── Present tense -AR ──
+	s = addSkill(db, u, "Presente: verbos -AR", "hablo, hablas, habla…", "PenLine", "#17A3DD", 11, 242)
+	l = addLesson(db, s, "Verbos en -AR", 1, 18,
+		char("Professor Finch", "Regular -ar verbs: drop -ar, add -o, -as, -a, -amos, -áis, -an."),
+		mc("I speak", "yo ___", "hablo", "hablo", "hablas", "habla", "hablan"),
+		mc("you speak (tú)", "tú ___", "hablas", "hablas", "hablo", "habla", "habláis"),
+		fill("Fill in the blank", "Nosotros ___ español. (hablar)", "hablamos"),
+		tr("Translate this sentence", "They work", "Ellos trabajan"),
+		mc("she studies", "ella ___", "estudia", "estudia", "estudio", "estudias", "estudian"),
+		speak("Blaze", "Yo hablo, tú hablas, él habla."),
+	)
+	addVocab(db, l,
+		vw("hablar", "to speak", "Hablo español.", "I speak Spanish.", "Professor Finch"),
+		vw("trabajar", "to work", "Trabajo en casa.", "I work at home.", "Cora"),
+		vw("estudiar", "to study", "Estudio inglés.", "I study English.", "Cora"),
+		vw("hablamos", "we speak", "Hablamos mucho.", "We talk a lot.", "Lumora"),
+	)
+
+	// ── Present tense -ER / -IR ──
+	s = addSkill(db, u, "Presente: -ER / -IR", "como, vivo, escribo…", "PenLine", "#6C3FC5", 12, 258)
+	l = addLesson(db, s, "Verbos en -ER / -IR", 1, 18,
+		char("Professor Finch", "-er → como, comes, come. -ir → vivo, vives, vive."),
+		mc("I eat", "yo ___", "como", "como", "comes", "come", "comen"),
+		mc("you live (tú)", "tú ___", "vives", "vives", "vivo", "vive", "vivimos"),
+		fill("Fill in the blank", "Nosotros ___ en Madrid. (vivir)", "vivimos"),
+		tr("Translate this sentence", "He drinks water", "Él bebe agua"),
+		mc("they write", "ellos ___", "escriben", "escriben", "escribo", "escribe", "escribimos"),
+		speak("Blaze", "Como pan y bebo agua. Vivo en España."),
+	)
+	addVocab(db, l,
+		vw("comer", "to eat", "Como una manzana.", "I eat an apple.", "Professor Finch"),
+		vw("beber", "to drink", "Bebo agua.", "I drink water.", "Cora"),
+		vw("vivir", "to live", "Vivo en Madrid.", "I live in Madrid.", "Cora"),
+		vw("escribir", "to write", "Escribo una carta.", "I write a letter.", "Lumora"),
+	)
+
+	// ── Key irregular verbs ──
+	s = addSkill(db, u, "Verbos Irregulares", "tener, ir, hacer, querer, poder.", "Sparkles", "#FF5C5C", 13, 276)
+	l = addLesson(db, s, "Irregulares Clave", 1, 18,
+		char("Professor Finch", "Learn these by heart: tengo, voy, hago, quiero, puedo."),
+		mc("I have", "yo ___", "tengo", "tengo", "tienes", "tiene", "tienen"),
+		mc("I go", "yo ___", "voy", "voy", "vas", "va", "van"),
+		fill("Fill in the blank", "Yo ___ la tarea. (hacer)", "hago"),
+		tr("Translate this sentence", "I want a coffee", "Quiero un café"),
+		mc("I can", "yo ___", "puedo", "puedo", "puede", "podemos", "pueden"),
+		speak("Blaze", "Tengo hambre. Voy a casa."),
+	)
+	addVocab(db, l,
+		vw("tener", "to have", "Tengo un perro.", "I have a dog.", "Professor Finch"),
+		vw("ir", "to go", "Voy al cine.", "I go to the cinema.", "Cora"),
+		vw("hacer", "to do / make", "Hago deporte.", "I do sport.", "Cora"),
+		vw("querer", "to want", "Quiero agua.", "I want water.", "Lumora"),
+		vw("poder", "to be able to", "Puedo ayudar.", "I can help.", "Lumora"),
+	)
+
+	// ── Gustar ──
+	s = addSkill(db, u, "Me gusta", "Saying what you like.", "Heart", "#FF5C5C", 14, 294)
+	l = addLesson(db, s, "Gustar", 1, 18,
+		char("Cora", "'Me gusta' + one thing, 'me gustan' + many things. Add no to say you don't!"),
+		mc("I like coffee", "___ el café", "Me gusta", "Me gusta", "Me gustan", "Te gusta", "Le gusta"),
+		mc("I like the books", "Me ___ los libros", "gustan", "gustan", "gusta", "gusto", "gustas"),
+		tr("Translate this sentence", "Do you like music?", "¿Te gusta la música?"),
+		fill("Fill in the blank", "A él ___ gusta el fútbol. (to him)", "le"),
+		mc("I don't like tea", "No me ___ el té", "gusta", "gusta", "gustan", "gusto", "gustas"),
+		speak("Blaze", "Me gusta el café. Me gustan los libros."),
+	)
+	addVocab(db, l,
+		vw("me gusta", "I like (it)", "Me gusta bailar.", "I like to dance.", "Cora"),
+		vw("me gustan", "I like (them)", "Me gustan los gatos.", "I like cats.", "Cora"),
+		vw("te gusta", "you like", "¿Te gusta el cine?", "Do you like cinema?", "Lumora"),
+		vw("le gusta", "he/she likes", "Le gusta leer.", "He likes to read.", "Lumora"),
+	)
+
+	// ── Numbers, time & date ──
+	s = addSkill(db, u, "Números, Hora y Fecha", "0–100, telling time, days.", "Clock", "#F5A623", 15, 312)
+	l = addLesson(db, s, "¿Qué hora es?", 1, 18,
+		char("Lumora", "Numbers, the clock and the calendar — the everyday essentials."),
+		mc("ten", "diez =", "ten", "ten", "eight", "twenty", "a hundred"),
+		mc("it's two o'clock", "Son las ___", "dos", "dos", "tres", "doce", "diez"),
+		tr("Translate this sentence", "It's half past three", "Son las tres y media"),
+		fill("Fill in the blank", "Hoy es ___. (Monday)", "lunes"),
+		mc("twenty", "veinte =", "twenty", "twenty", "twelve", "two", "a hundred"),
+		speak("Blaze", "Son las dos y media. Hoy es lunes."),
+	)
+	addVocab(db, l,
+		vw("diez", "ten", "Tengo diez euros.", "I have ten euros.", "Lumora"),
+		vw("veinte", "twenty", "Veinte minutos.", "Twenty minutes.", "Cora"),
+		vw("cien", "a hundred", "Cien personas.", "A hundred people.", "Cora"),
+		vw("¿qué hora es?", "what time is it?", "¿Qué hora es?", "What time is it?", "Lumora"),
+		vw("y media", "half past", "Son las tres y media.", "It's half past three.", "Lumora"),
+		vw("lunes", "Monday", "Hoy es lunes.", "Today is Monday.", "Cora"),
+	)
+
+	// ── Daily routine (reflexives) ──
+	s = addSkill(db, u, "Rutina Diaria", "Reflexive verbs: me levanto…", "Coffee", "#6C3FC5", 16, 330)
+	l = addLesson(db, s, "Mi Día", 1, 18,
+		char("Mira", "Routines use reflexive verbs: me levanto, me ducho, me acuesto."),
+		mc("I get up", "___ a las siete.", "Me levanto", "Me levanto", "Me acuesto", "Me ducho", "Me llamo"),
+		tr("Translate this sentence", "I go to bed late", "Me acuesto tarde"),
+		fill("Fill in the blank", "Por la mañana ___ ducho. (myself)", "me"),
+		match("What is 'dormir'?", "dormir", "to sleep", "to sleep", "to eat", "to wake", "to wash"),
+		listen("Listen and choose the meaning", "Me levanto temprano.", "I get up early", "I get up early", "I go to bed late", "I eat breakfast", "I work a lot"),
+		speak("Blaze", "Me levanto a las siete y me acuesto a las once."),
+	)
+	addVocab(db, l,
+		vw("levantarse", "to get up", "Me levanto temprano.", "I get up early.", "Mira"),
+		vw("ducharse", "to shower", "Me ducho por la mañana.", "I shower in the morning.", "Cora"),
+		vw("acostarse", "to go to bed", "Me acuesto tarde.", "I go to bed late.", "Cora"),
+		vw("desayunar", "to have breakfast", "Desayuno café y pan.", "I have coffee and bread.", "Lumora"),
+		vw("dormir", "to sleep", "Duermo ocho horas.", "I sleep eight hours.", "Lumora"),
+	)
+
+	// ── City & directions ──
+	s = addSkill(db, u, "Ciudad y Direcciones", "¿Dónde está…?, hay, a la derecha.", "Compass", "#17A3DD", 17, 350)
+	l = addLesson(db, s, "¿Dónde está?", 1, 18,
+		char("Riko", "Ask the way: ¿dónde está…? Then follow: a la derecha, a la izquierda, todo recto."),
+		mc("Where is the bathroom?", "¿Dónde está el ___?", "baño", "baño", "menú", "vuelo", "amor"),
+		mc("to the right", "a la ___", "derecha", "derecha", "izquierda", "recto", "mesa"),
+		tr("Translate this sentence", "Turn left", "Gira a la izquierda"),
+		fill("Fill in the blank", "___ un banco aquí. (there is)", "Hay"),
+		match("What is 'todo recto'?", "todo recto", "straight ahead", "straight ahead", "to the right", "behind", "upstairs"),
+		speak("Blaze", "¿Dónde está el hotel? Todo recto y a la derecha."),
+	)
+	addVocab(db, l,
+		vw("¿dónde está?", "where is?", "¿Dónde está el baño?", "Where is the bathroom?", "Riko"),
+		vw("a la derecha", "to the right", "Gira a la derecha.", "Turn right.", "Cora"),
+		vw("a la izquierda", "to the left", "Está a la izquierda.", "It's on the left.", "Cora"),
+		vw("todo recto", "straight ahead", "Sigue todo recto.", "Go straight ahead.", "Lumora"),
+		vw("hay", "there is / are", "Hay un parque.", "There is a park.", "Lumora"),
+	)
+
+	// ── Questions & negation ──
+	s = addSkill(db, u, "Preguntas y Negación", "qué, dónde, cómo… and saying no.", "MessageCircle", "#00C2A8", 18, 370)
+	l = addLesson(db, s, "Preguntar y Negar", 1, 18,
+		char("Cora", "Question words: qué, dónde, cómo, cuándo, quién, cuánto. To negate, put 'no' before the verb."),
+		mc("what?", "¿___?", "Qué", "Qué", "Dónde", "Cómo", "Quién"),
+		mc("where is it?", "¿___ está?", "Dónde", "Dónde", "Qué", "Cuándo", "Quién"),
+		tr("Translate this sentence", "I don't speak English", "No hablo inglés"),
+		fill("Fill in the blank", "¿___ años tienes? (how many)", "Cuántos"),
+		mc("who is it?", "¿___ es?", "Quién", "Quién", "Qué", "Cómo", "Dónde"),
+		speak("Blaze", "¿Dónde está? No, no hablo francés."),
+	)
+	addVocab(db, l,
+		vw("qué", "what", "¿Qué es esto?", "What is this?", "Cora"),
+		vw("dónde", "where", "¿Dónde vives?", "Where do you live?", "Cora"),
+		vw("cómo", "how", "¿Cómo estás?", "How are you?", "Lumora"),
+		vw("cuándo", "when", "¿Cuándo vienes?", "When do you come?", "Lumora"),
+		vw("quién", "who", "¿Quién es?", "Who is it?", "Riko"),
+		vw("cuánto", "how much", "¿Cuánto cuesta?", "How much is it?", "Riko"),
+	)
+
+	// ── Writing: email / postcard ──
+	s = addSkill(db, u, "Escribir: Correo", "A1 writing — short messages & emails.", "PenLine", "#00C2A8", 19, 390)
+	l = addLesson(db, s, "Escribe un Mensaje", 1, 20,
+		char("Lumora", "A1 writing is short messages: greet, say a little, sign off. Let's practise."),
+		mc("Start an informal message with…", "Greeting", "Hola", "Hola", "Estimado señor", "Atentamente", "Adiós"),
+		write("Write a short postcard from Madrid (30–40 words): greet, say where you are and what you do.",
+			"¡Hola! Estoy en Madrid. La ciudad es muy bonita. Por la mañana estudio español y por la tarde visito museos. Hace sol. Un abrazo, Ana."),
+		write("Write a short email introducing yourself: your name, nationality, job and what you like.",
+			"Hola, me llamo Pablo. Soy de México y soy profesor. Me gusta el fútbol y la música. ¿Y tú? Saludos, Pablo."),
+		mc("Informal sign-off?", "Closing", "Un abrazo", "Un abrazo", "Atentamente", "Por favor", "Buenos días"),
+		fill("Fill in the blank", "Un ___ (a hug — informal close)", "abrazo"),
+		speak("Blaze", "Hola, me llamo Ana. Un abrazo."),
+	)
+	addVocab(db, l,
+		vw("Hola / Querido", "Hi / Dear", "Querido amigo,", "Dear friend,", "Lumora"),
+		vw("Un abrazo", "Hugs (informal close)", "Un abrazo, Ana.", "Hugs, Ana.", "Cora"),
+		vw("Saludos", "Regards", "Saludos, Pablo.", "Regards, Pablo.", "Cora"),
+		vw("Atentamente", "Sincerely (formal)", "Atentamente, Sr. Ruiz.", "Sincerely, Mr. Ruiz.", "Professor Finch"),
+		vw("Estimado", "Dear (formal)", "Estimada señora:", "Dear madam:", "Professor Finch"),
+	)
+
+	// ── Speaking: introduce yourself ──
+	s = addSkill(db, u, "Hablar: Preséntate", "Introduce yourself out loud.", "MessageCircle", "#6C3FC5", 20, 410)
+	l = addLesson(db, s, "Preséntate", 1, 20,
+		char("Blaze", "Time to SPEAK! Say each line out loud — I believe in you!"),
+		speak("Lumora", "Hola, me llamo Ana."),
+		speak("Blaze", "Soy de España y tengo veinte años."),
+		speak("Blaze", "Soy estudiante. Me gusta la música y el café."),
+		mc("To say your age", "Tengo ___ años.", "veinte", "veinte", "soy", "me llamo", "vivo"),
+		speak("Blaze", "Vivo en Madrid y hablo español e inglés."),
+		speak("Blaze", "Mucho gusto. ¿Y tú, cómo te llamas?"),
+	)
+	addVocab(db, l,
+		vw("me llamo…", "my name is…", "Me llamo Ana.", "My name is Ana.", "Lumora"),
+		vw("soy de…", "I'm from…", "Soy de España.", "I'm from Spain.", "Cora"),
+		vw("tengo … años", "I'm … years old", "Tengo veinte años.", "I'm twenty.", "Cora"),
+		vw("soy estudiante", "I'm a student", "Soy estudiante.", "I'm a student.", "Lumora"),
+		vw("mucho gusto", "nice to meet you", "Mucho gusto.", "Nice to meet you.", "Riko"),
+	)
+
+	// A2 builds on A1: the past tenses, near future, object pronouns,
+	// comparisons and the everyday topics that let you narrate and handle
+	// routine situations.
+	seedSpanishA2(db)
+}
+
+// seedSpanishA2 adds the elementary (A2) unit: preterite (regular + irregular),
+// present perfect and when to use each, near future, present continuous, object
+// pronouns, comparatives, gustar-type verbs, por/para, the affirmative
+// imperative, health, clothing/travel, and the productive A2 skills.
+func seedSpanishA2(db *gorm.DB) {
+	const u = "A2 · Elemental"
+	finch := "Professor Finch"
+
+	// ── Preterite: regular ──
+	s := addSkill(db, u, "Indefinido: Regulares", "The simple past: hablé, comí, viví.", "Clock", "#F5A623", 21, 430)
+	l := addLesson(db, s, "El Pasado Regular", 1, 20,
+		char(finch, "The preterite says what happened. Endings: -é/-aste/-ó and -í/-iste/-ió."),
+		mc("I spoke", "yo ___", "hablé", "hablé", "hablo", "hablaré", "hablaba"),
+		mc("you ate (tú)", "tú ___", "comiste", "comiste", "comes", "comió", "comías"),
+		fill("Fill in the blank", "Ayer ___ en casa. (comer, yo)", "comí"),
+		tr("Translate this sentence", "She lived in Madrid", "Vivió en Madrid"),
+		mc("they worked", "ellos ___", "trabajaron", "trabajaron", "trabajan", "trabajaban", "trabajarán"),
+		speak("Blaze", "Ayer hablé con mi amigo y comí en casa."),
+	)
+	addVocab(db, l,
+		vw("hablé", "I spoke", "Ayer hablé con Ana.", "Yesterday I spoke with Ana.", finch),
+		vw("comí", "I ate", "Comí una pizza.", "I ate a pizza.", "Cora"),
+		vw("viví", "I lived", "Viví en México.", "I lived in Mexico.", "Cora"),
+		vw("ayer", "yesterday", "Ayer trabajé.", "Yesterday I worked.", "Lumora"),
+		vw("trabajó", "he/she worked", "Ella trabajó mucho.", "She worked a lot.", "Lumora"),
+	)
+
+	// ── Preterite: irregular ──
+	s = addSkill(db, u, "Indefinido: Irregulares", "fui, tuve, hice, dije, estuve.", "Clock", "#6C3FC5", 22, 455)
+	l = addLesson(db, s, "Pasados Irregulares", 1, 20,
+		char(finch, "Learn these by heart: fui (ser/ir), tuve (tener), hice (hacer), dije (decir), estuve (estar)."),
+		mc("I went / I was", "yo ___", "fui", "fui", "voy", "iba", "fue"),
+		mc("I had", "yo ___", "tuve", "tuve", "tengo", "tenía", "tuvo"),
+		fill("Fill in the blank", "Ayer ___ mucho trabajo. (hacer, yo)", "hice"),
+		tr("Translate this sentence", "He said the truth", "Dijo la verdad"),
+		mc("we were (estar)", "nosotros ___", "estuvimos", "estuvimos", "estamos", "éramos", "fuimos"),
+		speak("Blaze", "Ayer fui al cine y tuve un buen día."),
+	)
+	addVocab(db, l,
+		vw("fui", "I went / I was", "Fui al cine.", "I went to the cinema.", finch),
+		vw("tuve", "I had", "Tuve una idea.", "I had an idea.", "Cora"),
+		vw("hice", "I did / made", "Hice la tarea.", "I did the homework.", "Cora"),
+		vw("dije", "I said", "Dije la verdad.", "I told the truth.", "Lumora"),
+		vw("estuve", "I was (estar)", "Estuve en casa.", "I was at home.", "Lumora"),
+	)
+
+	// ── Present perfect ──
+	s = addSkill(db, u, "Pretérito Perfecto", "he hablado — the recent past.", "Clock", "#17A3DD", 23, 480)
+	l = addLesson(db, s, "He hablado", 1, 20,
+		char(finch, "Recent past: haber (he/has/ha/hemos/habéis/han) + participle (hablado, comido, vivido)."),
+		mc("I have spoken", "___ hablado", "He", "He", "Has", "Ha", "Hemos"),
+		mc("have you eaten? (tú)", "¿___ comido?", "Has", "Has", "He", "Ha", "Han"),
+		fill("Fill in the blank", "Hoy ___ trabajado mucho. (yo, haber)", "he"),
+		tr("Translate this sentence", "We have lived here", "Hemos vivido aquí"),
+		mc("irregular participle: written", "escribir →", "escrito", "escrito", "escribido", "escribo", "escrita"),
+		speak("Blaze", "Hoy he comido bien y he estudiado español."),
+	)
+	addVocab(db, l,
+		vw("he comido", "I have eaten", "Hoy he comido tarde.", "Today I've eaten late.", finch),
+		vw("hoy", "today", "Hoy he trabajado.", "Today I have worked.", "Cora"),
+		vw("ya", "already", "Ya he terminado.", "I've already finished.", "Cora"),
+		vw("todavía no", "not yet", "Todavía no he comido.", "I haven't eaten yet.", "Lumora"),
+		vw("hecho", "done/made (part.)", "He hecho la cama.", "I've made the bed.", "Lumora"),
+	)
+
+	// ── Indefinido vs Perfecto ──
+	s = addSkill(db, u, "Indefinido vs Perfecto", "ayer vs hoy — which past?", "Layers", "#FF5C5C", 24, 508)
+	l = addLesson(db, s, "¿Cuál Pasado?", 1, 20,
+		char(finch, "Perfecto for today/this week (recent, relevant). Indefinido for finished time (ayer, en 2020)."),
+		mc("Ayer ___ al cine. (ir)", "ayer = finished", "fui", "fui", "he ido", "voy", "iba"),
+		mc("Hoy ___ al cine. (ir)", "hoy = recent", "he ido", "he ido", "fui", "iba", "voy"),
+		fill("Fill in the blank", "El año pasado ___ a México. (viajar, yo)", "viajé"),
+		tr("Translate this sentence", "This week I have worked a lot", "Esta semana he trabajado mucho"),
+		mc("marker for indefinido", "Which signals finished past?", "ayer", "ayer", "hoy", "esta semana", "ya"),
+		speak("Blaze", "Ayer comí pizza. Hoy he comido ensalada."),
+	)
+	addVocab(db, l,
+		vw("ayer", "yesterday", "Ayer llovió.", "Yesterday it rained.", finch),
+		vw("el año pasado", "last year", "El año pasado viajé.", "Last year I travelled.", "Cora"),
+		vw("esta semana", "this week", "Esta semana he leído.", "This week I've read.", "Cora"),
+		vw("hoy", "today", "Hoy he salido.", "Today I went out.", "Lumora"),
+		vw("ya", "already", "Ya lo he visto.", "I've already seen it.", "Lumora"),
+	)
+
+	// ── Near future ──
+	s = addSkill(db, u, "Futuro: ir a + infinitivo", "Plans: voy a estudiar.", "Compass", "#00C2A8", 25, 536)
+	l = addLesson(db, s, "Voy a…", 1, 20,
+		char("Lumora", "Talk about plans with ir a + infinitive: Voy a viajar."),
+		mc("I'm going to study", "Voy ___ estudiar", "a", "a", "de", "en", "que"),
+		mc("we are going to travel", "Vamos a ___", "viajar", "viajar", "viajo", "viajamos", "viajado"),
+		fill("Fill in the blank", "Mañana ___ a comer fuera. (ir, nosotros)", "vamos"),
+		tr("Translate this sentence", "She is going to work tomorrow", "Va a trabajar mañana"),
+		mc("tomorrow", "mañana =", "tomorrow", "tomorrow", "yesterday", "today", "now"),
+		speak("Blaze", "Mañana voy a estudiar y voy a hacer deporte."),
+	)
+	addVocab(db, l,
+		vw("voy a", "I'm going to", "Voy a leer.", "I'm going to read.", "Lumora"),
+		vw("vas a", "you're going to", "¿Vas a venir?", "Are you going to come?", "Cora"),
+		vw("vamos a", "we're going to", "Vamos a cenar.", "We're going to have dinner.", "Cora"),
+		vw("mañana", "tomorrow", "Mañana descanso.", "Tomorrow I rest.", "Lumora"),
+		vw("el plan", "the plan", "¿Cuál es el plan?", "What's the plan?", "Riko"),
+	)
+
+	// ── Present continuous ──
+	s = addSkill(db, u, "Estar + Gerundio", "Happening now: estoy comiendo.", "Sparkles", "#F5A623", 26, 564)
+	l = addLesson(db, s, "Ahora Mismo", 1, 20,
+		char("Cora", "Right now: estar + gerund (-ando / -iendo). Estoy comiendo."),
+		mc("I am eating", "Estoy ___", "comiendo", "comiendo", "comer", "comido", "como"),
+		mc("she is speaking", "Está ___", "hablando", "hablando", "habla", "hablar", "hablado"),
+		fill("Fill in the blank", "Ahora ___ estudiando. (yo, estar)", "estoy"),
+		tr("Translate this sentence", "They are working", "Están trabajando"),
+		mc("gerund of vivir", "vivir →", "viviendo", "viviendo", "vivir", "vivido", "vivo"),
+		speak("Blaze", "Estoy aprendiendo español ahora mismo."),
+	)
+	addVocab(db, l,
+		vw("estoy + -ando", "I am …-ing", "Estoy cocinando.", "I'm cooking.", "Cora"),
+		vw("hablando", "speaking", "Está hablando.", "He's speaking.", "Cora"),
+		vw("comiendo", "eating", "Estoy comiendo.", "I'm eating.", "Lumora"),
+		vw("viviendo", "living", "Estamos viviendo aquí.", "We're living here.", "Lumora"),
+		vw("ahora", "now", "Ahora trabajo.", "Now I'm working.", "Riko"),
+	)
+
+	// ── Object pronouns ──
+	s = addSkill(db, u, "Pronombres de Objeto", "lo / la / le / les.", "Hash", "#6C3FC5", 27, 594)
+	l = addLesson(db, s, "Lo, La, Le, Les", 1, 20,
+		char(finch, "Direct: lo/la/los/las (it/them). Indirect: le/les (to him/her/them). Placed before the verb."),
+		mc("I see it (the book)", "___ veo", "Lo", "Lo", "La", "Le", "Les"),
+		mc("I give him the book", "___ doy el libro", "Le", "Le", "Lo", "La", "Les"),
+		fill("Fill in the blank", "¿La carta? ___ escribo. (it, fem.)", "La"),
+		tr("Translate this sentence", "I buy them (the shoes)", "Los compro"),
+		mc("to them", "___ hablo a ellos", "Les", "Les", "Lo", "La", "Le"),
+		speak("Blaze", "¿El café? Lo quiero. ¿A María? Le hablo."),
+	)
+	addVocab(db, l,
+		vw("lo / la", "it (m / f)", "Lo veo. La leo.", "I see it. I read it.", finch),
+		vw("los / las", "them", "Los compro.", "I buy them.", "Cora"),
+		vw("le", "(to) him/her", "Le doy el libro.", "I give him the book.", "Cora"),
+		vw("les", "(to) them", "Les hablo.", "I talk to them.", "Lumora"),
+		vw("me / te", "me / you", "Me llamas.", "You call me.", "Lumora"),
+	)
+
+	// ── Comparatives & superlatives ──
+	s = addSkill(db, u, "Comparativos", "más/menos que, el más, mejor.", "Hash", "#17A3DD", 28, 624)
+	l = addLesson(db, s, "Más y Menos", 1, 20,
+		char(finch, "Compare with más/menos … que. The most: el/la más …. Irregulars: mejor, peor."),
+		mc("taller than", "más alto ___ tú", "que", "que", "de", "como", "y"),
+		mc("the best", "el ___", "mejor", "mejor", "más bueno", "bien", "bueno"),
+		fill("Fill in the blank", "Madrid es ___ grande que mi pueblo. (more)", "más"),
+		tr("Translate this sentence", "She is less tall than me", "Es menos alta que yo"),
+		mc("as … as", "tan alto ___ tú", "como", "como", "que", "de", "más"),
+		speak("Blaze", "Soy más alto que mi hermano, pero él juega mejor."),
+	)
+	addVocab(db, l,
+		vw("más … que", "more … than", "Más alto que tú.", "Taller than you.", finch),
+		vw("menos … que", "less … than", "Menos caro que eso.", "Less expensive than that.", "Cora"),
+		vw("tan … como", "as … as", "Tan rápido como tú.", "As fast as you.", "Cora"),
+		vw("el más", "the most", "El más grande.", "The biggest.", "Lumora"),
+		vw("mejor / peor", "better / worse", "Es mejor.", "It's better.", "Lumora"),
+	)
+
+	// ── Gustar-type verbs ──
+	s = addSkill(db, u, "Verbos como Gustar", "encantar, interesar, doler.", "Heart", "#FF5C5C", 29, 654)
+	l = addLesson(db, s, "Me encanta", 1, 20,
+		char("Cora", "Built like gustar: me encanta, me interesa, me duele. Use me/te/le + verb."),
+		mc("I love dancing", "Me ___ bailar", "encanta", "encanta", "encantan", "encanto", "encantas"),
+		mc("my head hurts", "Me ___ la cabeza", "duele", "duele", "duelen", "dolor", "duelo"),
+		fill("Fill in the blank", "Me ___ los museos. (interesar, plural)", "interesan"),
+		tr("Translate this sentence", "Her feet hurt", "Le duelen los pies"),
+		mc("I'm interested in art", "Me interesa el ___", "arte", "arte", "agua", "amor", "aire"),
+		speak("Blaze", "Me encanta el café, pero me duele la cabeza."),
+	)
+	addVocab(db, l,
+		vw("encantar", "to love", "Me encanta leer.", "I love reading.", "Cora"),
+		vw("interesar", "to interest", "Me interesa el arte.", "Art interests me.", "Cora"),
+		vw("doler", "to hurt", "Me duele la espalda.", "My back hurts.", "Lumora"),
+		vw("me encanta", "I love (it)", "Me encanta el mar.", "I love the sea.", "Lumora"),
+		vw("me duele", "it hurts (me)", "Me duele aquí.", "It hurts here.", "Mira"),
+	)
+
+	// ── Por vs Para ──
+	s = addSkill(db, u, "Por y Para", "reason vs purpose.", "Link2", "#00C2A8", 30, 686)
+	l = addLesson(db, s, "Por o Para", 1, 20,
+		char(finch, "POR = reason, exchange, through. PARA = purpose, destination, deadline."),
+		mc("thanks for the gift", "Gracias ___ el regalo", "por", "por", "para", "de", "a"),
+		mc("this is for you", "Esto es ___ ti", "para", "para", "por", "de", "a"),
+		fill("Fill in the blank", "Estudio ___ aprender. (in order to)", "para"),
+		tr("Translate this sentence", "I travel through Spain", "Viajo por España"),
+		mc("for tomorrow (deadline)", "La tarea es ___ mañana", "para", "para", "por", "de", "en"),
+		speak("Blaze", "Gracias por todo. Esto es para ti."),
+	)
+	addVocab(db, l,
+		vw("por", "for / through / because of", "Gracias por venir.", "Thanks for coming.", finch),
+		vw("para", "for / in order to", "Es para ti.", "It's for you.", "Cora"),
+		vw("por favor", "please", "Un café, por favor.", "A coffee, please.", "Cora"),
+		vw("para mí", "for me", "Para mí, un té.", "For me, a tea.", "Lumora"),
+		vw("por eso", "that's why", "Por eso estudio.", "That's why I study.", "Lumora"),
+	)
+
+	// ── Affirmative imperative ──
+	s = addSkill(db, u, "Imperativo Afirmativo", "¡Habla! ¡Ven! ¡Haz!", "MessageCircle", "#F5A623", 31, 718)
+	l = addLesson(db, s, "¡Órdenes!", 1, 20,
+		char("Blaze", "Give commands! tú: habla, come, vive. Irregulars: ven, haz, di, pon, ve."),
+		mc("speak! (tú)", "¡___!", "Habla", "Habla", "Hablas", "Hablar", "Hablo"),
+		mc("come! (tú)", "¡___ aquí!", "Ven", "Ven", "Viene", "Venir", "Vienes"),
+		fill("Fill in the blank", "¡___ la tarea! (to do: haz)", "Haz"),
+		tr("Translate this sentence", "Eat the fruit!", "¡Come la fruta!"),
+		mc("tell me! (decir)", "¡___me la verdad!", "Di", "Di", "Dice", "Decir", "Digo"),
+		speak("Blaze", "¡Habla más alto! ¡Ven aquí!"),
+	)
+	addVocab(db, l,
+		vw("¡habla!", "speak!", "¡Habla despacio!", "Speak slowly!", "Blaze"),
+		vw("¡come!", "eat!", "¡Come la sopa!", "Eat the soup!", "Cora"),
+		vw("¡ven!", "come!", "¡Ven conmigo!", "Come with me!", "Cora"),
+		vw("¡haz!", "do/make!", "¡Haz la cama!", "Make the bed!", "Lumora"),
+		vw("¡di!", "say/tell!", "¡Dime!", "Tell me!", "Lumora"),
+	)
+
+	// ── Health & body ──
+	s = addSkill(db, u, "Salud y el Cuerpo", "me duele…, body, symptoms.", "Heart", "#06AECE", 32, 750)
+	l = addLesson(db, s, "En el Médico", 1, 20,
+		char("Mira", "At the doctor: parts of the body and how to say what hurts."),
+		mc("my head hurts", "Me duele la ___", "cabeza", "cabeza", "mano", "pie", "espalda"),
+		mc("I'm ill", "Estoy ___", "enfermo", "enfermo", "bien", "contento", "alto"),
+		fill("Fill in the blank", "Me duele el ___. (stomach)", "estómago"),
+		tr("Translate this sentence", "I have a fever", "Tengo fiebre"),
+		match("What is 'la mano'?", "la mano", "the hand", "the hand", "the foot", "the head", "the arm"),
+		speak("Blaze", "Me duele la cabeza y tengo fiebre."),
+	)
+	addVocab(db, l,
+		vw("la cabeza", "the head", "Me duele la cabeza.", "My head hurts.", "Mira"),
+		vw("el estómago", "the stomach", "Me duele el estómago.", "My stomach hurts.", "Cora"),
+		vw("la mano", "the hand", "Me lavo las manos.", "I wash my hands.", "Cora"),
+		vw("la fiebre", "the fever", "Tengo fiebre.", "I have a fever.", "Lumora"),
+		vw("enfermo", "ill", "Estoy enfermo.", "I'm ill.", "Lumora"),
+	)
+
+	// ── Clothes, shopping & travel ──
+	s = addSkill(db, u, "Ropa, Compras y Viajes", "tallas, colores, transporte.", "ShoppingBag", "#6C3FC5", 33, 784)
+	l = addLesson(db, s, "De Compras y de Viaje", 1, 20,
+		char("Cora", "Clothes & sizes, plus getting around: la talla, el color, el tren, el billete."),
+		mc("what size?", "¿Qué ___ tiene?", "talla", "talla", "color", "precio", "tienda"),
+		mc("the train", "el ___", "tren", "tren", "avión", "coche", "barco"),
+		fill("Fill in the blank", "Quiero un ___ de tren. (ticket)", "billete"),
+		tr("Translate this sentence", "These shoes are too big", "Estos zapatos son muy grandes"),
+		mc("can I try it on?", "¿Puedo ___?", "probármelo", "probármelo", "comerlo", "verlo", "pagarlo"),
+		speak("Blaze", "¿Qué talla tiene? Quiero un billete de tren."),
+	)
+	addVocab(db, l,
+		vw("la talla", "the size", "¿Qué talla usas?", "What size do you wear?", "Cora"),
+		vw("el color", "the colour", "Me gusta el color azul.", "I like blue.", "Cora"),
+		vw("el billete", "the ticket", "Un billete, por favor.", "A ticket, please.", "Lumora"),
+		vw("el tren", "the train", "El tren llega tarde.", "The train is late.", "Lumora"),
+		vw("los zapatos", "the shoes", "Estos zapatos son caros.", "These shoes are expensive.", "Riko"),
+	)
+
+	// ── Writing (A2) ──
+	s = addSkill(db, u, "Escribir: Correos y Reseñas", "50–80 words with connectors.", "PenLine", "#00C2A8", 34, 818)
+	l = addLesson(db, s, "Escribe con Conectores", 1, 22,
+		char("Lumora", "A2 writing links ideas: primero, luego, después, porque. Tell a little story."),
+		mc("first", "___, desayuno.", "Primero", "Primero", "Luego", "Pero", "Porque"),
+		write("Write an email to a friend about your last weekend (50–80 words): what you did, using connectors.",
+			"¡Hola! El fin de semana pasado fui a la playa con mis amigos. Primero nadamos y luego comimos en un restaurante. La comida estuvo deliciosa. Después fuimos al cine. ¡Lo pasé muy bien! Un abrazo, Ana."),
+		write("Write a short restaurant review (50–80 words): what you ate and your opinion.",
+			"Ayer cené en el restaurante La Plaza. Pedí paella y estaba muy rica. El camarero fue amable y el precio fue barato. Volveré pronto. ¡Lo recomiendo!"),
+		mc("then / next", "Primero como y ___ estudio.", "luego", "luego", "pero", "porque", "primero"),
+		fill("Fill in the blank", "El fin de semana ___ a la playa. (ir, yo)", "fui"),
+		speak("Blaze", "El fin de semana pasado fui a la playa con mis amigos."),
+	)
+	addVocab(db, l,
+		vw("primero", "first", "Primero estudio.", "First I study.", "Lumora"),
+		vw("luego", "then", "Luego como.", "Then I eat.", "Cora"),
+		vw("después", "afterwards", "Después salgo.", "Afterwards I go out.", "Cora"),
+		vw("porque", "because", "No salgo porque llueve.", "I don't go out because it's raining.", "Lumora"),
+		vw("el fin de semana pasado", "last weekend", "El fin de semana pasado descansé.", "Last weekend I rested.", "Lumora"),
+	)
+
+	// ── Speaking (A2) ──
+	s = addSkill(db, u, "Hablar: Narra y Planea", "Tell a story, make plans aloud.", "MessageCircle", "#6C3FC5", 35, 852)
+	l = addLesson(db, s, "Narra tu Fin de Semana", 1, 22,
+		char("Blaze", "Tell what you did and what you'll do — out loud!"),
+		speak("Lumora", "El sábado fui al parque con mi familia."),
+		speak("Blaze", "El fin de semana pasado visité a mis abuelos y comimos juntos."),
+		speak("Blaze", "Ayer estudié español y por la tarde vi una película."),
+		mc("next weekend (future)", "El próximo fin de semana ___ a viajar.", "voy", "voy", "fui", "iba", "he ido"),
+		speak("Blaze", "El próximo fin de semana voy a ir a la playa."),
+		speak("Blaze", "Me encantó la película. ¿Y tú, qué hiciste?"),
+	)
+	addVocab(db, l,
+		vw("fui", "I went", "Fui al parque.", "I went to the park.", "Lumora"),
+		vw("visité", "I visited", "Visité a mi familia.", "I visited my family.", "Cora"),
+		vw("el próximo fin de semana", "next weekend", "El próximo fin de semana viajo.", "Next weekend I travel.", "Cora"),
+		vw("me encantó", "I loved it", "Me encantó la película.", "I loved the film.", "Lumora"),
+		vw("¿qué hiciste?", "what did you do?", "¿Qué hiciste ayer?", "What did you do yesterday?", "Riko"),
+	)
+
+	// B1 makes you an independent user: the past-tense contrasts, future &
+	// conditional, the present subjunctive, relative pronouns and connected,
+	// opinionated discourse.
+	seedSpanishB1(db)
+}
+
+// seedSpanishB1 adds the intermediate (B1) unit: imperfect & narrative past,
+// pluperfect, simple future, conditional, the present subjunctive (forms +
+// desire/emotion + doubt/opinion), relative pronouns, impersonal/passive se,
+// discourse connectors, reported speech, prepositional verbs, and the
+// productive B1 skills (opinion writing & sustained speaking).
+func seedSpanishB1(db *gorm.DB) {
+	const u = "B1 · Intermedio"
+	finch := "Professor Finch"
+
+	// ── Imperfect ──
+	s := addSkill(db, u, "El Imperfecto", "Habits & background: hablaba, comía.", "Clock", "#F5A623", 36, 880)
+	l := addLesson(db, s, "El Imperfecto", 1, 24,
+		char(finch, "The imperfect paints the past: habits, descriptions, background. -aba (hablaba) and -ía (comía, vivía)."),
+		mc("I used to speak", "yo ___", "hablaba", "hablaba", "hablé", "hablo", "hablaría"),
+		mc("we used to eat", "nosotros ___", "comíamos", "comíamos", "comimos", "comemos", "comeríamos"),
+		fill("Fill in the blank", "Cuando era niño, ___ en Madrid. (vivir, yo)", "vivía"),
+		tr("Translate this sentence", "She was tall (description)", "Era alta"),
+		mc("imperfect of ir (yo)", "yo ___ a la escuela", "iba", "iba", "fui", "voy", "iría"),
+		speak("Blaze", "Cuando era niño, jugaba en el parque todos los días."),
+	)
+	addVocab(db, l,
+		vw("hablaba", "I used to speak", "Hablaba mucho.", "I used to talk a lot.", finch),
+		vw("comía", "I used to eat", "Comía en casa.", "I used to eat at home.", "Cora"),
+		vw("vivía", "I used to live", "Vivía en un pueblo.", "I used to live in a village.", "Cora"),
+		vw("era", "was (ser)", "Era muy alto.", "He was very tall.", "Lumora"),
+		vw("iba", "used to go", "Iba al colegio a pie.", "I used to walk to school.", "Lumora"),
+	)
+
+	// ── Indefinido vs Imperfecto ──
+	s = addSkill(db, u, "Indefinido vs Imperfecto", "Narrating: background vs action.", "Layers", "#6C3FC5", 37, 914)
+	l = addLesson(db, s, "Narrar el Pasado", 1, 24,
+		char(finch, "Imperfecto = the scene (ongoing). Indefinido = what happened (the event)."),
+		mc("background: it was raining", "___ cuando salí", "Llovía", "Llovía", "Llovió", "Llueve", "Lloverá"),
+		mc("event: suddenly it rained", "De repente ___", "llovió", "llovió", "llovía", "llueve", "lloverá"),
+		fill("Fill in the blank", "Mientras ___, sonó el teléfono. (comer, yo)", "comía"),
+		tr("Translate this sentence", "I was reading when he arrived", "Leía cuando llegó"),
+		mc("the interrupting action", "Dormía cuando ___ el teléfono", "sonó", "sonó", "sonaba", "suena", "sonará"),
+		speak("Blaze", "Hacía sol cuando llegué a la playa."),
+	)
+	addVocab(db, l,
+		vw("mientras", "while", "Mientras comía, leía.", "While eating, I read.", finch),
+		vw("de repente", "suddenly", "De repente, llegó.", "Suddenly, he arrived.", "Cora"),
+		vw("cuando", "when", "Cuando llegué, dormías.", "When I arrived, you were sleeping.", "Cora"),
+		vw("llovía", "it was raining", "Llovía mucho.", "It was raining a lot.", "Lumora"),
+		vw("hacía sol", "it was sunny", "Hacía sol ese día.", "It was sunny that day.", "Lumora"),
+	)
+
+	// ── Pluperfect ──
+	s = addSkill(db, u, "Pluscuamperfecto", "había + participle.", "Clock", "#17A3DD", 38, 948)
+	l = addLesson(db, s, "Había hablado", 1, 24,
+		char(finch, "The past before the past: había + participle. Cuando llegué, ya habían comido."),
+		mc("I had spoken", "___ hablado", "Había", "Había", "He", "Habría", "Habrá"),
+		mc("they had eaten", "___ comido", "habían", "habían", "han", "habrían", "habrán"),
+		fill("Fill in the blank", "Cuando llegué, la película ya ___ empezado. (haber)", "había"),
+		tr("Translate this sentence", "We had already left", "Ya habíamos salido"),
+		mc("participle of ver", "ver →", "visto", "visto", "veído", "vido", "veo"),
+		speak("Blaze", "Cuando llegué a casa, mis amigos ya se habían ido."),
+	)
+	addVocab(db, l,
+		vw("había hablado", "I had spoken", "Ya había hablado con ella.", "I had already spoken to her.", finch),
+		vw("ya", "already", "Ya había comido.", "I had already eaten.", "Cora"),
+		vw("todavía no", "not yet", "Todavía no había salido.", "He hadn't left yet.", "Cora"),
+		vw("habíamos", "we had", "Habíamos terminado.", "We had finished.", "Lumora"),
+		vw("antes", "before", "Antes había vivido allí.", "Before, I had lived there.", "Lumora"),
+	)
+
+	// ── Simple future ──
+	s = addSkill(db, u, "Futuro Simple", "hablaré, vendré, haré.", "Compass", "#00C2A8", 39, 982)
+	l = addLesson(db, s, "El Futuro", 1, 24,
+		char("Lumora", "Simple future: infinitive + é/ás/á/emos/éis/án. Irregular stems: vendr-, har-, tendr-."),
+		mc("I will speak", "yo ___", "hablaré", "hablaré", "hablo", "hablaba", "hablaría"),
+		mc("they will come", "ellos ___", "vendrán", "vendrán", "vienen", "venían", "vendrían"),
+		fill("Fill in the blank", "Mañana ___ el trabajo. (terminar, yo)", "terminaré"),
+		tr("Translate this sentence", "We will travel next year", "Viajaremos el próximo año"),
+		mc("future of hacer (yo)", "yo ___", "haré", "haré", "hago", "hacía", "haría"),
+		speak("Blaze", "El año que viene viajaré por Sudamérica."),
+	)
+	addVocab(db, l,
+		vw("hablaré", "I will speak", "Hablaré con él.", "I'll speak with him.", "Lumora"),
+		vw("vendré", "I will come", "Vendré pronto.", "I'll come soon.", "Cora"),
+		vw("haré", "I will do/make", "Haré la cena.", "I'll make dinner.", "Cora"),
+		vw("tendré", "I will have", "Tendré tiempo.", "I'll have time.", "Lumora"),
+		vw("el año que viene", "next year", "El año que viene estudio.", "Next year I study.", "Lumora"),
+	)
+
+	// ── Conditional ──
+	s = addSkill(db, u, "El Condicional", "Politeness & hypotheticals: hablaría.", "Sparkles", "#F5A623", 40, 1018)
+	l = addLesson(db, s, "El Condicional", 1, 24,
+		char(finch, "The conditional (would): infinitive + ía. hablaría. Great for politeness and hypotheticals."),
+		mc("I would speak", "yo ___", "hablaría", "hablaría", "hablaré", "hablaba", "hablo"),
+		mc("could you help me?", "¿___ ayudarme?", "Podrías", "Podrías", "Puedes", "Podías", "Pudiste"),
+		fill("Fill in the blank", "Yo ___ un café, por favor. (querer, polite)", "querría"),
+		tr("Translate this sentence", "I would like to travel", "Me gustaría viajar"),
+		mc("conditional of hacer (yo)", "yo ___", "haría", "haría", "haré", "hago", "hice"),
+		speak("Blaze", "Me gustaría visitar Argentina algún día."),
+	)
+	addVocab(db, l,
+		vw("hablaría", "I would speak", "Hablaría con ella.", "I would speak to her.", finch),
+		vw("me gustaría", "I would like", "Me gustaría ir.", "I would like to go.", "Cora"),
+		vw("podría", "could", "¿Podría ayudar?", "Could you help?", "Cora"),
+		vw("querría", "I would like (want)", "Querría un té.", "I'd like a tea.", "Lumora"),
+		vw("tendría", "would have", "Tendría que estudiar.", "I would have to study.", "Lumora"),
+	)
+
+	// ── Present subjunctive: forms ──
+	s = addSkill(db, u, "Subjuntivo: Formas", "hable, coma, viva, sea, vaya.", "Quote", "#FF5C5C", 41, 1054)
+	l = addLesson(db, s, "Formas del Subjuntivo", 1, 24,
+		char(finch, "From the yo-present, swap the ending: hablo→hable, como→coma, vivo→viva. Irregulars: sea, vaya, tenga, haga."),
+		mc("that I speak (subj.)", "que yo ___", "hable", "hable", "hablo", "hablé", "hablaré"),
+		mc("that you eat (tú, subj.)", "que tú ___", "comas", "comas", "comes", "comiste", "comías"),
+		fill("Fill in the blank", "Espero que ___ bien. (estar, tú - subj.)", "estés"),
+		tr("Translate this sentence", "that we be (ser)", "que seamos"),
+		mc("subjunctive of tener (yo)", "que yo ___", "tenga", "tenga", "tengo", "tuve", "tendré"),
+		speak("Blaze", "Quiero que hables conmigo."),
+	)
+	addVocab(db, l,
+		vw("hable", "(that) I/he speak", "que yo hable", "that I speak", finch),
+		vw("coma", "(that) I/he eat", "que él coma", "that he eats", "Cora"),
+		vw("viva", "(that) I/he live", "que viva feliz", "that he live happily", "Cora"),
+		vw("sea", "(that) be (ser)", "que sea verdad", "that it be true", "Lumora"),
+		vw("vaya", "(that) go (ir)", "que vaya a casa", "that he go home", "Lumora"),
+	)
+
+	// ── Subjunctive: desire & emotion ──
+	s = addSkill(db, u, "Subjuntivo: Deseo y Emoción", "Quiero que vengas.", "Heart", "#FF5C5C", 42, 1090)
+	l = addLesson(db, s, "Quiero que…", 1, 24,
+		char("Cora", "With wishes & emotions (two subjects), use the subjunctive: Quiero que vengas. Me alegra que estés aquí."),
+		mc("I want you to come", "Quiero que ___", "vengas", "vengas", "vienes", "venir", "vendrás"),
+		mc("I hope you're well", "Espero que ___ bien", "estés", "estés", "estás", "eres", "estarás"),
+		fill("Fill in the blank", "Me alegra que ___ aquí. (estar, tú - subj.)", "estés"),
+		tr("Translate this sentence", "I want him to study", "Quiero que estudie"),
+		mc("I hope it's sunny", "Ojalá ___ sol mañana", "haga", "haga", "hace", "hizo", "hará"),
+		speak("Blaze", "Espero que tengas un buen día."),
+	)
+	addVocab(db, l,
+		vw("quiero que", "I want (that)", "Quiero que vengas.", "I want you to come.", "Cora"),
+		vw("espero que", "I hope (that)", "Espero que estés bien.", "I hope you're well.", "Cora"),
+		vw("me alegra que", "I'm glad (that)", "Me alegra que vengas.", "I'm glad you're coming.", "Lumora"),
+		vw("ojalá", "hopefully", "Ojalá llueva.", "Hopefully it rains.", "Lumora"),
+		vw("que vengas", "that you come", "Quiero que vengas ya.", "I want you to come now.", "Riko"),
+	)
+
+	// ── Subjunctive: doubt & opinion ──
+	s = addSkill(db, u, "Subjuntivo: Duda y Opinión", "No creo que sea verdad.", "Quote", "#6C3FC5", 43, 1128)
+	l = addLesson(db, s, "No creo que…", 1, 24,
+		char(finch, "Doubt and impersonal opinion trigger the subjunctive: No creo que sea verdad. Es importante que estudies."),
+		mc("I don't think it's true", "No creo que ___ verdad", "sea", "sea", "es", "era", "será"),
+		mc("it's important that you study", "Es importante que ___", "estudies", "estudies", "estudias", "estudiar", "estudiaste"),
+		fill("Fill in the blank", "Quizás ___ mañana. (venir, él - subj.)", "venga"),
+		tr("Translate this sentence", "It's possible that it rains", "Es posible que llueva"),
+		mc("certainty → indicative", "Creo que ___ verdad", "es", "es", "sea", "fuera", "haya sido"),
+		speak("Blaze", "No creo que sea difícil, pero es importante que practiques."),
+	)
+	addVocab(db, l,
+		vw("no creo que", "I don't think (that)", "No creo que venga.", "I don't think he'll come.", finch),
+		vw("es importante que", "it's important that", "Es importante que estudies.", "It's important you study.", "Cora"),
+		vw("es posible que", "it's possible that", "Es posible que llueva.", "It may rain.", "Cora"),
+		vw("quizás", "maybe", "Quizás venga.", "Maybe he'll come.", "Lumora"),
+		vw("dudo que", "I doubt that", "Dudo que sea cierto.", "I doubt it's true.", "Lumora"),
+	)
+
+	// ── Relative pronouns ──
+	s = addSkill(db, u, "Pronombres Relativos", "que, quien, lo que, donde.", "Link2", "#00C2A8", 44, 1166)
+	l = addLesson(db, s, "Que, Quien, Lo que", 1, 24,
+		char(finch, "Relatives join clauses: que (that/which), quien (who, after prepositions), lo que (what), donde (where)."),
+		mc("the book that I read", "el libro ___ leí", "que", "que", "quien", "lo que", "cuyo"),
+		mc("I don't understand what you say", "No entiendo ___ dices", "lo que", "lo que", "que", "quien", "cual"),
+		fill("Fill in the blank", "La ciudad ___ vivo es bonita. (where)", "donde"),
+		tr("Translate this sentence", "the woman with whom I work", "la mujer con quien trabajo"),
+		mc("the man who came", "el hombre ___ vino", "que", "que", "lo que", "cuyo", "donde"),
+		speak("Blaze", "Esta es la casa donde vivo y el coche que compré."),
+	)
+	addVocab(db, l,
+		vw("que", "that / which", "el libro que leí", "the book I read", finch),
+		vw("quien", "who", "la persona con quien hablo", "the person I talk to", "Cora"),
+		vw("lo que", "what", "lo que dices", "what you say", "Cora"),
+		vw("donde", "where", "la casa donde vivo", "the house where I live", "Lumora"),
+		vw("cuyo", "whose", "el autor cuyo libro leí", "the author whose book I read", "Lumora"),
+	)
+
+	// ── Impersonal / passive se ──
+	s = addSkill(db, u, "Se Impersonal y Pasiva", "Se habla español. Se lo doy.", "Hash", "#17A3DD", 45, 1206)
+	l = addLesson(db, s, "El Se", 1, 24,
+		char(finch, "se makes things impersonal/passive: Se habla español. Se venden casas. And le+lo → se lo."),
+		mc("Spanish is spoken here", "Se ___ español", "habla", "habla", "hablan", "hablado", "hablar"),
+		mc("houses are sold", "Se ___ casas", "venden", "venden", "vende", "vendido", "vender"),
+		fill("Fill in the blank", "Le doy el libro → ___ lo doy. (le+lo)", "Se"),
+		tr("Translate this sentence", "How do you say this?", "¿Cómo se dice esto?"),
+		mc("one lives well here", "Aquí se ___ bien", "vive", "vive", "viven", "vivir", "vivido"),
+		speak("Blaze", "Aquí se habla español. Se lo doy a María."),
+	)
+	addVocab(db, l,
+		vw("se habla", "is spoken", "Aquí se habla inglés.", "English is spoken here.", finch),
+		vw("se vende", "is sold", "Se vende pan.", "Bread is sold.", "Cora"),
+		vw("se dice", "is said / one says", "¿Cómo se dice?", "How do you say it?", "Cora"),
+		vw("se lo doy", "I give it to him", "Se lo doy mañana.", "I'll give it to him tomorrow.", "Lumora"),
+		vw("se puede", "one can", "Aquí se puede fumar.", "You can smoke here.", "Lumora"),
+	)
+
+	// ── Discourse connectors ──
+	s = addSkill(db, u, "Conectores del Discurso", "sin embargo, por lo tanto, aunque.", "MessageCircle", "#F5A623", 46, 1246)
+	l = addLesson(db, s, "Conectores", 1, 24,
+		char("Cora", "Connect ideas: sin embargo (however), por lo tanto (therefore), aunque (although), además (besides)."),
+		mc("however", "Quiero ir. ___, no puedo.", "Sin embargo", "Sin embargo", "Por lo tanto", "Porque", "Además"),
+		mc("therefore", "Llueve, ___ no salgo.", "por lo tanto", "por lo tanto", "sin embargo", "aunque", "pero"),
+		fill("Fill in the blank", "___ es caro, lo compro. (although)", "Aunque"),
+		tr("Translate this sentence", "Besides, it's late", "Además, es tarde"),
+		mc("in spite of", "___ la lluvia, salí.", "A pesar de", "A pesar de", "Gracias a", "Sin", "Para"),
+		speak("Blaze", "Quiero ir; sin embargo, no tengo tiempo."),
+	)
+	addVocab(db, l,
+		vw("sin embargo", "however", "Es caro; sin embargo, es bueno.", "It's expensive; however, it's good.", "Cora"),
+		vw("por lo tanto", "therefore", "Llueve, por lo tanto me quedo.", "It's raining, therefore I stay.", "Cora"),
+		vw("aunque", "although", "Aunque llueve, salgo.", "Although it rains, I go out.", "Lumora"),
+		vw("además", "besides", "Además, es tarde.", "Besides, it's late.", "Lumora"),
+		vw("a pesar de", "in spite of", "A pesar de todo, vine.", "In spite of everything, I came.", "Riko"),
+	)
+
+	// ── Reported speech ──
+	s = addSkill(db, u, "Estilo Indirecto", "Dice que… Dijo que…", "Languages", "#6C3FC5", 47, 1288)
+	l = addLesson(db, s, "Estilo Indirecto", 1, 24,
+		char(finch, "Reporting speech: 'Estoy cansado' → Dice que está cansado. In the past: Dijo que estaba cansado."),
+		mc("He says he's tired", "Dice que ___ cansado", "está", "está", "estás", "estoy", "estaba"),
+		mc("She said she was coming", "Dijo que ___", "venía", "venía", "viene", "vendrá", "vino"),
+		fill("Fill in the blank", "'Tengo hambre' → Dice que ___ hambre.", "tiene"),
+		tr("Translate this sentence", "He says he can't", "Dice que no puede"),
+		mc("'Vendré' → Dijo que ___", "future → conditional", "vendría", "vendría", "vendrá", "viene", "venía"),
+		speak("Blaze", "María dice que está bien y que vendrá mañana."),
+	)
+	addVocab(db, l,
+		vw("dice que", "he/she says (that)", "Dice que está bien.", "He says he's fine.", finch),
+		vw("dijo que", "he/she said (that)", "Dijo que vendría.", "He said he'd come.", "Cora"),
+		vw("preguntó si", "asked whether", "Preguntó si venías.", "He asked if you were coming.", "Cora"),
+		vw("que estaba", "that he was", "Dijo que estaba cansado.", "He said he was tired.", "Lumora"),
+		vw("que vendría", "that he'd come", "Dijo que vendría.", "He said he'd come.", "Lumora"),
+	)
+
+	// ── Prepositional verbs ──
+	s = addSkill(db, u, "Verbos con Preposición", "pensar en, depender de, soñar con.", "Link2", "#06AECE", 48, 1330)
+	l = addLesson(db, s, "Verbos + Preposición", 1, 24,
+		char(finch, "Many verbs take a fixed preposition: pensar EN, depender DE, soñar CON, ayudar A."),
+		mc("I think about you", "Pienso ___ ti", "en", "en", "de", "con", "a"),
+		mc("it depends on the weather", "Depende ___ tiempo", "del", "del", "en el", "con el", "al"),
+		fill("Fill in the blank", "Sueño ___ viajar. (with)", "con"),
+		tr("Translate this sentence", "I help you to study", "Te ayudo a estudiar"),
+		mc("I remember (acordarse de)", "Me acuerdo ___ ti", "de", "de", "en", "con", "a"),
+		speak("Blaze", "Pienso en mi familia y sueño con viajar."),
+	)
+	addVocab(db, l,
+		vw("pensar en", "to think about", "Pienso en ti.", "I think about you.", finch),
+		vw("depender de", "to depend on", "Depende de ti.", "It depends on you.", "Cora"),
+		vw("soñar con", "to dream of", "Sueño con viajar.", "I dream of travelling.", "Cora"),
+		vw("ayudar a", "to help to", "Te ayudo a estudiar.", "I help you study.", "Lumora"),
+		vw("acordarse de", "to remember", "Me acuerdo de ti.", "I remember you.", "Lumora"),
+	)
+
+	// ── Writing (B1) ──
+	s = addSkill(db, u, "Escribir: Opinión y Carta", "150–200 words, argued.", "PenLine", "#00C2A8", 49, 1374)
+	l = addLesson(db, s, "Escribe tu Opinión", 1, 26,
+		char("Lumora", "B1 writing has structure: introduction, body, conclusion — and connectors to argue your point."),
+		mc("In my opinion…", "___, la tecnología ayuda.", "En mi opinión", "En mi opinión", "Sin embargo", "Por lo tanto", "Además"),
+		write("Write an opinion text (150–200 words): Are social media good or bad? Give reasons and examples.",
+			"En mi opinión, las redes sociales tienen ventajas y desventajas. Por un lado, nos permiten comunicarnos con amigos lejanos y compartir información rápidamente. Sin embargo, también pueden crear adicción y problemas de privacidad. Por ejemplo, muchos jóvenes pasan demasiado tiempo frente a la pantalla. Creo que es importante usarlas con moderación. En conclusión, las redes sociales son útiles si las usamos de forma responsable."),
+		write("Write a formal email of complaint about a hotel (around 150 words).",
+			"Estimado señor: Le escribo para quejarme de mi estancia en su hotel la semana pasada. La habitación estaba sucia y el aire acondicionado no funcionaba. Además, el servicio fue muy lento. Por estos motivos, solicito una compensación. Espero su pronta respuesta. Atentamente, Pablo Ruiz."),
+		mc("to conclude", "___, las redes son útiles.", "En conclusión", "En conclusión", "Por un lado", "Sin embargo", "Primero"),
+		fill("Fill in the blank", "Por un ___, es útil; por otro, es peligroso. (side)", "lado"),
+		speak("Blaze", "En mi opinión, es importante leer cada día."),
+	)
+	addVocab(db, l,
+		vw("en mi opinión", "in my opinion", "En mi opinión, sí.", "In my opinion, yes.", "Lumora"),
+		vw("por un lado", "on one hand", "Por un lado, es útil.", "On one hand, it's useful.", "Cora"),
+		vw("por otro lado", "on the other hand", "Por otro lado, es caro.", "On the other hand, it's costly.", "Cora"),
+		vw("en conclusión", "in conclusion", "En conclusión, sí.", "In conclusion, yes.", "Lumora"),
+		vw("creo que", "I think that", "Creo que es verdad.", "I think it's true.", "Riko"),
+	)
+
+	// ── Speaking (B1) ──
+	s = addSkill(db, u, "Hablar: Opina y Debate", "Narrate, give & defend opinions.", "MessageCircle", "#6C3FC5", 50, 1420)
+	l = addLesson(db, s, "Opina en Voz Alta", 1, 26,
+		char("Blaze", "Now express yourself: narrate, give opinions, agree and disagree — out loud!"),
+		speak("Lumora", "Cuando era niño, vivía en un pueblo pequeño y muy tranquilo."),
+		speak("Blaze", "En mi opinión, viajar es la mejor forma de aprender."),
+		speak("Blaze", "No creo que sea fácil, pero quiero que lo intentes."),
+		mc("I agree", "___ contigo.", "Estoy de acuerdo", "Estoy de acuerdo", "No estoy de acuerdo", "Depende", "Quizás"),
+		speak("Blaze", "Por un lado estoy de acuerdo, pero por otro lado tengo dudas."),
+		speak("Blaze", "Me gustaría viajar más, aunque ahora no tengo tiempo."),
+	)
+	addVocab(db, l,
+		vw("estoy de acuerdo", "I agree", "Estoy de acuerdo contigo.", "I agree with you.", "Blaze"),
+		vw("no estoy de acuerdo", "I disagree", "No estoy de acuerdo.", "I disagree.", "Cora"),
+		vw("en mi opinión", "in my opinion", "En mi opinión, no.", "In my opinion, no.", "Cora"),
+		vw("cuando era niño", "when I was a child", "Cuando era niño, jugaba.", "When I was a child, I played.", "Lumora"),
+		vw("me gustaría", "I would like", "Me gustaría ir.", "I'd like to go.", "Lumora"),
+	)
+
+	// B2: fluency, nuance and range — the imperfect subjunctive, every kind of
+	// conditional, adverbial subjunctive, advanced periphrasis, the passive,
+	// idioms and argued, register-aware discourse.
+	seedSpanishB2(db)
+}
+
+// seedSpanishB2 adds the upper-intermediate (B2) unit: imperfect subjunctive,
+// the three si-clause types, adverbial subjunctive, subjunctive vs indicative,
+// future/conditional perfect, verbal periphrasis, passive & causatives,
+// advanced connectors, full reported speech, idioms, and the productive B2
+// skills (essay writing & debate).
+func seedSpanishB2(db *gorm.DB) {
+	const u = "B2 · Avanzado"
+	finch := "Professor Finch"
+
+	// ── Imperfect subjunctive: forms ──
+	s := addSkill(db, u, "Imperfecto de Subjuntivo", "hablara / hablase, tuviera, fuera.", "Quote", "#FF5C5C", 51, 1460)
+	l := addLesson(db, s, "Formas del Pasado Subjuntivo", 1, 28,
+		char(finch, "Take the 3rd-person plural preterite, drop -ron, add -ra: hablaron→hablara, tuvieron→tuviera, fueron→fuera."),
+		mc("that I spoke (subj.)", "que yo ___", "hablara", "hablara", "hablaba", "hablé", "hable"),
+		mc("that you had (subj.)", "que tú ___", "tuvieras", "tuvieras", "tienes", "tuviste", "tengas"),
+		fill("Fill in the blank", "Quería que ___ a casa. (venir, tú - subj.)", "vinieras"),
+		tr("Translate this sentence", "as if it were true", "como si fuera verdad"),
+		mc("imperfect subj. of hacer (yo)", "que yo ___", "hiciera", "hiciera", "hago", "hice", "haga"),
+		speak("Blaze", "Ojalá tuviera más tiempo para viajar."),
+	)
+	addVocab(db, l,
+		vw("hablara", "(that) I/he spoke", "que yo hablara", "that I spoke", finch),
+		vw("tuviera", "(that) I/he had", "si tuviera dinero", "if I had money", "Cora"),
+		vw("fuera", "(that) were (ser/ir)", "como si fuera fácil", "as if it were easy", "Cora"),
+		vw("viniera", "(that) came", "quería que viniera", "I wanted him to come", "Lumora"),
+		vw("hiciera", "(that) did/made", "si hiciera sol", "if it were sunny", "Lumora"),
+	)
+
+	// ── Si clauses: unreal present ──
+	s = addSkill(db, u, "Condicional: Si + Imperfecto Subj.", "Si tuviera…, iría.", "Layers", "#6C3FC5", 52, 1510)
+	l = addLesson(db, s, "Hipótesis Improbable", 1, 28,
+		char(finch, "Unreal present: Si + imperfect subjunctive + conditional. Si tuviera tiempo, viajaría."),
+		mc("If I had money…", "Si ___ dinero, viajaría.", "tuviera", "tuviera", "tengo", "tendría", "tenía"),
+		mc("…I would travel", "Si tuviera dinero, ___.", "viajaría", "viajaría", "viajo", "viajara", "viajaré"),
+		fill("Fill in the blank", "Si ___ tú, estudiaría más. (ser)", "fueras"),
+		tr("Translate this sentence", "If I could, I would help you", "Si pudiera, te ayudaría"),
+		mc("If it rained, we'd stay", "Si ___, nos quedaríamos.", "lloviera", "lloviera", "llueve", "llovería", "llovía"),
+		speak("Blaze", "Si tuviera más tiempo, aprendería a tocar la guitarra."),
+	)
+	addVocab(db, l,
+		vw("si tuviera", "if I had", "Si tuviera tiempo…", "If I had time…", finch),
+		vw("viajaría", "I would travel", "Viajaría a Japón.", "I'd travel to Japan.", "Cora"),
+		vw("si pudiera", "if I could", "Si pudiera, iría.", "If I could, I'd go.", "Cora"),
+		vw("si fuera", "if I were", "Si fuera rico…", "If I were rich…", "Lumora"),
+		vw("ayudaría", "I would help", "Te ayudaría.", "I would help you.", "Lumora"),
+	)
+
+	// ── Si clauses: unreal past ──
+	s = addSkill(db, u, "Condicional Perfecto: Si hubiera…", "Si hubiera sabido, habría ido.", "Layers", "#FF5C5C", 53, 1560)
+	l = addLesson(db, s, "Hipótesis Imposible (pasado)", 1, 28,
+		char(finch, "Unreal past: Si + pluperfect subjunctive (hubiera + participle) + conditional perfect (habría + participle)."),
+		mc("If I had known…", "Si ___ sabido, habría ido.", "hubiera", "hubiera", "había", "habré", "habría"),
+		mc("…I would have gone", "Si hubiera sabido, ___ ido.", "habría", "habría", "hubiera", "había", "he"),
+		fill("Fill in the blank", "Si me lo ___ dicho, te habría ayudado. (haber, tú - subj.)", "hubieras"),
+		tr("Translate this sentence", "If you had studied, you would have passed", "Si hubieras estudiado, habrías aprobado"),
+		mc("conditional perfect of ir (yo)", "yo ___ ido", "habría", "habría", "hubiera", "había", "habré"),
+		speak("Blaze", "Si hubiera salido antes, no habría perdido el tren."),
+	)
+	addVocab(db, l,
+		vw("si hubiera sabido", "if I had known", "Si hubiera sabido, vengo.", "Had I known, I'd come.", finch),
+		vw("habría ido", "I would have gone", "Habría ido contigo.", "I'd have gone with you.", "Cora"),
+		vw("hubieras", "you had (subj.)", "Si hubieras venido…", "If you had come…", "Cora"),
+		vw("habrías", "you would have", "Habrías ganado.", "You would have won.", "Lumora"),
+		vw("habríamos", "we would have", "Habríamos llegado.", "We'd have arrived.", "Lumora"),
+	)
+
+	// ── Adverbial subjunctive ──
+	s = addSkill(db, u, "Subjuntivo en Adverbiales", "para que, sin que, antes de que.", "Quote", "#00C2A8", 54, 1610)
+	l = addLesson(db, s, "Conjunciones + Subjuntivo", 1, 28,
+		char(finch, "Some conjunctions always need the subjunctive: para que, sin que, antes de que, a menos que."),
+		mc("so that you learn", "Te lo explico para que ___", "aprendas", "aprendas", "aprendes", "aprender", "aprendiste"),
+		mc("without him noticing", "Salí sin que él ___ cuenta", "se diera", "se diera", "se da", "se dio", "se daba"),
+		fill("Fill in the blank", "Llámame antes de que ___. (salir, tú - subj.)", "salgas"),
+		tr("Translate this sentence", "unless it rains", "a menos que llueva"),
+		mc("future time → subjunctive", "Cuando ___, te llamo.", "llegue", "llegue", "llego", "llegué", "llegaré"),
+		speak("Blaze", "Trabajo mucho para que mi familia esté bien."),
+	)
+	addVocab(db, l,
+		vw("para que", "so that", "Estudio para que apruebes.", "I study so you pass.", finch),
+		vw("sin que", "without (subject)", "Entró sin que lo viéramos.", "He came in without us seeing.", "Cora"),
+		vw("antes de que", "before", "Antes de que llegues…", "Before you arrive…", "Cora"),
+		vw("a menos que", "unless", "No iré a menos que vengas.", "I won't go unless you come.", "Lumora"),
+		vw("cuando + subj.", "when (future)", "Cuando llegues, llámame.", "When you arrive, call me.", "Lumora"),
+	)
+
+	// ── Subjunctive vs indicative ──
+	s = addSkill(db, u, "Subjuntivo vs Indicativo", "aunque, el hecho de que, cuando.", "Quote", "#6C3FC5", 55, 1660)
+	l = addLesson(db, s, "¿Subjuntivo o Indicativo?", 1, 28,
+		char(finch, "Same word, two moods: 'aunque llueve' (fact) vs 'aunque llueva' (possibility). Indicative = real; subjunctive = unknown/valued."),
+		mc("although it's raining (fact)", "Aunque ___, salgo.", "llueve", "llueve", "llueva", "lloviera", "lloverá"),
+		mc("even if it rains (hypothetical)", "Aunque ___, saldré.", "llueva", "llueva", "llueve", "llovía", "llovió"),
+		fill("Fill in the blank", "Cuando ___ pequeño, jugaba. (ser - habitual past = indicative)", "era"),
+		tr("Translate this sentence", "I don't deny that it's difficult", "No niego que sea difícil"),
+		mc("the fact that you came (valued)", "El hecho de que ___ me alegra.", "vinieras", "vinieras", "viniste", "venías", "vendrás"),
+		speak("Blaze", "Aunque sea difícil, seguiré intentándolo."),
+	)
+	addVocab(db, l,
+		vw("aunque (+ind.)", "although (fact)", "Aunque llueve, salgo.", "Although it's raining, I go.", finch),
+		vw("aunque (+subj.)", "even if (maybe)", "Aunque llueva, iré.", "Even if it rains, I'll go.", "Cora"),
+		vw("el hecho de que", "the fact that", "El hecho de que vengas…", "The fact that you come…", "Cora"),
+		vw("no niego que", "I don't deny that", "No niego que sea duro.", "I don't deny it's hard.", "Lumora"),
+		vw("siempre que", "as long as", "Iré siempre que vengas.", "I'll go as long as you come.", "Lumora"),
+	)
+
+	// ── Future / conditional perfect ──
+	s = addSkill(db, u, "Futuro y Condicional Perfecto", "habré / habría + participio.", "Clock", "#17A3DD", 56, 1710)
+	l = addLesson(db, s, "Acciones Acabadas", 1, 28,
+		char(finch, "Future perfect (habré hablado) = will have done. Conditional perfect (habría hablado) = would have done. Also for guesses about the past."),
+		mc("I will have finished", "___ terminado", "Habré", "Habré", "Había", "Habría", "He"),
+		mc("they would have left", "___ salido", "Habrían", "Habrían", "Habrán", "Habían", "Han"),
+		fill("Fill in the blank", "Para mañana ya ___ llegado. (haber, ellos - future perf.)", "habrán"),
+		tr("Translate this sentence", "He must have arrived already (guess)", "Habrá llegado ya"),
+		mc("guess about the past", "¿Quién llamó? — ___ sido Ana.", "Habrá", "Habrá", "Había", "Hubo", "Ha"),
+		speak("Blaze", "Para el verano habré terminado el curso."),
+	)
+	addVocab(db, l,
+		vw("habré + part.", "I will have …", "Habré comido.", "I'll have eaten.", finch),
+		vw("habría + part.", "I would have …", "Habría ganado.", "I'd have won.", "Cora"),
+		vw("habrá", "must have (guess)", "Habrá salido.", "He must have left.", "Cora"),
+		vw("para entonces", "by then", "Para entonces habré vuelto.", "By then I'll have returned.", "Lumora"),
+		vw("ya", "already", "Ya habrán llegado.", "They'll have arrived already.", "Lumora"),
+	)
+
+	// ── Verbal periphrasis ──
+	s = addSkill(db, u, "Perífrasis Verbales", "llevar + gerundio, acabar de, volver a.", "Link2", "#F5A623", 57, 1760)
+	l = addLesson(db, s, "Perífrasis", 1, 28,
+		char(finch, "Useful constructions: llevar + gerund (duration), acabar de (just did), volver a (again), estar a punto de (about to), dejar de (stop)."),
+		mc("I've been studying for an hour", "___ una hora estudiando", "Llevo", "Llevo", "Hago", "Tengo", "Estoy"),
+		mc("I have just eaten", "___ de comer", "Acabo", "Acabo", "Vuelvo", "Dejo", "Llevo"),
+		fill("Fill in the blank", "___ a empezar de nuevo. (start again: volver)", "Vuelvo"),
+		tr("Translate this sentence", "I'm about to leave", "Estoy a punto de salir"),
+		mc("I stopped smoking", "___ de fumar", "Dejé", "Dejé", "Volví", "Acabé", "Llevé"),
+		speak("Blaze", "Llevo dos años estudiando español y acabo de aprobar un examen."),
+	)
+	addVocab(db, l,
+		vw("llevar + gerundio", "to have been …-ing", "Llevo un año aquí.", "I've been here a year.", finch),
+		vw("acabar de", "to have just", "Acabo de llegar.", "I've just arrived.", "Cora"),
+		vw("volver a", "to do again", "Vuelvo a intentarlo.", "I try again.", "Cora"),
+		vw("estar a punto de", "to be about to", "Está a punto de llover.", "It's about to rain.", "Lumora"),
+		vw("dejar de", "to stop …-ing", "Dejé de fumar.", "I stopped smoking.", "Lumora"),
+	)
+
+	// ── Passive & causatives ──
+	s = addSkill(db, u, "Voz Pasiva y Causativas", "ser + participio, hacer que.", "Hash", "#00C2A8", 58, 1810)
+	l = addLesson(db, s, "La Pasiva", 1, 28,
+		char(finch, "Passive with ser + participle (agreeing): La carta fue escrita por Ana. Causative: hacer que + subjunctive."),
+		mc("the house was built", "La casa ___ construida", "fue", "fue", "fui", "es", "está"),
+		mc("the letters were written", "Las cartas fueron ___", "escritas", "escritas", "escrito", "escritos", "escribir"),
+		fill("Fill in the blank", "El libro fue escrito ___ Cervantes. (by)", "por"),
+		tr("Translate this sentence", "He makes me study", "Hace que estudie"),
+		mc("passive 'se': Spanish is spoken", "___ habla español", "Se", "Se", "Es", "Está", "Le"),
+		speak("Blaze", "El cuadro fue pintado por un artista famoso."),
+	)
+	addVocab(db, l,
+		vw("ser + participio", "to be (passive)", "Fue construido en 1900.", "It was built in 1900.", finch),
+		vw("fue escrito", "was written", "Fue escrito por ella.", "It was written by her.", "Cora"),
+		vw("por", "by (agent)", "Hecho por expertos.", "Made by experts.", "Cora"),
+		vw("hacer que", "to make (someone)", "Hace que trabajemos.", "He makes us work.", "Lumora"),
+		vw("la pasiva refleja", "passive 'se'", "Se venden pisos.", "Flats are sold.", "Lumora"),
+	)
+
+	// ── Advanced connectors ──
+	s = addSkill(db, u, "Conectores Avanzados", "de hecho, en cambio, por consiguiente.", "MessageCircle", "#6C3FC5", 59, 1860)
+	l = addLesson(db, s, "Marcadores del Discurso", 1, 28,
+		char("Cora", "Sound natural and precise: de hecho (in fact), en cambio (on the other hand), por consiguiente (consequently), cabe destacar (it's worth noting)."),
+		mc("in fact", "Es caro; ___, es el mejor.", "de hecho", "de hecho", "en cambio", "sin embargo", "además"),
+		mc("on the other hand (contrast)", "Él es alto; ella, ___, es baja.", "en cambio", "en cambio", "de hecho", "por tanto", "además"),
+		fill("Fill in the blank", "Llueve; por ___, no salimos. (consequently: consiguiente)", "consiguiente"),
+		tr("Translate this sentence", "It's worth noting that it's free", "Cabe destacar que es gratis"),
+		mc("to sum up", "___, fue un éxito.", "En resumen", "En resumen", "De hecho", "En cambio", "Es decir"),
+		speak("Blaze", "El proyecto es difícil; no obstante, cabe destacar su importancia."),
+	)
+	addVocab(db, l,
+		vw("de hecho", "in fact", "De hecho, ya lo sabía.", "In fact, I already knew.", "Cora"),
+		vw("en cambio", "on the other hand", "Yo sí; él, en cambio, no.", "I do; he, however, doesn't.", "Cora"),
+		vw("por consiguiente", "consequently", "Por consiguiente, fallé.", "Consequently, I failed.", "Lumora"),
+		vw("cabe destacar", "it's worth noting", "Cabe destacar su esfuerzo.", "Worth noting his effort.", "Lumora"),
+		vw("no obstante", "nevertheless", "No obstante, lo intenté.", "Nevertheless, I tried.", "Riko"),
+	)
+
+	// ── Full reported speech ──
+	s = addSkill(db, u, "Estilo Indirecto Avanzado", "Tense back-shift in full.", "Languages", "#17A3DD", 60, 1910)
+	l = addLesson(db, s, "Transformar el Discurso", 1, 28,
+		char(finch, "When reporting in the past, tenses shift back: presente→imperfecto, indefinido→pluscuamperfecto, futuro→condicional, imperative→subjunctive."),
+		mc("'Vivo aquí' → Dijo que ___ allí", "present → imperfect", "vivía", "vivía", "vive", "vivió", "viviría"),
+		mc("'Llegué tarde' → Dijo que ___ tarde", "indefinido → pluperfect", "había llegado", "había llegado", "llegó", "llega", "llegaría"),
+		fill("Fill in the blank", "'Ven' → Me pidió que ___. (venir - subj.)", "viniera"),
+		tr("Translate this sentence", "She said she would come", "Dijo que vendría"),
+		mc("'¿Estás bien?' → Preguntó si ___ bien", "question back-shift", "estaba", "estaba", "estás", "estés", "estarás"),
+		speak("Blaze", "Me dijo que había estado enfermo y que vendría al día siguiente."),
+	)
+	addVocab(db, l,
+		vw("dijo que vivía", "said he lived", "Dijo que vivía solo.", "He said he lived alone.", finch),
+		vw("había llegado", "had arrived", "Dijo que había llegado.", "He said he had arrived.", "Cora"),
+		vw("me pidió que", "asked me to", "Me pidió que esperara.", "He asked me to wait.", "Cora"),
+		vw("al día siguiente", "the next day", "Vendría al día siguiente.", "He'd come the next day.", "Lumora"),
+		vw("aquel día", "that day", "Dijo que aquel día llovía.", "He said that day it rained.", "Lumora"),
+	)
+
+	// ── Idioms ──
+	s = addSkill(db, u, "Expresiones Idiomáticas", "echar de menos, dar igual, tener ganas.", "Sparkles", "#FF5C5C", 61, 1960)
+	l = addLesson(db, s, "Modismos Útiles", 1, 28,
+		char("Cora", "Sound like a native: echar de menos (to miss), dar igual (not to mind), tener ganas de (to look forward to), valer la pena (to be worth it)."),
+		mc("I miss my family", "___ de menos a mi familia", "Echo", "Echo", "Tengo", "Doy", "Hago"),
+		mc("I don't mind", "Me ___ igual", "da", "da", "tiene", "echa", "hace"),
+		fill("Fill in the blank", "Tengo ___ de verte. (look forward to: ganas)", "ganas"),
+		tr("Translate this sentence", "It's worth it", "Vale la pena"),
+		mc("to pull someone's leg", "tomar el ___", "pelo", "pelo", "café", "sol", "tiempo"),
+		speak("Blaze", "Echo de menos a mis amigos, pero valió la pena venir."),
+	)
+	addVocab(db, l,
+		vw("echar de menos", "to miss", "Te echo de menos.", "I miss you.", "Cora"),
+		vw("dar igual", "not to mind", "Me da igual.", "I don't mind.", "Cora"),
+		vw("tener ganas de", "to look forward to", "Tengo ganas de ir.", "I look forward to going.", "Lumora"),
+		vw("valer la pena", "to be worth it", "Vale la pena.", "It's worth it.", "Lumora"),
+		vw("tomar el pelo", "to pull one's leg", "Me tomas el pelo.", "You're teasing me.", "Riko"),
+	)
+
+	// ── Society & current affairs vocabulary ──
+	s = addSkill(db, u, "Sociedad y Actualidad", "Environment, politics, technology.", "BookOpen", "#06AECE", 62, 2010)
+	l = addLesson(db, s, "Temas de Actualidad", 1, 28,
+		char(finch, "B2 deals with abstract themes: el medio ambiente, la desigualdad, la globalización, el desarrollo."),
+		mc("climate change", "el cambio ___", "climático", "climático", "ambiente", "global", "natural"),
+		mc("unemployment", "el ___", "desempleo", "desempleo", "empleo", "trabajo", "sueldo"),
+		fill("Fill in the blank", "La ___ entre ricos y pobres crece. (inequality)", "desigualdad"),
+		tr("Translate this sentence", "We must protect the environment", "Hay que proteger el medio ambiente"),
+		mc("development", "el ___ sostenible", "desarrollo", "desarrollo", "desempleo", "destino", "deseo"),
+		speak("Blaze", "El cambio climático es uno de los mayores retos de hoy."),
+	)
+	addVocab(db, l,
+		vw("el medio ambiente", "the environment", "Cuidamos el medio ambiente.", "We care for the environment.", finch),
+		vw("el cambio climático", "climate change", "El cambio climático avanza.", "Climate change advances.", "Cora"),
+		vw("la desigualdad", "inequality", "Hay mucha desigualdad.", "There's much inequality.", "Cora"),
+		vw("el desempleo", "unemployment", "El desempleo bajó.", "Unemployment fell.", "Lumora"),
+		vw("el desarrollo", "development", "el desarrollo sostenible", "sustainable development", "Lumora"),
+	)
+
+	// ── Writing (B2) ──
+	s = addSkill(db, u, "Escribir: Ensayo y Carta Formal", "250+ words, register-aware.", "PenLine", "#00C2A8", 63, 2060)
+	l = addLesson(db, s, "Escribe un Ensayo", 1, 30,
+		char("Lumora", "B2 writing is structured and varied: a clear thesis, balanced arguments, formal register, rich connectors. 250+ words."),
+		mc("formal opening", "___ señor/a:", "Estimado/a", "Estimado/a", "Hola", "Querido", "Oye"),
+		write("Write an argumentative essay (250+ words): 'Is remote work better than office work?' Present both sides and your conclusion.",
+			"El teletrabajo se ha convertido en un tema de debate. Por un lado, ofrece flexibilidad y ahorra tiempo de transporte; de hecho, muchos trabajadores afirman ser más productivos en casa. Por otro lado, puede provocar aislamiento y dificultar la separación entre la vida laboral y personal. Cabe destacar que no todos los empleos permiten esta modalidad. En mi opinión, lo ideal sería un modelo híbrido que combine las ventajas de ambos. En conclusión, el teletrabajo no es mejor ni peor, sino una opción que depende de cada persona y profesión."),
+		write("Write a formal letter to a newspaper (around 200 words) giving your opinion on a social issue.",
+			"Estimado director: Le escribo para expresar mi preocupación por la contaminación en nuestra ciudad. A pesar de las campañas, el tráfico sigue aumentando y, por consiguiente, la calidad del aire empeora. Considero que las autoridades deberían fomentar el transporte público y crear más zonas verdes. No obstante, la responsabilidad también es ciudadana. Atentamente, Pablo Ruiz."),
+		mc("formal connector", "___, cabe destacar su importancia.", "Asimismo", "Asimismo", "Oye", "Vale", "Pues"),
+		fill("Fill in the blank", "Por un lado…; por otro ___ . (side)", "lado"),
+		speak("Blaze", "En conclusión, lo ideal sería un modelo híbrido."),
+	)
+	addVocab(db, l,
+		vw("Estimado/a", "Dear (formal)", "Estimado director:", "Dear editor:", "Lumora"),
+		vw("asimismo", "likewise / also", "Asimismo, propongo…", "Likewise, I propose…", "Cora"),
+		vw("considero que", "I consider that", "Considero que es clave.", "I consider it key.", "Cora"),
+		vw("lo ideal sería", "the ideal would be", "Lo ideal sería un acuerdo.", "The ideal would be a deal.", "Lumora"),
+		vw("en definitiva", "ultimately", "En definitiva, depende.", "Ultimately, it depends.", "Lumora"),
+	)
+
+	// ── Speaking (B2) ──
+	s = addSkill(db, u, "Hablar: Debate y Argumentación", "Defend a position fluently.", "MessageCircle", "#6C3FC5", 64, 2110)
+	l = addLesson(db, s, "Defiende tu Postura", 1, 30,
+		char("Blaze", "Debate time! State your view, support it, concede a point, and rebut — all out loud."),
+		speak("Lumora", "Desde mi punto de vista, la educación es la base del progreso."),
+		speak("Blaze", "Es cierto que tiene desventajas; sin embargo, las ventajas son mayores."),
+		speak("Blaze", "Si tuviéramos más recursos, podríamos resolver el problema."),
+		mc("to concede a point", "___ razón, pero…", "Tienes", "Tienes", "Haces", "Das", "Eres"),
+		speak("Blaze", "Por un lado entiendo tu postura; por otro, no la comparto del todo."),
+		speak("Blaze", "En definitiva, creo que deberíamos buscar un punto intermedio."),
+	)
+	addVocab(db, l,
+		vw("desde mi punto de vista", "from my point of view", "Desde mi punto de vista, sí.", "From my view, yes.", "Blaze"),
+		vw("es cierto que", "it's true that", "Es cierto que es caro.", "It's true it's expensive.", "Cora"),
+		vw("tienes razón", "you're right", "Tienes razón en parte.", "You're partly right.", "Cora"),
+		vw("no la comparto", "I don't share it", "No comparto esa idea.", "I don't share that idea.", "Lumora"),
+		vw("un punto intermedio", "a middle ground", "Busquemos un punto intermedio.", "Let's find middle ground.", "Lumora"),
+	)
+
+	// C1: sophistication, stylistic range and nuance — total subjunctive
+	// command, mixed conditionals, advanced relatives, the neuter 'lo',
+	// register shifts, word formation, idioms/proverbs and academic discourse.
+	seedSpanishC1(db)
+}
+
+// seedSpanishC1 adds the advanced (C1) unit: full subjunctive across tenses,
+// mixed conditionals, indicative/subjunctive nuance, advanced relatives, the
+// neuter 'lo' and nominalisation, advanced periphrasis, reformulation
+// connectors, word formation, register, idioms & proverbs, and the productive
+// C1 skills (argumentative essay & formal exposition).
+func seedSpanishC1(db *gorm.DB) {
+	const u = "C1 · Superior"
+	finch := "Professor Finch"
+
+	// ── Subjunctive: full command (perfect subjunctive) ──
+	s := addSkill(db, u, "Subjuntivo: Dominio Total", "haya hablado, hubiera hablado.", "Quote", "#FF5C5C", 65, 2160)
+	l := addLesson(db, s, "Todos los Subjuntivos", 1, 30,
+		char(finch, "Master all four: presente (hable), perfecto (haya hablado), imperfecto (hablara), pluscuamperfecto (hubiera hablado)."),
+		mc("I hope he has arrived", "Espero que ___ llegado", "haya", "haya", "ha", "había", "habrá"),
+		mc("I doubted he had come", "Dudaba que ___ venido", "hubiera", "hubiera", "había", "ha", "habría"),
+		fill("Fill in the blank", "Me alegro de que ___ aprobado. (haber, tú - perfect subj.)", "hayas"),
+		tr("Translate this sentence", "as if nothing had happened", "como si nada hubiera pasado"),
+		mc("present subj. after 'cuando' (future)", "Cuando ___ tiempo, te aviso.", "tenga", "tenga", "tengo", "tendré", "tenía"),
+		speak("Blaze", "Me alegra que hayas venido y ojalá hubiéramos hablado antes."),
+	)
+	addVocab(db, l,
+		vw("haya hablado", "(that) I have spoken", "que yo haya hablado", "that I have spoken", finch),
+		vw("hubiera hablado", "(that) I had spoken", "como si hubiera hablado", "as if I had spoken", "Cora"),
+		vw("como si", "as if (+ past subj.)", "Habla como si supiera.", "He talks as if he knew.", "Cora"),
+		vw("me alegro de que", "I'm glad that", "Me alegro de que vengas.", "I'm glad you're coming.", "Lumora"),
+		vw("ojalá hubiera", "I wish I had", "Ojalá hubiera ido.", "I wish I had gone.", "Lumora"),
+	)
+
+	// ── Mixed conditionals ──
+	s = addSkill(db, u, "Condicionales Mixtas", "Si hubiera…, ahora …ría.", "Layers", "#6C3FC5", 66, 2220)
+	l = addLesson(db, s, "Hipótesis Mixtas", 1, 30,
+		char(finch, "Past condition with present result: Si hubiera estudiado medicina, ahora sería médico."),
+		mc("If I had saved (then)…", "Si ___ ahorrado, ahora tendría casa.", "hubiera", "hubiera", "había", "habría", "tuviera"),
+		mc("…now I would have a house", "Si hubiera ahorrado, ahora ___ casa.", "tendría", "tendría", "tengo", "tuviera", "habría tenido"),
+		fill("Fill in the blank", "Si me ___ hecho caso, no estarías así. (haber, tú - subj.)", "hubieras"),
+		tr("Translate this sentence", "If I were taller, I would have been a model", "Si fuera más alto, habría sido modelo"),
+		mc("present condition, past result", "Si ___ responsable, no habrías fallado.", "fueras", "fueras", "eres", "serías", "fuiste"),
+		speak("Blaze", "Si hubiera nacido en España, ahora hablaría español perfecto."),
+	)
+	addVocab(db, l,
+		vw("si hubiera …, ahora …ría", "had I …, now I'd …", "Si hubiera estudiado, ahora trabajaría.", "Had I studied, I'd work now.", finch),
+		vw("ahora sería", "now I would be", "Ahora sería médico.", "I'd be a doctor now.", "Cora"),
+		vw("de haberlo sabido", "had I known", "De haberlo sabido, vengo.", "Had I known, I'd come.", "Cora"),
+		vw("en tu lugar", "in your place", "En tu lugar, lo haría.", "In your place, I'd do it.", "Lumora"),
+		vw("a no ser que", "unless", "Iré, a no ser que llueva.", "I'll go, unless it rains.", "Lumora"),
+	)
+
+	// ── Indicative vs subjunctive nuance ──
+	s = addSkill(db, u, "Indicativo/Subjuntivo: Matices", "probability, concession, attitude.", "Quote", "#00C2A8", 67, 2280)
+	l = addLesson(db, s, "Matices del Modo", 1, 30,
+		char(finch, "The mood changes the meaning: 'quizás viene' (likely) vs 'quizás venga' (less sure); 'el hecho de que' values, not states."),
+		mc("probably (more certain)", "Quizás ___ hoy. (likely → indicative)", "viene", "viene", "venga", "viniera", "vendría"),
+		mc("possibly (less certain)", "Tal vez ___ mañana. (doubt → subjunctive)", "venga", "venga", "viene", "vino", "vendrá"),
+		fill("Fill in the blank", "No es que no ___, es que no puedo. (querer - subj.)", "quiera"),
+		tr("Translate this sentence", "The fact that he lied bothers me", "El hecho de que mintiera me molesta"),
+		mc("certainty → indicative", "Es evidente que ___ verdad.", "es", "es", "sea", "fuera", "haya sido"),
+		speak("Blaze", "No es que sea difícil, es que requiere práctica."),
+	)
+	addVocab(db, l,
+		vw("quizás / tal vez", "maybe", "Tal vez venga.", "Maybe he'll come.", finch),
+		vw("no es que", "it's not that", "No es que no quiera.", "It's not that I don't want to.", "Cora"),
+		vw("el hecho de que", "the fact that", "El hecho de que mienta…", "The fact that he lies…", "Cora"),
+		vw("es evidente que", "it's clear that", "Es evidente que sí.", "It's clearly so.", "Lumora"),
+		vw("siempre y cuando", "provided that", "Iré siempre y cuando vengas.", "I'll go provided you come.", "Lumora"),
+	)
+
+	// ── Advanced relatives ──
+	s = addSkill(db, u, "Relativos Avanzados", "el cual, lo cual, cuyo.", "Link2", "#17A3DD", 68, 2340)
+	l = addLesson(db, s, "El cual, Lo cual", 1, 30,
+		char(finch, "After prepositions or for clarity, use el/la/los/las cual(es). 'lo cual' refers to a whole idea. 'cuyo' = whose."),
+		mc("the reason for which I came", "la razón por la ___ vine", "cual", "cual", "que", "quien", "cuyo"),
+		mc("…, which annoyed me", "No vino, ___ me molestó.", "lo cual", "lo cual", "el cual", "que", "cuyo"),
+		fill("Fill in the blank", "El autor ___ novela leí es famoso. (whose)", "cuya"),
+		tr("Translate this sentence", "the house in which I grew up", "la casa en la cual crecí"),
+		mc("everything (that), which → neuter", "Hizo lo que pudo, ___ fue suficiente.", "lo cual", "lo cual", "el cual", "la cual", "que"),
+		speak("Blaze", "Llegó tarde, lo cual no me sorprendió en absoluto."),
+	)
+	addVocab(db, l,
+		vw("el cual / la cual", "which (after prep.)", "el motivo por el cual…", "the reason for which…", finch),
+		vw("lo cual", "which (whole idea)", "Se fue, lo cual me dolió.", "He left, which hurt me.", "Cora"),
+		vw("cuyo / cuya", "whose", "el libro cuyo autor…", "the book whose author…", "Cora"),
+		vw("quienes", "those who", "Quienes estudian, aprueban.", "Those who study, pass.", "Lumora"),
+		vw("en el cual", "in which", "el año en el cual nací", "the year in which I was born", "Lumora"),
+	)
+
+	// ── Neuter 'lo' & nominalisation ──
+	s = addSkill(db, u, "Lo Neutro y Nominalización", "lo bueno, lo que, lo de.", "Hash", "#F5A623", 69, 2400)
+	l = addLesson(db, s, "El Uso de 'Lo'", 1, 30,
+		char(finch, "'lo' + adjective abstracts a quality (lo importante = the important thing). 'lo que' = what. 'lo de' = the matter of."),
+		mc("the good thing", "___ bueno es que vino.", "Lo", "Lo", "El", "La", "Los"),
+		mc("what matters", "___ que importa es la salud.", "Lo", "Lo", "El", "Que", "La"),
+		fill("Fill in the blank", "___ de ayer fue increíble. (the matter of)", "Lo"),
+		tr("Translate this sentence", "the best thing about the trip", "lo mejor del viaje"),
+		mc("how + adjective (exclamation)", "No sabes ___ difícil que es.", "lo", "lo", "el", "que", "cuán"),
+		speak("Blaze", "Lo importante es disfrutar; lo demás no importa tanto."),
+	)
+	addVocab(db, l,
+		vw("lo bueno", "the good thing", "Lo bueno es que aprendí.", "The good thing is I learned.", finch),
+		vw("lo que", "what", "Lo que dices es cierto.", "What you say is true.", "Cora"),
+		vw("lo de", "the matter of", "Lo de ayer fue raro.", "Yesterday's thing was odd.", "Cora"),
+		vw("lo mejor", "the best (thing)", "Lo mejor del día.", "The best of the day.", "Lumora"),
+		vw("lo demás", "the rest", "Lo demás no importa.", "The rest doesn't matter.", "Lumora"),
+	)
+
+	// ── Advanced periphrasis ──
+	s = addSkill(db, u, "Perífrasis Avanzadas", "ir/seguir/llevar + gerundio.", "Link2", "#FF5C5C", 70, 2460)
+	l = addLesson(db, s, "Matices con Perífrasis", 1, 30,
+		char(finch, "Nuance through periphrasis: ir + gerund (gradual), seguir + gerund (still), llevar + gerund (duration), tener + participle (result)."),
+		mc("I'm gradually understanding", "Voy ___ poco a poco.", "entendiendo", "entendiendo", "entender", "entendido", "entiendo"),
+		mc("I'm still working", "Sigo ___ aquí.", "trabajando", "trabajando", "trabajar", "trabajado", "trabajo"),
+		fill("Fill in the blank", "___ tres horas esperando. (llevar, yo - duration)", "Llevo"),
+		tr("Translate this sentence", "I have three chapters written", "Tengo tres capítulos escritos"),
+		mc("he ended up accepting", "Acabó ___ la oferta.", "aceptando", "aceptando", "aceptar", "aceptado", "acepta"),
+		speak("Blaze", "Llevo años estudiando y voy mejorando poco a poco."),
+	)
+	addVocab(db, l,
+		vw("ir + gerundio", "to gradually …", "Voy aprendiendo.", "I'm gradually learning.", finch),
+		vw("seguir + gerundio", "to still …", "Sigo viviendo aquí.", "I still live here.", "Cora"),
+		vw("llevar + gerundio", "to have been …-ing", "Llevo años aquí.", "I've been here for years.", "Cora"),
+		vw("tener + participio", "to have (done)", "Tengo hecho el trabajo.", "I have the work done.", "Lumora"),
+		vw("acabar + gerundio", "to end up …-ing", "Acabó aceptando.", "He ended up accepting.", "Lumora"),
+	)
+
+	// ── Reformulation connectors ──
+	s = addSkill(db, u, "Conectores y Reformulación", "en resumidas cuentas, por ende.", "MessageCircle", "#06AECE", 71, 2520)
+	l = addLesson(db, s, "Reformular y Concluir", 1, 30,
+		char("Cora", "Refine your discourse: en resumidas cuentas (in short), dicho de otro modo (in other words), por ende (hence), cabe señalar (it should be noted)."),
+		mc("in short", "___, fue un éxito rotundo.", "En resumidas cuentas", "En resumidas cuentas", "Por ejemplo", "En cambio", "De hecho"),
+		mc("in other words", "Es complejo; ___, no es fácil.", "dicho de otro modo", "dicho de otro modo", "por ende", "es decir que no", "sin embargo"),
+		fill("Fill in the blank", "Llueve; por ___, suspenden el evento. (hence)", "ende"),
+		tr("Translate this sentence", "It should be noted that it's optional", "Cabe señalar que es opcional"),
+		mc("that is to say", "Es bilingüe, ___, habla dos lenguas.", "es decir", "es decir", "no obstante", "en cambio", "a pesar de"),
+		speak("Blaze", "En resumidas cuentas, dicho de otro modo, mereció la pena."),
+	)
+	addVocab(db, l,
+		vw("en resumidas cuentas", "in short", "En resumidas cuentas, sí.", "In short, yes.", "Cora"),
+		vw("dicho de otro modo", "in other words", "Dicho de otro modo, no.", "In other words, no.", "Cora"),
+		vw("por ende", "hence", "Falló; por ende, repite.", "He failed; hence, he repeats.", "Lumora"),
+		vw("cabe señalar", "it should be noted", "Cabe señalar el riesgo.", "The risk should be noted.", "Lumora"),
+		vw("es decir", "that is to say", "Es tarde, es decir, vamos.", "It's late, that is, let's go.", "Riko"),
+	)
+
+	// ── Word formation ──
+	s = addSkill(db, u, "Formación de Palabras", "prefixes, suffixes, derivation.", "Languages", "#6C3FC5", 72, 2580)
+	l = addLesson(db, s, "Derivación y Afijos", 1, 30,
+		char(finch, "Build words: des-/in- (negation), re- (again); -ción/-dad/-eza (nouns); -oso/-able (adjectives); -ón (augmentative), -ito (diminutive)."),
+		mc("opposite of 'ordenado'", "des___", "ordenado", "ordenado", "ordenar", "orden", "ordenando"),
+		mc("noun from 'feliz'", "la ___", "felicidad", "felicidad", "felizmente", "felizar", "feliza"),
+		fill("Fill in the blank", "Casa grande → un cas___ (augmentative)", "ón"),
+		tr("Translate this sentence", "It's unforgettable", "Es inolvidable"),
+		mc("adjective from 'cuidado'", "una persona ___", "cuidadosa", "cuidadosa", "cuidar", "cuidado", "cuidadamente"),
+		speak("Blaze", "La rapidez y la amabilidad del servicio fueron increíbles."),
+	)
+	addVocab(db, l,
+		vw("des-", "un-/dis- (prefix)", "deshacer, desordenado", "to undo, untidy", finch),
+		vw("-ción", "-tion (noun suffix)", "la educación", "education", "Cora"),
+		vw("-dad", "-ity (noun suffix)", "la felicidad", "happiness", "Cora"),
+		vw("-mente", "-ly (adverb)", "rápidamente", "quickly", "Lumora"),
+		vw("-ito / -ón", "diminutive / augmentative", "perrito, casón", "little dog, big house", "Lumora"),
+	)
+
+	// ── Register ──
+	s = addSkill(db, u, "Registro: Formal y Coloquial", "Match the situation.", "Quote", "#17A3DD", 73, 2640)
+	l = addLesson(db, s, "Cambiar de Registro", 1, 30,
+		char("Cora", "C1 means shifting register: formal (le agradezco, ¿sería tan amable?) vs colloquial (mola, qué guay, vale, tío)."),
+		mc("colloquial 'cool'", "¡Qué ___!", "guay", "guay", "amable", "estimado", "cordial"),
+		mc("formal request", "¿___ tan amable de ayudarme?", "Sería", "Sería", "Eres", "Estás", "Vas"),
+		fill("Fill in the blank", "Formal thanks: Le ___ su atención. (agradecer)", "agradezco"),
+		tr("Translate this sentence", "It's great! (colloquial)", "¡Mola mucho!"),
+		mc("informal 'okay'", "— ¿Vamos? — ___.", "Vale", "Vale", "Estimado", "Atentamente", "Le ruego"),
+		speak("Blaze", "Con amigos digo '¡qué guay!'; en el trabajo, 'me parece excelente'."),
+	)
+	addVocab(db, l,
+		vw("le agradezco", "I thank you (formal)", "Le agradezco su ayuda.", "I thank you for your help.", finch),
+		vw("¿sería tan amable?", "would you be so kind?", "¿Sería tan amable?", "Would you be so kind?", "Cora"),
+		vw("mola / qué guay", "it's cool (colloq.)", "¡Mola mucho!", "It's really cool!", "Cora"),
+		vw("vale", "okay (colloq.)", "Vale, de acuerdo.", "Okay, agreed.", "Lumora"),
+		vw("le ruego", "I beg/request (formal)", "Le ruego disculpas.", "I beg your pardon.", "Lumora"),
+	)
+
+	// ── Idioms & proverbs ──
+	s = addSkill(db, u, "Modismos y Refranes", "no hay mal que por bien no venga.", "Sparkles", "#FF5C5C", 74, 2700)
+	l = addLesson(db, s, "Refranes y Frases Hechas", 1, 30,
+		char("Cora", "Proverbs carry culture: 'No hay mal que por bien no venga', 'Más vale tarde que nunca', 'A quien madruga, Dios le ayuda'."),
+		mc("every cloud has a silver lining", "No hay mal que por bien no ___", "venga", "venga", "viene", "vino", "vendrá"),
+		mc("better late than never", "Más vale tarde que ___", "nunca", "nunca", "siempre", "ahora", "pronto"),
+		fill("Fill in the blank", "A quien ___ , Dios le ayuda. (rises early)", "madruga"),
+		tr("Translate this sentence", "to cost an arm and a leg", "costar un ojo de la cara"),
+		mc("to be a piece of cake", "Es pan ___", "comido", "comido", "tostado", "duro", "rico"),
+		speak("Blaze", "Más vale tarde que nunca: por fin aprobé el examen."),
+	)
+	addVocab(db, l,
+		vw("no hay mal que…", "every cloud has a silver lining", "No hay mal que por bien no venga.", "Every cloud has a silver lining.", "Cora"),
+		vw("más vale tarde que nunca", "better late than never", "Más vale tarde que nunca.", "Better late than never.", "Cora"),
+		vw("costar un ojo de la cara", "to cost a fortune", "Cuesta un ojo de la cara.", "It costs a fortune.", "Lumora"),
+		vw("ser pan comido", "to be a piece of cake", "Es pan comido.", "It's a piece of cake.", "Lumora"),
+		vw("estar en las nubes", "to have one's head in the clouds", "Estás en las nubes.", "You're daydreaming.", "Riko"),
+	)
+
+	// ── Impersonal / advanced passive ──
+	s = addSkill(db, u, "Impersonalidad y Pasiva", "se dice que, uno, voz pasiva.", "Hash", "#00C2A8", 75, 2760)
+	l = addLesson(db, s, "Construcciones Impersonales", 1, 30,
+		char(finch, "Express generality: se dice que (it's said), uno nunca sabe (one never knows), and the full passive for formal style."),
+		mc("it's said that…", "___ dice que es bueno.", "Se", "Se", "Le", "Lo", "Uno"),
+		mc("one never knows", "___ nunca sabe.", "Uno", "Uno", "Se", "Le", "Tú"),
+		fill("Fill in the blank", "La ley fue ___ por el parlamento. (approve, fem.)", "aprobada"),
+		tr("Translate this sentence", "Mistakes were made", "Se cometieron errores"),
+		mc("people say (impersonal 3rd pl.)", "___ que va a llover.", "Dicen", "Dicen", "Dice", "Se dicen", "Digo"),
+		speak("Blaze", "Se dice que la práctica hace al maestro."),
+	)
+	addVocab(db, l,
+		vw("se dice que", "it's said that", "Se dice que es difícil.", "It's said it's hard.", finch),
+		vw("uno", "one (impersonal)", "Uno nunca sabe.", "One never knows.", "Cora"),
+		vw("fue aprobada", "was approved", "La ley fue aprobada.", "The law was approved.", "Cora"),
+		vw("se cometieron", "were committed", "Se cometieron errores.", "Mistakes were made.", "Lumora"),
+		vw("dicen que", "they say that", "Dicen que es genial.", "They say it's great.", "Lumora"),
+	)
+
+	// ── Culture, art & current affairs vocabulary ──
+	s = addSkill(db, u, "Léxico: Cultura y Actualidad", "arts, media, abstract terms.", "BookOpen", "#F5A623", 76, 2820)
+	l = addLesson(db, s, "Cultura y Sociedad", 1, 30,
+		char(finch, "C1 vocabulary is precise and abstract: el patrimonio, la trama, la crítica, el prejuicio, la libertad de expresión."),
+		mc("heritage", "el ___ cultural", "patrimonio", "patrimonio", "prejuicio", "estreno", "guion"),
+		mc("the plot (of a film/book)", "la ___ de la novela", "trama", "trama", "crítica", "escena", "obra"),
+		fill("Fill in the blank", "La libertad de ___ es un derecho. (expression)", "expresión"),
+		tr("Translate this sentence", "The film received good reviews", "La película recibió buenas críticas"),
+		mc("prejudice", "un ___ social", "prejuicio", "prejuicio", "patrimonio", "guion", "ensayo"),
+		speak("Blaze", "La trama de la novela critica los prejuicios de la sociedad."),
+	)
+	addVocab(db, l,
+		vw("el patrimonio", "heritage", "patrimonio de la humanidad", "world heritage", finch),
+		vw("la trama", "the plot", "La trama es compleja.", "The plot is complex.", "Cora"),
+		vw("la crítica", "review / criticism", "Buenas críticas.", "Good reviews.", "Cora"),
+		vw("el prejuicio", "prejudice", "Hay muchos prejuicios.", "There are many prejudices.", "Lumora"),
+		vw("la libertad de expresión", "freedom of speech", "Defiendo la libertad de expresión.", "I defend free speech.", "Lumora"),
+	)
+
+	// ── Writing (C1) ──
+	s = addSkill(db, u, "Escribir: Ensayo Argumentativo", "300+ words, cohesive & precise.", "PenLine", "#00C2A8", 77, 2880)
+	l = addLesson(db, s, "Ensayo Avanzado", 1, 32,
+		char("Lumora", "C1 writing is cohesive and nuanced: a thesis, developed arguments, counter-arguments, refined connectors and varied syntax. 300+ words."),
+		mc("to introduce a thesis", "___, conviene definir el problema.", "En primer lugar", "En primer lugar", "Vale", "Oye", "Total"),
+		write("Write an argumentative essay (300+ words): 'Should artificial intelligence be regulated?' Develop arguments, counter-arguments and a reasoned conclusion.",
+			"La irrupción de la inteligencia artificial ha transformado nuestra sociedad a un ritmo vertiginoso. En primer lugar, conviene señalar sus innegables beneficios: optimiza procesos, impulsa la investigación médica y facilita tareas cotidianas. No obstante, este avance plantea serios dilemas éticos, como la pérdida de empleos o el uso indebido de datos personales. Hay quienes sostienen que regularla frenaría la innovación; sin embargo, la ausencia de límites podría tener consecuencias imprevisibles. Dicho de otro modo, no se trata de prohibir, sino de establecer un marco que garantice un desarrollo responsable. En definitiva, considero que una regulación equilibrada resulta imprescindible para que la tecnología esté al servicio de las personas y no al revés."),
+		write("Write a formal report (around 250 words) summarising a problem in your city and proposing solutions.",
+			"El presente informe analiza el problema del tráfico en el centro de la ciudad. En los últimos años, la congestión ha aumentado considerablemente, lo cual repercute en la calidad del aire y en la salud de los ciudadanos. Por un lado, cabe destacar la falta de transporte público eficiente; por otro, el uso excesivo del vehículo privado. Como solución, se propone ampliar la red de metro y crear carriles bici. Asimismo, sería conveniente fomentar el teletrabajo. En conclusión, solo una estrategia integral permitirá revertir esta tendencia."),
+		mc("nuanced concession", "Hay quienes opinan lo contrario; ___, no les falta razón.", "de hecho", "de hecho", "vale", "total", "oye"),
+		fill("Fill in the blank", "En ___ lugar, conviene matizar. (first)", "primer"),
+		speak("Blaze", "En definitiva, una regulación equilibrada resulta imprescindible."),
+	)
+	addVocab(db, l,
+		vw("en primer lugar", "firstly", "En primer lugar, definamos.", "Firstly, let's define.", "Lumora"),
+		vw("conviene señalar", "it's worth pointing out", "Conviene señalar el riesgo.", "Worth pointing out the risk.", "Cora"),
+		vw("hay quienes sostienen", "some maintain", "Hay quienes sostienen eso.", "Some maintain that.", "Cora"),
+		vw("no se trata de", "it's not about", "No se trata de prohibir.", "It's not about banning.", "Lumora"),
+		vw("resulta imprescindible", "it's essential", "Resulta imprescindible actuar.", "It's essential to act.", "Lumora"),
+	)
+
+	// ── Speaking (C1) ──
+	s = addSkill(db, u, "Hablar: Exposición y Debate", "Present and argue with nuance.", "MessageCircle", "#6C3FC5", 78, 2940)
+	l = addLesson(db, s, "Expón y Argumenta", 1, 32,
+		char("Blaze", "Deliver a clear, nuanced argument: frame it, develop it, concede, rebut and conclude — fluently."),
+		speak("Lumora", "El tema que voy a tratar suscita un intenso debate en la actualidad."),
+		speak("Blaze", "Si bien es cierto que existen riesgos, los beneficios los superan con creces."),
+		speak("Blaze", "Cabe matizar que no todos los casos son iguales."),
+		mc("to nuance a claim", "___ que matizar esa afirmación.", "Habría", "Habría", "Hace", "Tiene", "Va"),
+		speak("Blaze", "Dicho esto, no comparto del todo esa visión tan pesimista."),
+		speak("Blaze", "En resumidas cuentas, la solución pasa por el equilibrio."),
+	)
+	addVocab(db, l,
+		vw("suscitar debate", "to spark debate", "El tema suscita debate.", "The topic sparks debate.", "Blaze"),
+		vw("si bien es cierto que", "while it's true that", "Si bien es cierto que…", "While it's true that…", "Cora"),
+		vw("cabe matizar", "it should be nuanced", "Cabe matizar esto.", "This should be nuanced.", "Cora"),
+		vw("dicho esto", "that said", "Dicho esto, discrepo.", "That said, I disagree.", "Lumora"),
+		vw("superar con creces", "to far exceed", "Los superan con creces.", "They far exceed them.", "Lumora"),
+	)
+
+	// C2: mastery — stylistic precision, rhetoric, register virtuosity,
+	// regional awareness and near-native idiomaticity. The pinnacle of the
+	// course.
+	seedSpanishC2(db)
+}
+
+// seedSpanishC2 adds the mastery (C2) unit: subtle mood/aspect, literary tenses,
+// cleft sentences & emphasis, complex subordination, hedging, reported speech
+// with attitude, fine ser/estar–por/para–article use, rhetorical devices,
+// regional variation, advanced idioms, register virtuosity, specialised lexis,
+// and the productive C2 skills (critical essay & high-level oratory).
+func seedSpanishC2(db *gorm.DB) {
+	const u = "C2 · Maestría"
+	finch := "Professor Finch"
+
+	// ── Subtle mood ──
+	s := addSkill(db, u, "Matices del Modo", "Subjective vs factual shades.", "Quote", "#FF5C5C", 79, 3000)
+	l := addLesson(db, s, "Indicativo o Subjuntivo (sutil)", 1, 32,
+		char(finch, "At C2 the mood conveys attitude: 'el que diga eso miente' (whoever may say) vs 'el que dice eso miente' (the one who says)."),
+		mc("whoever says that (unknown)", "El que ___ eso, miente.", "diga", "diga", "dice", "decía", "dijo"),
+		mc("not that I doubt it, but…", "No es que lo ___, pero…", "dude", "dude", "dudo", "dudaba", "dudaría"),
+		fill("Fill in the blank", "Por mucho que ___, no lo lograrás. (insistir, tú - subj.)", "insistas"),
+		tr("Translate this sentence", "Say what you may, I won't change my mind", "Digas lo que digas, no cambiaré de idea"),
+		mc("hope tinged with doubt", "Que yo ___, nunca falló.", "sepa", "sepa", "sé", "sabía", "sabré"),
+		speak("Blaze", "Digan lo que digan, mantendré mi postura."),
+	)
+	addVocab(db, l,
+		vw("digas lo que digas", "say what you may", "Digas lo que digas, no.", "Whatever you say, no.", finch),
+		vw("por mucho que", "however much", "Por mucho que insistas…", "However much you insist…", "Cora"),
+		vw("que yo sepa", "as far as I know", "Que yo sepa, no vino.", "As far as I know, he didn't come.", "Cora"),
+		vw("no sea que", "lest", "Apúrate, no sea que llueva.", "Hurry, lest it rain.", "Lumora"),
+		vw("el que / quien", "whoever", "Quien lo diga, miente.", "Whoever says it lies.", "Lumora"),
+	)
+
+	// ── Literary tenses & aspect ──
+	s = addSkill(db, u, "Tiempos y Aspecto Literarios", "Stylistic & narrative uses.", "Clock", "#6C3FC5", 80, 3070)
+	l = addLesson(db, s, "Usos Estilísticos del Tiempo", 1, 32,
+		char(finch, "Literature exploits tense: the historical present for vividness, the imperfect for atmosphere, and the rare pretérito anterior (apenas hubo llegado)."),
+		mc("historical present (vivid past)", "En 1492, Colón ___ a América.", "llega", "llega", "llegará", "llegaría", "llegaba"),
+		mc("as soon as he had finished", "Apenas ___ terminado, salió.", "hubo", "hubo", "había", "ha", "habrá"),
+		fill("Fill in the blank", "El sol ___ mientras ella lloraba. (set - imperfect, atmosphere)", "caía"),
+		tr("Translate this sentence", "He would die three years later (narrative future-in-past)", "Moriría tres años después"),
+		mc("narrative conditional", "Aquel error le ___ caro con el tiempo.", "costaría", "costaría", "cuesta", "costó", "cueste"),
+		speak("Blaze", "Caía la tarde cuando, de pronto, todo cambió."),
+	)
+	addVocab(db, l,
+		vw("presente histórico", "historical present", "En 1936 estalla la guerra.", "In 1936 war breaks out.", finch),
+		vw("apenas hubo …", "as soon as he had …", "Apenas hubo llegado…", "As soon as he had arrived…", "Cora"),
+		vw("caía la tarde", "evening was falling", "Caía la tarde.", "Evening was falling.", "Cora"),
+		vw("moriría … después", "would die … later", "Moriría años después.", "He would die years later.", "Lumora"),
+		vw("de pronto", "suddenly", "De pronto, calló.", "Suddenly, he fell silent.", "Lumora"),
+	)
+
+	// ── Cleft sentences & emphasis ──
+	s = addSkill(db, u, "Oraciones Escindidas", "Fue … quien; lo que … es.", "Hash", "#00C2A8", 81, 3140)
+	l = addLesson(db, s, "Énfasis y Foco", 1, 32,
+		char(finch, "Highlight with cleft structures: 'Fue Ana quien llamó', 'Lo que necesito es tiempo', 'Por eso es por lo que vine'."),
+		mc("It was Ana who called", "Fue Ana ___ llamó.", "quien", "quien", "que", "la cual", "cuya"),
+		mc("What I need is time", "___ necesito es tiempo.", "Lo que", "Lo que", "El que", "Que", "Cual"),
+		fill("Fill in the blank", "Fue allí ___ lo conocí. (where, cleft)", "donde"),
+		tr("Translate this sentence", "It's you who decides", "Eres tú quien decide"),
+		mc("emphatic reason", "Por eso es ___ lo vine.", "por lo que", "por lo que", "que", "para que", "lo cual"),
+		speak("Blaze", "Lo que de verdad importa es cómo reaccionamos."),
+	)
+	addVocab(db, l,
+		vw("fue … quien", "it was … who", "Fue ella quien ganó.", "It was she who won.", finch),
+		vw("lo que … es", "what … is", "Lo que quiero es paz.", "What I want is peace.", "Cora"),
+		vw("es … donde", "it's … where", "Es aquí donde vivo.", "It's here that I live.", "Cora"),
+		vw("eres tú quien", "it's you who", "Eres tú quien manda.", "It's you who's in charge.", "Lumora"),
+		vw("por eso es por lo que", "that's why", "Por eso es por lo que vine.", "That's why I came.", "Lumora"),
+	)
+
+	// ── Complex subordination & ellipsis ──
+	s = addSkill(db, u, "Subordinación y Elipsis", "Dense, economical syntax.", "Link2", "#17A3DD", 82, 3210)
+	l = addLesson(db, s, "Sintaxis Compleja", 1, 32,
+		char(finch, "Pack meaning elegantly: gerund/participle clauses (terminada la reunión, …) and ellipsis (unos prefieren té; otros, café)."),
+		mc("the meeting over, we left", "___ la reunión, nos fuimos.", "Terminada", "Terminada", "Terminado", "Terminando", "Terminar"),
+		mc("once said this…", "___ esto, continuó.", "Dicho", "Dicho", "Diciendo", "Decir", "Dije"),
+		fill("Fill in the blank", "Unos querían ir; otros, ___ . (ellipsis: no)", "no"),
+		tr("Translate this sentence", "Knowing the truth, he stayed silent", "Conociendo la verdad, calló"),
+		mc("absolute participle", "Una vez ___ el problema, brindamos.", "resuelto", "resuelto", "resolviendo", "resolver", "resuelve"),
+		speak("Blaze", "Terminado el discurso, y conmovidos todos, aplaudieron."),
+	)
+	addVocab(db, l,
+		vw("terminada la reunión", "the meeting over", "Terminada la cena, salimos.", "Dinner over, we left.", finch),
+		vw("dicho esto", "this said", "Dicho esto, me marcho.", "This said, I leave.", "Cora"),
+		vw("una vez + part.", "once …", "Una vez resuelto, descansé.", "Once solved, I rested.", "Cora"),
+		vw("conociendo", "knowing", "Conociéndolo, no me extraña.", "Knowing him, no surprise.", "Lumora"),
+		vw("unos…; otros…", "some…; others…", "Unos sí; otros, no.", "Some do; others don't.", "Lumora"),
+	)
+
+	// ── Hedging & nuance connectors ──
+	s = addSkill(db, u, "Atenuación y Matiz", "Hedging: por así decirlo.", "MessageCircle", "#F5A623", 83, 3280)
+	l = addLesson(db, s, "Suavizar y Matizar", 1, 32,
+		char("Cora", "Sound diplomatic and precise: por así decirlo (so to speak), en cierto modo (in a way), si no me equivoco, hasta cierto punto."),
+		mc("so to speak", "Es, ___, un genio.", "por así decirlo", "por así decirlo", "sin duda", "por supuesto", "en absoluto"),
+		mc("in a way", "___, tienes razón.", "En cierto modo", "En cierto modo", "Jamás", "Sin falta", "Por completo"),
+		fill("Fill in the blank", "Si no me ___, fue en 1999. (be mistaken)", "equivoco"),
+		tr("Translate this sentence", "up to a point, I agree", "hasta cierto punto, estoy de acuerdo"),
+		mc("if I may say so", "Es, ___, discutible.", "todo sea dicho", "todo sea dicho", "sin más", "ni hablar", "por cierto"),
+		speak("Blaze", "En cierto modo, y por así decirlo, ambos llevamos razón."),
+	)
+	addVocab(db, l,
+		vw("por así decirlo", "so to speak", "Es, por así decirlo, único.", "It's, so to speak, unique.", "Cora"),
+		vw("en cierto modo", "in a way", "En cierto modo, sí.", "In a way, yes.", "Cora"),
+		vw("si no me equivoco", "if I'm not mistaken", "Si no me equivoco, hoy.", "If I'm not mistaken, today.", "Lumora"),
+		vw("hasta cierto punto", "up to a point", "Hasta cierto punto, vale.", "Up to a point, okay.", "Lumora"),
+		vw("todo sea dicho", "it must be said", "Todo sea dicho, ayudó.", "It must be said, he helped.", "Riko"),
+	)
+
+	// ── Reported speech with attitude ──
+	s = addSkill(db, u, "Discurso Referido con Actitud", "matizar, recalcar, insinuar.", "Languages", "#06AECE", 84, 3350)
+	l = addLesson(db, s, "Verbos de Habla", 1, 32,
+		char(finch, "Beyond 'decir': choose verbs that convey attitude — matizó (nuanced), recalcó (stressed), insinuó (implied), reprochó (reproached)."),
+		mc("he stressed that…", "___ que era urgente.", "Recalcó", "Recalcó", "Preguntó", "Negó", "Dudó"),
+		mc("she hinted that…", "___ que algo iba mal.", "Insinuó", "Insinuó", "Gritó", "Repitió", "Aclaró"),
+		fill("Fill in the blank", "___ que, en realidad, no era tan simple. (nuanced: matizar)", "Matizó"),
+		tr("Translate this sentence", "He denied having said it", "Negó haberlo dicho"),
+		mc("he reproached me for…", "Me ___ no haber llamado.", "reprochó", "reprochó", "felicitó", "preguntó", "aclaró"),
+		speak("Blaze", "Recalcó la urgencia, aunque insinuó que aún había tiempo."),
+	)
+	addVocab(db, l,
+		vw("matizar", "to nuance/qualify", "Matizó su respuesta.", "He qualified his answer.", finch),
+		vw("recalcar", "to stress", "Recalcó la idea.", "He stressed the idea.", "Cora"),
+		vw("insinuar", "to imply", "Insinuó una crítica.", "He implied a criticism.", "Cora"),
+		vw("reprochar", "to reproach", "Me reprochó mi tardanza.", "He reproached my lateness.", "Lumora"),
+		vw("negar haber + part.", "to deny having", "Negó haber mentido.", "He denied having lied.", "Lumora"),
+	)
+
+	// ── Fine ser/estar, por/para, articles ──
+	s = addSkill(db, u, "Usos Sutiles", "ser/estar, por/para, artículos.", "Sparkles", "#6C3FC5", 85, 3420)
+	l = addLesson(db, s, "Detalles que Marcan la Diferencia", 1, 32,
+		char(finch, "Subtlety: 'es claro' (it's logical) vs 'está claro' (it's evident); 'no para' vs 'no por'; the zero article in abstractions (tener paciencia)."),
+		mc("evident (result/state)", "Está ___ que no vendrá.", "claro", "claro", "clara", "claros", "claramente"),
+		mc("considering he's a child (para)", "___ ser un niño, sabe mucho.", "Para", "Para", "Por", "De", "A"),
+		fill("Fill in the blank", "Hay que tener ___ . (patience — zero article)", "paciencia"),
+		tr("Translate this sentence", "He is being unbearable (temporary)", "Está insoportable"),
+		mc("ripe (estar) vs green (ser)", "El plátano está ___ . (ripe)", "maduro", "maduro", "verde", "joven", "viejo"),
+		speak("Blaze", "Para ser tan joven, es de una madurez sorprendente."),
+	)
+	addVocab(db, l,
+		vw("está claro", "it's evident", "Está claro que sí.", "It's clearly so.", finch),
+		vw("para ser", "considering (he's)", "Para ser novato, va bien.", "For a novice, he's doing well.", "Cora"),
+		vw("tener paciencia", "to be patient", "Ten paciencia.", "Be patient.", "Cora"),
+		vw("estar insoportable", "to be (acting) unbearable", "Hoy estás insoportable.", "You're unbearable today.", "Lumora"),
+		vw("ser vs estar (matiz)", "subtle ser/estar", "Es aburrido / está aburrido.", "He's boring / he's bored.", "Lumora"),
+	)
+
+	// ── Rhetorical devices ──
+	s = addSkill(db, u, "Recursos Retóricos", "metáfora, ironía, hipérbole.", "Quote", "#FF5C5C", 86, 3490)
+	l = addLesson(db, s, "El Arte de Persuadir", 1, 32,
+		char("Cora", "Style persuades: metáfora (her eyes, two oceans), ironía (saying the opposite), hipérbole (exaggeration), paralelismo (repetition of structure)."),
+		mc("'Te lo he dicho mil veces' is…", "exaggeration =", "hipérbole", "hipérbole", "ironía", "metáfora", "símil"),
+		mc("'¡Qué bien, otra avería!' is…", "saying the opposite =", "ironía", "ironía", "hipérbole", "metáfora", "elipsis"),
+		fill("Fill in the blank", "Comparación con 'como': es un ___ . (simile)", "símil"),
+		tr("Translate this sentence", "Her smile was sunshine (metaphor)", "Su sonrisa era el sol"),
+		mc("repetition of structure", "'Vine, vi, vencí' is…", "paralelismo", "paralelismo", "ironía", "hipérbole", "metáfora"),
+		speak("Blaze", "Sus palabras, afiladas como cuchillos, cortaron el silencio."),
+	)
+	addVocab(db, l,
+		vw("la metáfora", "metaphor", "una metáfora bella", "a beautiful metaphor", "Cora"),
+		vw("la ironía", "irony", "Lo dijo con ironía.", "He said it ironically.", "Cora"),
+		vw("la hipérbole", "hyperbole", "Es pura hipérbole.", "It's pure hyperbole.", "Lumora"),
+		vw("el paralelismo", "parallelism", "Usó el paralelismo.", "He used parallelism.", "Lumora"),
+		vw("el símil", "simile", "un símil acertado", "an apt simile", "Riko"),
+	)
+
+	// ── Regional variation ──
+	s = addSkill(db, u, "Variación Regional", "España vs Latinoamérica.", "Languages", "#17A3DD", 87, 3560)
+	l = addLesson(db, s, "Un Idioma, Mil Voces", 1, 32,
+		char(finch, "Spanish varies by region: coche/carro, ordenador/computadora, móvil/celular, zumo/jugo; vosotros (Spain) vs ustedes (LatAm)."),
+		mc("'car' in Latin America", "el ___ (LatAm)", "carro", "carro", "coche", "auto-stop", "camión"),
+		mc("'computer' in Spain", "el ___ (Spain)", "ordenador", "ordenador", "computadora", "móvil", "celular"),
+		fill("Fill in the blank", "'Juice': in Spain 'zumo'; in LatAm '___'.", "jugo"),
+		tr("Translate this sentence", "you all speak (Spain, informal)", "vosotros habláis"),
+		mc("'mobile phone' in Latin America", "el ___ (LatAm)", "celular", "celular", "móvil", "ordenador", "coche"),
+		speak("Blaze", "En España cojo el coche; en México, manejo el carro."),
+	)
+	addVocab(db, l,
+		vw("coche / carro", "car (Spain / LatAm)", "Cojo el coche.", "I take the car.", finch),
+		vw("ordenador / computadora", "computer", "Uso el ordenador.", "I use the computer.", "Cora"),
+		vw("móvil / celular", "mobile phone", "¿Y tu móvil?", "And your phone?", "Cora"),
+		vw("zumo / jugo", "juice", "Un zumo de naranja.", "An orange juice.", "Lumora"),
+		vw("vosotros / ustedes", "you (pl.)", "¿Vosotros venís?", "Are you all coming?", "Lumora"),
+	)
+
+	// ── Advanced idioms & colloquialisms ──
+	s = addSkill(db, u, "Modismos Avanzados", "Native-like colloquial range.", "Sparkles", "#F5A623", 88, 3630)
+	l = addLesson(db, s, "Como un Nativo", 1, 32,
+		char("Cora", "Real fluency: 'estar hasta las narices' (fed up), 'no tener pelos en la lengua' (to be blunt), 'ponerse las pilas' (to get going)."),
+		mc("to be fed up", "Estoy hasta las ___ .", "narices", "narices", "manos", "nubes", "uñas"),
+		mc("to be blunt/outspoken", "No tiene pelos en la ___ .", "lengua", "lengua", "mano", "cabeza", "boca"),
+		fill("Fill in the blank", "¡Ponte las ___ ! (get going)", "pilas"),
+		tr("Translate this sentence", "It rang a bell", "Me sonó de algo"),
+		mc("to throw in the towel", "Tiró la ___ .", "toalla", "toalla", "casa", "mesa", "red"),
+		speak("Blaze", "Estoy hasta las narices, pero voy a ponerme las pilas."),
+	)
+	addVocab(db, l,
+		vw("estar hasta las narices", "to be fed up", "Estoy hasta las narices.", "I'm fed up.", "Cora"),
+		vw("no tener pelos en la lengua", "to be blunt", "No tiene pelos en la lengua.", "He's very blunt.", "Cora"),
+		vw("ponerse las pilas", "to get one's act together", "Ponte las pilas.", "Get your act together.", "Lumora"),
+		vw("tirar la toalla", "to throw in the towel", "No tires la toalla.", "Don't give up.", "Lumora"),
+		vw("sonarle a alguien", "to ring a bell", "Me suena ese nombre.", "That name rings a bell.", "Riko"),
+	)
+
+	// ── Register virtuosity ──
+	s = addSkill(db, u, "Registro: del Aula a la Calle", "Academic vs creative voice.", "Quote", "#00C2A8", 89, 3700)
+	l = addLesson(db, s, "Dominar el Tono", 1, 32,
+		char(finch, "Move fluidly between registers: academic ('cabe colegir que…'), journalistic, and creative/colloquial — choosing each consciously."),
+		mc("academic 'one may infer'", "Cabe ___ que el dato es clave.", "colegir", "colegir", "molar", "pillar", "currar"),
+		mc("colloquial 'to work' (Spain)", "Tengo que ___ mañana.", "currar", "currar", "deliberar", "constatar", "esgrimir"),
+		fill("Fill in the blank", "Formal: 'a tenor de lo ___' (expounded). (exponer)", "expuesto"),
+		tr("Translate this sentence", "The data corroborates the hypothesis (academic)", "Los datos corroboran la hipótesis"),
+		mc("colloquial 'cool/great' (Spain)", "¡Esto ___ un montón!", "mola", "mola", "constata", "infiere", "deduce"),
+		speak("Blaze", "En el ensayo escribo 'cabe colegir'; con amigos, 'mola un montón'."),
+	)
+	addVocab(db, l,
+		vw("cabe colegir que", "one may infer that", "Cabe colegir que sí.", "One may infer so.", finch),
+		vw("a tenor de", "in accordance with", "A tenor de lo dicho…", "In line with what was said…", "Cora"),
+		vw("corroborar", "to corroborate", "Los datos lo corroboran.", "The data corroborates it.", "Cora"),
+		vw("currar", "to work (colloq.)", "Curro mucho.", "I work a lot.", "Lumora"),
+		vw("molar (un montón)", "to be cool (colloq.)", "Mola un montón.", "It's really cool.", "Lumora"),
+	)
+
+	// ── Specialised & abstract lexis ──
+	s = addSkill(db, u, "Léxico Especializado", "philosophy, politics, science.", "BookOpen", "#6C3FC5", 90, 3770)
+	l = addLesson(db, s, "Términos Abstractos", 1, 32,
+		char(finch, "C2 commands precise abstraction: la cosmovisión, la sostenibilidad, el sesgo, la coyuntura, el paradigma."),
+		mc("worldview", "su ___ del mundo", "cosmovisión", "cosmovisión", "coyuntura", "sesgo", "paradigma"),
+		mc("(cognitive) bias", "un ___ cognitivo", "sesgo", "sesgo", "paradigma", "auge", "ocaso"),
+		fill("Fill in the blank", "La ___ política actual es delicada. (situation/juncture)", "coyuntura"),
+		tr("Translate this sentence", "a paradigm shift", "un cambio de paradigma"),
+		mc("sustainability", "la ___ ambiental", "sostenibilidad", "sostenibilidad", "cosmovisión", "coyuntura", "sesgo"),
+		speak("Blaze", "El nuevo paradigma exige replantear nuestra cosmovisión."),
+	)
+	addVocab(db, l,
+		vw("la cosmovisión", "worldview", "una cosmovisión holística", "a holistic worldview", finch),
+		vw("el sesgo", "bias", "un sesgo evidente", "an evident bias", "Cora"),
+		vw("la coyuntura", "juncture/situation", "la coyuntura económica", "the economic situation", "Cora"),
+		vw("el paradigma", "paradigm", "un cambio de paradigma", "a paradigm shift", "Lumora"),
+		vw("la sostenibilidad", "sustainability", "la sostenibilidad del planeta", "the planet's sustainability", "Lumora"),
+	)
+
+	// ── Writing (C2) ──
+	s = addSkill(db, u, "Escribir: Ensayo Crítico", "400+ words, publication-level.", "PenLine", "#00C2A8", 91, 3840)
+	l = addLesson(db, s, "Ensayo de Maestría", 1, 34,
+		char("Lumora", "C2 writing is publication-level: a compelling thesis, sophisticated argument, varied syntax, rhetorical control and a distinctive voice. 400+ words."),
+		mc("elegant opening of an essay", "___ que el lenguaje moldea el pensamiento.", "Pocos discutirían", "Pocos discutirían", "Mola que", "Oye que", "Total que"),
+		write("Write a critical essay (400+ words): 'Does language shape the way we think?' Build a nuanced argument, engage objections, and close memorably.",
+			"Pocos discutirían que el lenguaje es mucho más que un mero vehículo de comunicación. La célebre hipótesis de Sapir-Whorf sostiene que la lengua que hablamos moldea, en cierto modo, nuestra percepción de la realidad. Si bien esta tesis, en su versión más radical, ha sido matizada por la lingüística contemporánea, no puede negarse que las categorías de cada idioma orientan sutilmente la atención y la memoria. Quienes defienden lo contrario suelen pasar por alto que traducir nunca es trasvasar sin pérdida: cada lengua ilumina matices que otra apenas insinúa. Dicho esto, conviene evitar el determinismo: el pensamiento también desborda las palabras y las reinventa. En definitiva, lengua y pensamiento se entretejen en un diálogo incesante en el que ninguno tiene la última palabra. Acaso ahí, en esa tensión fértil, resida la verdadera riqueza de hablar más de un idioma."),
+		write("Write a critical book or film review (around 300 words) with a clear judgement and stylistic flair.",
+			"La última novela del autor confirma su madurez narrativa. A través de una prosa medida y de una estructura fragmentaria, el relato indaga en la memoria y el desarraigo con una hondura poco común. Cabe destacar el pulso con que dosifica la información: nada sobra, nada falta. No obstante, el tramo final, quizá demasiado simbólico, exige al lector un esfuerzo que no siempre se ve recompensado. Con todo, estamos ante una obra valiente que se aparta de lo previsible. En suma, una lectura imprescindible para quienes busquen literatura que interpele."),
+		mc("to engage an objection", "___ sostienen lo contrario olvidan un matiz.", "Quienes", "Quienes", "Que", "Cuyos", "Lo que"),
+		fill("Fill in the blank", "En ___ , lengua y pensamiento se entretejen. (ultimately)", "definitiva"),
+		speak("Blaze", "Acaso ahí, en esa tensión fértil, resida la verdadera riqueza."),
+	)
+	addVocab(db, l,
+		vw("pocos discutirían que", "few would dispute that", "Pocos discutirían que sí.", "Few would dispute it.", "Lumora"),
+		vw("pasar por alto", "to overlook", "Pasan por alto un matiz.", "They overlook a nuance.", "Cora"),
+		vw("dicho esto", "that said", "Dicho esto, matizo.", "That said, I qualify.", "Cora"),
+		vw("en suma", "in sum", "En suma, recomendable.", "In sum, recommendable.", "Lumora"),
+		vw("acaso", "perhaps (literary)", "Acaso tenga razón.", "Perhaps he's right.", "Lumora"),
+	)
+
+	// ── Speaking (C2) ──
+	s = addSkill(db, u, "Hablar: Oratoria de Alto Nivel", "Persuade with native flair.", "MessageCircle", "#6C3FC5", 92, 3910)
+	l = addLesson(db, s, "El Arte de la Oratoria", 1, 34,
+		char("Blaze", "Speak to move: open with a hook, build with rhetoric, anticipate objections and land a memorable close — effortlessly."),
+		speak("Lumora", "Imaginemos por un momento un mundo en el que nadie tuviera miedo a equivocarse."),
+		speak("Blaze", "No se trata, como algunos pretenden, de elegir entre libertad y seguridad."),
+		speak("Blaze", "Y es que, a fin de cuentas, las grandes decisiones se toman en los pequeños gestos."),
+		mc("rhetorical concession", "Se dirá que es utópico; ___, ¿quién no soñó alguna vez?", "ahora bien", "ahora bien", "o sea", "vale", "total"),
+		speak("Blaze", "Permítanme, para terminar, dejarles con una pregunta incómoda."),
+		speak("Blaze", "Porque, en el fondo, no hay mayor riesgo que no arriesgar nada."),
+	)
+	addVocab(db, l,
+		vw("imaginemos por un momento", "let's imagine for a moment", "Imaginemos un mundo mejor.", "Let's imagine a better world.", "Blaze"),
+		vw("no se trata de", "it's not about", "No se trata de ganar.", "It's not about winning.", "Cora"),
+		vw("a fin de cuentas", "ultimately", "A fin de cuentas, importa.", "Ultimately, it matters.", "Cora"),
+		vw("ahora bien", "that said / however", "Ahora bien, hay un riesgo.", "That said, there's a risk.", "Lumora"),
+		vw("en el fondo", "deep down", "En el fondo, lo sabes.", "Deep down, you know it.", "Lumora"),
+	)
 }
 
 // --- listening sessions ------------------------------------------------------
@@ -2687,6 +4379,382 @@ func seedListening(db *gorm.DB) {
 			lq("What does the first speaker ask first?", "What's your name?", "What's your name?", "How are you?", "How old are you?", "Where do you live?"),
 		},
 	)
+
+	addListening(db, "A1 · Gramática Esencial", "La rutina de Ana",
+		"Ana describes her daily routine to Mira. Listen, then answer.", 5, 20,
+		[]models.ListeningMatch{
+			lm("me levanto", "I get up"),
+			lm("desayuno", "I have breakfast"),
+			lm("trabajo", "I work"),
+			lm("me acuesto", "I go to bed"),
+		},
+		[]models.ListeningLine{
+			ln("Mira", "Ana, ¿cómo es tu día?", "Ana, what is your day like?"),
+			ln("Lumora", "Me levanto a las siete y desayuno café con pan.", "I get up at seven and have coffee with bread."),
+			ln("Mira", "¿Y por la tarde?", "And in the afternoon?"),
+			ln("Lumora", "Trabajo en una oficina y estudio español. Me acuesto a las once.", "I work in an office and study Spanish. I go to bed at eleven."),
+		},
+		[]models.ListeningQuestion{
+			lq("When does Ana get up?", "At seven", "At seven", "At eleven", "At nine", "At six"),
+			lq("What does she have for breakfast?", "Coffee with bread", "Coffee with bread", "Tea", "Eggs", "Fruit"),
+			lq("What does she study?", "Spanish", "Spanish", "English", "French", "Music"),
+			lq("When does she go to bed?", "At eleven", "At eleven", "At seven", "At ten", "At midnight"),
+		},
+	)
+
+	addListening(db, "A1 · Gramática Esencial", "En la ciudad",
+		"Riko asks for directions in town. Listen, then answer.", 6, 20,
+		[]models.ListeningMatch{
+			lm("¿dónde está?", "where is?"),
+			lm("todo recto", "straight ahead"),
+			lm("a la derecha", "to the right"),
+			lm("hay", "there is"),
+		},
+		[]models.ListeningLine{
+			ln("Riko", "Perdone, ¿dónde está el museo?", "Excuse me, where is the museum?"),
+			ln("Cora", "Sigue todo recto y luego a la derecha.", "Go straight ahead and then to the right."),
+			ln("Riko", "¿Hay un café cerca?", "Is there a café nearby?"),
+			ln("Cora", "Sí, hay uno a la izquierda.", "Yes, there is one on the left."),
+		},
+		[]models.ListeningQuestion{
+			lq("What is Riko looking for?", "The museum", "The museum", "The hotel", "The station", "The bank"),
+			lq("Which way after going straight?", "To the right", "To the right", "To the left", "Back", "Up"),
+			lq("Where is the café?", "On the left", "On the left", "On the right", "Straight ahead", "Behind"),
+		},
+	)
+
+	addListening(db, "A2 · Elemental", "El fin de semana de Pablo",
+		"Pablo tells Cora about his weekend. Listen, then answer.", 7, 22,
+		[]models.ListeningMatch{
+			lm("fui", "I went"),
+			lm("comimos", "we ate"),
+			lm("fue", "it was"),
+			lm("volví", "I came back"),
+		},
+		[]models.ListeningLine{
+			ln("Cora", "Pablo, ¿qué hiciste el fin de semana?", "Pablo, what did you do at the weekend?"),
+			ln("Riko", "El sábado fui a la montaña con unos amigos.", "On Saturday I went to the mountains with some friends."),
+			ln("Cora", "¿Y qué tal?", "And how was it?"),
+			ln("Riko", "Fue genial. Comimos en un pueblo y volví el domingo por la noche.", "It was great. We ate in a village and I came back on Sunday night."),
+		},
+		[]models.ListeningQuestion{
+			lq("Where did Pablo go on Saturday?", "To the mountains", "To the mountains", "To the beach", "To the city", "To work"),
+			lq("Who did he go with?", "Some friends", "Some friends", "His family", "Alone", "His boss"),
+			lq("How was the weekend?", "Great", "Great", "Boring", "Bad", "Tiring"),
+			lq("When did he come back?", "Sunday night", "Sunday night", "Saturday", "Monday", "Friday"),
+		},
+	)
+
+	addListening(db, "A2 · Elemental", "En la consulta",
+		"Ana visits the doctor. Listen, then answer.", 8, 22,
+		[]models.ListeningMatch{
+			lm("me duele", "it hurts"),
+			lm("la cabeza", "the head"),
+			lm("fiebre", "fever"),
+			lm("descansar", "to rest"),
+		},
+		[]models.ListeningLine{
+			ln("Mira", "Buenos días. ¿Qué le pasa?", "Good morning. What's wrong?"),
+			ln("Lumora", "Me duele la cabeza y tengo fiebre.", "My head hurts and I have a fever."),
+			ln("Mira", "¿Desde cuándo?", "Since when?"),
+			ln("Lumora", "Desde ayer. Estoy muy cansada.", "Since yesterday. I'm very tired."),
+			ln("Mira", "Tiene que descansar y beber agua.", "You have to rest and drink water."),
+		},
+		[]models.ListeningQuestion{
+			lq("What hurts?", "Her head", "Her head", "Her stomach", "Her hand", "Her back"),
+			lq("What else does she have?", "A fever", "A fever", "A cough", "A cold", "Nothing"),
+			lq("Since when?", "Yesterday", "Yesterday", "Last week", "Today", "An hour ago"),
+			lq("What must she do?", "Rest and drink water", "Rest and drink water", "Work", "Run", "Eat more"),
+		},
+	)
+
+	addListening(db, "A2 · Elemental", "En la tienda de ropa",
+		"Riko shops for a jacket. Listen, then answer.", 9, 22,
+		[]models.ListeningMatch{
+			lm("la talla", "the size"),
+			lm("probarme", "to try on"),
+			lm("¿cuánto cuesta?", "how much is it?"),
+			lm("la tarjeta", "the card"),
+		},
+		[]models.ListeningLine{
+			ln("Riko", "Hola, busco una chaqueta azul.", "Hi, I'm looking for a blue jacket."),
+			ln("Cora", "¿Qué talla usa?", "What size do you wear?"),
+			ln("Riko", "La mediana. ¿Puedo probármela?", "Medium. Can I try it on?"),
+			ln("Cora", "Claro. Cuesta cuarenta euros.", "Of course. It costs forty euros."),
+			ln("Riko", "Perfecto. Pago con tarjeta.", "Perfect. I'll pay by card."),
+		},
+		[]models.ListeningQuestion{
+			lq("What is Riko looking for?", "A blue jacket", "A blue jacket", "Red shoes", "A green hat", "Black trousers"),
+			lq("What size does he want?", "Medium", "Medium", "Small", "Large", "Extra large"),
+			lq("How much does it cost?", "40 euros", "40 euros", "14 euros", "50 euros", "44 euros"),
+			lq("How does he pay?", "By card", "By card", "In cash", "By phone", "He doesn't"),
+		},
+	)
+
+	addListening(db, "B1 · Intermedio", "La entrevista de trabajo",
+		"Marta has a job interview with Mr. Finch. Listen, then answer.", 10, 26,
+		[]models.ListeningMatch{
+			lm("la experiencia", "experience"),
+			lm("trabajé", "I worked"),
+			lm("me gustaría", "I would like"),
+			lm("el sueldo", "the salary"),
+		},
+		[]models.ListeningLine{
+			ln("Professor Finch", "Buenos días. Hábleme de su experiencia.", "Good morning. Tell me about your experience."),
+			ln("Mira", "Antes trabajé tres años en una empresa de marketing.", "Before, I worked three years at a marketing company."),
+			ln("Professor Finch", "¿Y por qué quiere este puesto?", "And why do you want this job?"),
+			ln("Mira", "Me gustaría aprender más y crecer profesionalmente.", "I would like to learn more and grow professionally."),
+			ln("Professor Finch", "Perfecto. El sueldo se hablará más adelante.", "Perfect. We'll discuss the salary later."),
+		},
+		[]models.ListeningQuestion{
+			lq("How long did Marta work before?", "Three years", "Three years", "One year", "Five years", "Two years"),
+			lq("In what sector?", "Marketing", "Marketing", "Health", "Education", "Tourism"),
+			lq("Why does she want the job?", "To learn and grow", "To learn and grow", "For the money", "It's near home", "Her friend works there"),
+			lq("What will be discussed later?", "The salary", "The salary", "The hours", "The holidays", "The office"),
+		},
+	)
+
+	addListening(db, "B1 · Intermedio", "Recuerdos de la infancia",
+		"Nana remembers her childhood. Listen, then answer.", 11, 26,
+		[]models.ListeningMatch{
+			lm("cuando era niña", "when I was a girl"),
+			lm("jugábamos", "we used to play"),
+			lm("el campo", "the countryside"),
+			lm("éramos felices", "we were happy"),
+		},
+		[]models.ListeningLine{
+			ln("Pip", "Nana, ¿cómo era tu vida de pequeña?", "Nana, what was your life like as a child?"),
+			ln("Nana", "Cuando era niña, vivía en el campo con mis abuelos.", "When I was a girl, I lived in the countryside with my grandparents."),
+			ln("Pip", "¿Y qué hacíais?", "And what did you all do?"),
+			ln("Nana", "Jugábamos fuera todo el día. No teníamos móviles, pero éramos felices.", "We played outside all day. We had no phones, but we were happy."),
+		},
+		[]models.ListeningQuestion{
+			lq("Where did Nana live as a child?", "In the countryside", "In the countryside", "In a city", "By the sea", "Abroad"),
+			lq("Who did she live with?", "Her grandparents", "Her grandparents", "Her parents", "Her aunt", "Alone"),
+			lq("What did they do all day?", "Played outside", "Played outside", "Watched TV", "Studied", "Worked"),
+			lq("How were they?", "Happy", "Happy", "Bored", "Sad", "Tired"),
+		},
+	)
+
+	addListening(db, "B1 · Intermedio", "El medio ambiente",
+		"Zephyr and Cora discuss the environment. Listen, then answer.", 12, 26,
+		[]models.ListeningMatch{
+			lm("la contaminación", "pollution"),
+			lm("reciclar", "to recycle"),
+			lm("creo que", "I think that"),
+			lm("el transporte público", "public transport"),
+		},
+		[]models.ListeningLine{
+			ln("Zephyr", "Creo que la contaminación es el mayor problema de las ciudades.", "I think pollution is the biggest problem in cities."),
+			ln("Cora", "Estoy de acuerdo. Por eso es importante que reciclemos.", "I agree. That's why it's important that we recycle."),
+			ln("Zephyr", "Sí, y deberíamos usar más el transporte público.", "Yes, and we should use public transport more."),
+			ln("Cora", "Sin embargo, mucha gente prefiere el coche.", "However, many people prefer the car."),
+		},
+		[]models.ListeningQuestion{
+			lq("What is the biggest problem, says Zephyr?", "Pollution", "Pollution", "Noise", "Traffic jams", "Rubbish"),
+			lq("What does Cora say is important?", "To recycle", "To recycle", "To drive", "To save money", "To plant trees"),
+			lq("What should people use more?", "Public transport", "Public transport", "Bikes only", "Their cars", "Taxis"),
+			lq("What do many people prefer?", "The car", "The car", "The bus", "Walking", "The train"),
+		},
+	)
+
+	addListening(db, "B2 · Avanzado", "Debate: ¿teletrabajo?",
+		"Zephyr and Mira debate remote work. Listen, then answer.", 13, 30,
+		[]models.ListeningMatch{
+			lm("desde mi punto de vista", "from my point of view"),
+			lm("la productividad", "productivity"),
+			lm("el aislamiento", "isolation"),
+			lm("un modelo híbrido", "a hybrid model"),
+		},
+		[]models.ListeningLine{
+			ln("Zephyr", "Desde mi punto de vista, el teletrabajo aumenta la productividad.", "From my point of view, remote work increases productivity."),
+			ln("Mira", "Es cierto, pero también puede provocar aislamiento.", "True, but it can also cause isolation."),
+			ln("Zephyr", "Si las empresas ofrecieran apoyo, no habría ese problema.", "If companies offered support, there wouldn't be that problem."),
+			ln("Mira", "Por eso creo que lo ideal sería un modelo híbrido.", "That's why I think the ideal would be a hybrid model."),
+		},
+		[]models.ListeningQuestion{
+			lq("What does Zephyr say remote work increases?", "Productivity", "Productivity", "Costs", "Traffic", "Stress"),
+			lq("What problem does Mira mention?", "Isolation", "Isolation", "Noise", "Low pay", "Long hours"),
+			lq("Under what condition would the problem disappear?", "If companies offered support", "If companies offered support", "If salaries rose", "If offices closed", "If hours were shorter"),
+			lq("What does Mira propose?", "A hybrid model", "A hybrid model", "Office only", "Remote only", "A four-day week"),
+		},
+	)
+
+	addListening(db, "B2 · Avanzado", "Noticias de la mañana",
+		"A short news bulletin. Listen, then answer.", 14, 30,
+		[]models.ListeningMatch{
+			lm("según fuentes", "according to sources"),
+			lm("el gobierno", "the government"),
+			lm("ha anunciado", "has announced"),
+			lm("las medidas", "the measures"),
+		},
+		[]models.ListeningLine{
+			ln("Professor Finch", "Buenos días. El gobierno ha anunciado nuevas medidas contra la contaminación.", "Good morning. The government has announced new measures against pollution."),
+			ln("Professor Finch", "Según fuentes oficiales, se reducirá el tráfico en el centro.", "According to official sources, traffic in the centre will be reduced."),
+			ln("Professor Finch", "Además, cabe destacar que se invertirá en transporte público.", "Also, it's worth noting that there will be investment in public transport."),
+			ln("Professor Finch", "Los expertos consideran que estas medidas son necesarias.", "Experts consider these measures necessary."),
+		},
+		[]models.ListeningQuestion{
+			lq("What has the government announced?", "Measures against pollution", "Measures against pollution", "Tax cuts", "New schools", "A holiday"),
+			lq("What will be reduced in the centre?", "Traffic", "Traffic", "Prices", "Crime", "Noise"),
+			lq("What will they invest in?", "Public transport", "Public transport", "Roads", "Hospitals", "Parks"),
+			lq("What do experts think?", "The measures are necessary", "The measures are necessary", "They are useless", "They are too costly", "They are too late"),
+		},
+	)
+
+	addListening(db, "B2 · Avanzado", "Si pudiera volver atrás",
+		"Nana reflects on her life choices. Listen, then answer.", 15, 30,
+		[]models.ListeningMatch{
+			lm("si pudiera", "if I could"),
+			lm("habría estudiado", "I would have studied"),
+			lm("me arrepiento", "I regret"),
+			lm("valió la pena", "it was worth it"),
+		},
+		[]models.ListeningLine{
+			ln("Pip", "Nana, ¿cambiarías algo de tu vida?", "Nana, would you change anything in your life?"),
+			ln("Nana", "Si pudiera volver atrás, habría estudiado música.", "If I could go back, I would have studied music."),
+			ln("Pip", "¿Te arrepientes entonces?", "Do you regret it then?"),
+			ln("Nana", "No mucho. Aunque cometí errores, todo valió la pena.", "Not much. Although I made mistakes, it was all worth it."),
+		},
+		[]models.ListeningQuestion{
+			lq("What would Nana have studied?", "Music", "Music", "Medicine", "Law", "Art"),
+			lq("Does she regret her life?", "Not much", "Not much", "Very much", "Completely", "She doesn't say"),
+			lq("What does she admit she made?", "Mistakes", "Mistakes", "Money", "Friends", "Plans"),
+			lq("What does she conclude?", "It was worth it", "It was worth it", "It was a waste", "She'd change everything", "She's unsure"),
+		},
+	)
+
+	addListening(db, "C1 · Superior", "Tertulia: la inteligencia artificial",
+		"Two experts discuss AI on a talk show. Listen, then answer.", 16, 32,
+		[]models.ListeningMatch{
+			lm("si bien es cierto", "while it's true"),
+			lm("plantea dilemas", "raises dilemmas"),
+			lm("cabe matizar", "it should be nuanced"),
+			lm("a largo plazo", "in the long term"),
+		},
+		[]models.ListeningLine{
+			ln("Professor Finch", "La inteligencia artificial plantea dilemas éticos que no podemos ignorar.", "AI raises ethical dilemmas we can't ignore."),
+			ln("Zephyr", "Si bien es cierto que entraña riesgos, sus beneficios son enormes.", "While it's true it entails risks, its benefits are huge."),
+			ln("Professor Finch", "Cabe matizar que todo depende de cómo se regule.", "It should be nuanced that it all depends on how it's regulated."),
+			ln("Zephyr", "Exacto. A largo plazo, lo ideal sería un marco común.", "Exactly. In the long term, the ideal would be a common framework."),
+		},
+		[]models.ListeningQuestion{
+			lq("What does Finch say AI raises?", "Ethical dilemmas", "Ethical dilemmas", "Profits", "Jobs", "Taxes"),
+			lq("What does Zephyr emphasise?", "Its benefits are huge", "Its benefits are huge", "It's useless", "It's cheap", "It's simple"),
+			lq("On what does it all depend, says Finch?", "How it's regulated", "How it's regulated", "Who pays", "The country", "The year"),
+			lq("What would be ideal long term?", "A common framework", "A common framework", "A total ban", "No rules", "Higher prices"),
+		},
+	)
+
+	addListening(db, "C1 · Superior", "Conferencia sobre la lectura",
+		"A short lecture on the value of reading. Listen, then answer.", 17, 32,
+		[]models.ListeningMatch{
+			lm("fomentar", "to foster"),
+			lm("el pensamiento crítico", "critical thinking"),
+			lm("en resumidas cuentas", "in short"),
+			lm("imprescindible", "essential"),
+		},
+		[]models.ListeningLine{
+			ln("Professor Finch", "Hoy quisiera reflexionar sobre el papel de la lectura en la sociedad.", "Today I'd like to reflect on the role of reading in society."),
+			ln("Professor Finch", "Leer no solo amplía el vocabulario, sino que fomenta el pensamiento crítico.", "Reading not only widens vocabulary, but fosters critical thinking."),
+			ln("Professor Finch", "Quienes leen con regularidad desarrollan mayor empatía.", "Those who read regularly develop greater empathy."),
+			ln("Professor Finch", "En resumidas cuentas, la lectura es imprescindible para una mente libre.", "In short, reading is essential for a free mind."),
+		},
+		[]models.ListeningQuestion{
+			lq("What is the lecture about?", "The role of reading", "The role of reading", "Writing essays", "Learning maths", "Public speaking"),
+			lq("What does reading foster, besides vocabulary?", "Critical thinking", "Critical thinking", "Wealth", "Speed", "Memory only"),
+			lq("What do regular readers develop?", "Greater empathy", "Greater empathy", "Worse eyesight", "More stress", "Less time"),
+			lq("How does he sum up reading?", "Essential for a free mind", "Essential for a free mind", "A waste of time", "Only for students", "Outdated"),
+		},
+	)
+
+	addListening(db, "C1 · Superior", "Entrevista a una escritora",
+		"An author is interviewed about her new novel. Listen, then answer.", 18, 32,
+		[]models.ListeningMatch{
+			lm("la trama", "the plot"),
+			lm("me inspiré en", "I was inspired by"),
+			lm("los prejuicios", "prejudices"),
+			lm("dicho esto", "that said"),
+		},
+		[]models.ListeningLine{
+			ln("Cora", "Su nueva novela aborda temas muy actuales. ¿De dónde surge la trama?", "Your new novel tackles very current themes. Where does the plot come from?"),
+			ln("Mira", "Me inspiré en historias reales sobre la migración.", "I was inspired by real stories about migration."),
+			ln("Cora", "¿Pretende denunciar algo?", "Do you intend to denounce something?"),
+			ln("Mira", "Quiero retratar los prejuicios sin juzgar. Dicho esto, cada lector sacará sus conclusiones.", "I want to portray prejudices without judging. That said, each reader will draw their own conclusions."),
+		},
+		[]models.ListeningQuestion{
+			lq("What inspired the plot?", "Real migration stories", "Real migration stories", "A dream", "Her childhood", "A film"),
+			lq("What does the author want to portray?", "Prejudices without judging", "Prejudices without judging", "Wealth", "War heroes", "Romance only"),
+			lq("Who will draw their own conclusions?", "Each reader", "Each reader", "The critics", "The author", "No one"),
+			lq("How would you describe the novel's themes?", "Very current", "Very current", "Historical only", "Light", "Unclear"),
+		},
+	)
+
+	addListening(db, "C2 · Maestría", "Debate: ¿libertad o seguridad?",
+		"A sharp philosophical debate. Listen for nuance, then answer.", 19, 34,
+		[]models.ListeningMatch{
+			lm("a fin de cuentas", "ultimately"),
+			lm("falso dilema", "false dilemma"),
+			lm("ahora bien", "that said"),
+			lm("no se trata de", "it's not about"),
+		},
+		[]models.ListeningLine{
+			ln("Zephyr", "No se trata, como algunos pretenden, de elegir entre libertad y seguridad.", "It's not about, as some claim, choosing between freedom and security."),
+			ln("Professor Finch", "Ahora bien, en situaciones extremas, ¿no priorizaríamos la seguridad?", "That said, in extreme situations, wouldn't we prioritise security?"),
+			ln("Zephyr", "Eso es un falso dilema. A fin de cuentas, sin libertad no hay seguridad que valga.", "That's a false dilemma. Ultimately, without freedom no security is worth anything."),
+			ln("Professor Finch", "Permítame discrepar, aunque reconozco la fuerza de su argumento.", "Allow me to disagree, though I acknowledge the strength of your argument."),
+		},
+		[]models.ListeningQuestion{
+			lq("What does Zephyr say it is NOT about?", "Choosing freedom or security", "Choosing freedom or security", "Money", "Politics", "History"),
+			lq("What does Zephyr call the choice?", "A false dilemma", "A false dilemma", "A fair point", "A law", "A tradition"),
+			lq("What does Finch do at the end?", "Politely disagrees", "Politely disagrees", "Fully agrees", "Stays silent", "Changes topic"),
+			lq("What is the tone of the exchange?", "Sharp but respectful", "Sharp but respectful", "Hostile", "Indifferent", "Comic"),
+		},
+	)
+
+	addListening(db, "C2 · Maestría", "Tertulia sobre el humor",
+		"Two critics dissect irony and satire. Listen, then answer.", 20, 34,
+		[]models.ListeningMatch{
+			lm("el sarcasmo", "sarcasm"),
+			lm("dar en el clavo", "to hit the nail on the head"),
+			lm("a costa de", "at the expense of"),
+			lm("doble sentido", "double meaning"),
+		},
+		[]models.ListeningLine{
+			ln("Cora", "La buena sátira da en el clavo sin caer en el insulto fácil.", "Good satire hits the nail on the head without resorting to cheap insults."),
+			ln("Mira", "Cierto, aunque el sarcasmo, mal usado, hiere a costa de los débiles.", "True, although sarcasm, misused, wounds at the expense of the weak."),
+			ln("Cora", "De ahí que el humor inteligente juegue con el doble sentido, no con la crueldad.", "Hence intelligent humour plays with double meaning, not cruelty."),
+			ln("Mira", "En el fondo, reírse de uno mismo es la forma más alta de lucidez.", "Deep down, laughing at oneself is the highest form of clarity."),
+		},
+		[]models.ListeningQuestion{
+			lq("What does good satire do, per Cora?", "Hits the point without cheap insults", "Hits the point without cheap insults", "Always offends", "Avoids politics", "Stays silent"),
+			lq("What does misused sarcasm do?", "Wounds the weak", "Wounds the weak", "Educates", "Heals", "Bores"),
+			lq("What does intelligent humour play with?", "Double meaning", "Double meaning", "Cruelty", "Volume", "Speed"),
+			lq("What does Mira call the highest clarity?", "Laughing at oneself", "Laughing at oneself", "Winning debates", "Staying serious", "Mocking others"),
+		},
+	)
+
+	addListening(db, "C2 · Maestría", "Acentos del español",
+		"A linguist discusses regional variety. Listen, then answer.", 21, 34,
+		[]models.ListeningMatch{
+			lm("la riqueza", "the richness"),
+			lm("no hay uno mejor", "none is better"),
+			lm("el seseo", "the 'seseo'"),
+			lm("el prestigio", "prestige"),
+		},
+		[]models.ListeningLine{
+			ln("Professor Finch", "El español no es un bloque uniforme, sino un mosaico de variedades.", "Spanish is not a uniform block, but a mosaic of varieties."),
+			ln("Lumora", "¿Y hay alguna más correcta que otra?", "And is any more correct than another?"),
+			ln("Professor Finch", "En absoluto. No hay uno mejor; el prestigio es una cuestión social, no lingüística.", "Not at all. None is better; prestige is a social matter, not a linguistic one."),
+			ln("Lumora", "Entonces, la diversidad es, en realidad, su mayor riqueza.", "So diversity is, in fact, its greatest richness."),
+		},
+		[]models.ListeningQuestion{
+			lq("How does Finch describe Spanish?", "A mosaic of varieties", "A mosaic of varieties", "A uniform block", "A dying language", "A simple code"),
+			lq("Is one variety more correct?", "No, none is better", "No, none is better", "Yes, Spain's", "Yes, Mexico's", "He won't say"),
+			lq("What kind of matter is prestige?", "Social, not linguistic", "Social, not linguistic", "Purely grammatical", "Legal", "Economic"),
+			lq("What is the language's greatest richness?", "Its diversity", "Its diversity", "Its rules", "Its age", "Its difficulty"),
+		},
+	)
 }
 
 // --- reading sessions --------------------------------------------------------
@@ -2765,6 +4833,277 @@ func seedReading(db *gorm.DB) {
 		[]models.ReadingQuestion{
 			rq("Where is Zephyr from?", "Spain", "Spain", "Mexico", "Peru", "Chile"),
 			rq("How does Zephyr end the note?", "Nice to meet you", "Nice to meet you", "Goodbye forever", "See you never", "Good night"),
+		},
+	)
+
+	addReading(db, "A1 · Gramática Esencial", "Un día de Pablo",
+		"Read about Pablo's day, then answer.", 5, 20,
+		[]models.ReadingLine{
+			rl("Me llamo Pablo y soy de México.", "My name is Pablo and I'm from Mexico."),
+			rl("Por la mañana me levanto a las siete y desayuno.", "In the morning I get up at seven and have breakfast."),
+			rl("Trabajo en una oficina y como a la una.", "I work in an office and eat at one."),
+			rl("Por la tarde estudio español. Me gusta mucho.", "In the afternoon I study Spanish. I like it a lot."),
+		},
+		[]models.ReadingQuestion{
+			rq("Where is Pablo from?", "Mexico", "Mexico", "Spain", "Peru", "Chile"),
+			rq("What time does he get up?", "Seven", "Seven", "One", "Eight", "Nine"),
+			rq("Where does he work?", "In an office", "In an office", "At home", "In a shop", "At school"),
+			rq("What does he study?", "Spanish", "Spanish", "English", "Maths", "Music"),
+		},
+	)
+
+	addReading(db, "A1 · Gramática Esencial", "La familia de Marta",
+		"Read about Marta's family, then answer.", 6, 20,
+		[]models.ReadingLine{
+			rl("Mi familia es pequeña.", "My family is small."),
+			rl("Tengo un hermano y una hermana.", "I have a brother and a sister."),
+			rl("Mi padre es alto y mi madre es simpática.", "My father is tall and my mother is nice."),
+			rl("Vivimos en una casa con un perro.", "We live in a house with a dog."),
+		},
+		[]models.ReadingQuestion{
+			rq("How many siblings does Marta have?", "Two", "Two", "One", "Three", "None"),
+			rq("How is her father described?", "Tall", "Tall", "Short", "Funny", "Old"),
+			rq("What pet do they have?", "A dog", "A dog", "A cat", "A bird", "A fish"),
+			rq("How is the family described?", "Small", "Small", "Big", "Loud", "New"),
+		},
+	)
+
+	addReading(db, "A2 · Elemental", "Mis vacaciones",
+		"Read about Lucía's holiday, then answer.", 7, 22,
+		[]models.ReadingLine{
+			rl("El verano pasado fui a Sevilla con mi familia.", "Last summer I went to Seville with my family."),
+			rl("Visitamos la catedral y comimos tapas todos los días.", "We visited the cathedral and ate tapas every day."),
+			rl("Hizo mucho calor, pero lo pasamos genial.", "It was very hot, but we had a great time."),
+			rl("Volvimos a casa muy contentos.", "We came back home very happy."),
+		},
+		[]models.ReadingQuestion{
+			rq("Where did Lucía go?", "Seville", "Seville", "Madrid", "Barcelona", "Valencia"),
+			rq("Who did she travel with?", "Her family", "Her family", "Her friends", "Alone", "Her class"),
+			rq("What did they eat?", "Tapas", "Tapas", "Pizza", "Sushi", "Burgers"),
+			rq("What was the weather like?", "Very hot", "Very hot", "Cold", "Rainy", "Snowy"),
+		},
+	)
+
+	addReading(db, "A2 · Elemental", "Una reseña",
+		"Read the restaurant review, then answer.", 8, 22,
+		[]models.ReadingLine{
+			rl("Ayer cené en el restaurante El Sol.", "Yesterday I had dinner at El Sol restaurant."),
+			rl("Pedí pescado y estaba muy rico.", "I ordered fish and it was very tasty."),
+			rl("El camarero fue muy amable, pero la música estaba demasiado alta.", "The waiter was very friendly, but the music was too loud."),
+			rl("En general, lo recomiendo. Volveré pronto.", "Overall, I recommend it. I'll come back soon."),
+		},
+		[]models.ReadingQuestion{
+			rq("When did the writer go?", "Yesterday", "Yesterday", "Last week", "Today", "Last year"),
+			rq("What did they order?", "Fish", "Fish", "Meat", "Pasta", "Soup"),
+			rq("What was the problem?", "The music was too loud", "The music was too loud", "The food was cold", "The waiter was rude", "It was expensive"),
+			rq("Will they return?", "Yes, soon", "Yes, soon", "Never", "Not sure", "Only once"),
+		},
+	)
+
+	addReading(db, "A2 · Elemental", "Planes para el verano",
+		"Read about Marco's summer plans, then answer.", 9, 22,
+		[]models.ReadingLine{
+			rl("Este verano voy a viajar a México.", "This summer I'm going to travel to Mexico."),
+			rl("Voy a visitar las pirámides y a practicar mi español.", "I'm going to visit the pyramids and practise my Spanish."),
+			rl("Mi hermana va a venir conmigo.", "My sister is going to come with me."),
+			rl("Vamos a quedarnos dos semanas.", "We're going to stay two weeks."),
+		},
+		[]models.ReadingQuestion{
+			rq("Where is Marco going?", "Mexico", "Mexico", "Spain", "Peru", "Cuba"),
+			rq("What will he visit?", "The pyramids", "The pyramids", "The beach", "A museum", "The mountains"),
+			rq("Who is coming with him?", "His sister", "His sister", "His brother", "His friend", "No one"),
+			rq("How long will they stay?", "Two weeks", "Two weeks", "One week", "A month", "Three days"),
+		},
+	)
+
+	addReading(db, "B1 · Intermedio", "La tecnología en nuestra vida",
+		"Read the opinion article, then answer.", 10, 26,
+		[]models.ReadingLine{
+			rl("Hoy en día, la tecnología está presente en todo.", "Nowadays, technology is present in everything."),
+			rl("Por un lado, nos permite comunicarnos y trabajar desde casa.", "On one hand, it lets us communicate and work from home."),
+			rl("Sin embargo, muchos creen que pasamos demasiado tiempo con el móvil.", "However, many think we spend too much time on our phones."),
+			rl("En mi opinión, la tecnología es útil si la usamos con moderación.", "In my opinion, technology is useful if we use it in moderation."),
+		},
+		[]models.ReadingQuestion{
+			rq("What does technology let us do, on one hand?", "Work from home", "Work from home", "Sleep more", "Travel free", "Earn more"),
+			rq("What is the concern?", "Too much phone time", "Too much phone time", "It's expensive", "It's slow", "It's boring"),
+			rq("What is the writer's opinion?", "Useful in moderation", "Useful in moderation", "Always bad", "Always good", "Useless"),
+			rq("Which connector introduces the contrast?", "Sin embargo", "Sin embargo", "Por un lado", "En mi opinión", "Hoy en día"),
+		},
+	)
+
+	addReading(db, "B1 · Intermedio", "Un viaje inolvidable",
+		"Read the travel story, then answer.", 11, 26,
+		[]models.ReadingLine{
+			rl("Hacía mucho calor cuando llegamos a Granada.", "It was very hot when we arrived in Granada."),
+			rl("Mientras paseábamos, descubrimos la Alhambra.", "While we were walking, we discovered the Alhambra."),
+			rl("Nunca había visto un lugar tan bonito.", "I had never seen such a beautiful place."),
+			rl("Aunque estábamos cansados, decidimos quedarnos un día más.", "Although we were tired, we decided to stay one more day."),
+		},
+		[]models.ReadingQuestion{
+			rq("What was the weather like on arrival?", "Very hot", "Very hot", "Cold", "Rainy", "Windy"),
+			rq("What did they discover while walking?", "The Alhambra", "The Alhambra", "A market", "A beach", "A museum"),
+			rq("Had the writer seen such a place before?", "Never", "Never", "Many times", "Once", "Twice"),
+			rq("What did they decide despite being tired?", "To stay one more day", "To stay one more day", "To go home", "To sleep", "To complain"),
+		},
+	)
+
+	addReading(db, "B1 · Intermedio", "Buscar trabajo",
+		"Read the job advice, then answer.", 12, 26,
+		[]models.ReadingLine{
+			rl("Cuando buscas trabajo, es importante que prepares bien tu currículum.", "When you look for work, it's important to prepare your CV well."),
+			rl("Antes de la entrevista, investiga la empresa.", "Before the interview, research the company."),
+			rl("Te recomiendo que llegues pronto y que hagas preguntas.", "I recommend that you arrive early and ask questions."),
+			rl("No creo que sea fácil, pero con esfuerzo lo conseguirás.", "I don't think it's easy, but with effort you'll get it."),
+		},
+		[]models.ReadingQuestion{
+			rq("What is important to prepare?", "Your CV", "Your CV", "Your car", "Your lunch", "Your clothes only"),
+			rq("What should you do before the interview?", "Research the company", "Research the company", "Sleep", "Call a friend", "Buy a gift"),
+			rq("What does the writer recommend?", "Arrive early and ask questions", "Arrive early and ask questions", "Arrive late", "Stay silent", "Talk about money"),
+			rq("What is the writer's view on difficulty?", "Not easy but achievable", "Not easy but achievable", "Impossible", "Very easy", "Pointless"),
+		},
+	)
+
+	addReading(db, "B2 · Avanzado", "El impacto del turismo",
+		"Read the opinion essay, then answer.", 13, 30,
+		[]models.ReadingLine{
+			rl("El turismo masivo se ha convertido en un arma de doble filo.", "Mass tourism has become a double-edged sword."),
+			rl("Por un lado, genera empleo y riqueza para muchas regiones.", "On one hand, it generates jobs and wealth for many regions."),
+			rl("Sin embargo, también provoca la subida de los alquileres y daña el medio ambiente.", "However, it also drives up rents and damages the environment."),
+			rl("Cabe destacar que, si no se regulara, algunas ciudades se volverían invivibles.", "It's worth noting that, if it weren't regulated, some cities would become unlivable."),
+		},
+		[]models.ReadingQuestion{
+			rq("How is mass tourism described?", "A double-edged sword", "A double-edged sword", "A disaster", "A blessing", "A mystery"),
+			rq("What benefit is mentioned?", "Jobs and wealth", "Jobs and wealth", "Cheaper rents", "Cleaner air", "Less traffic"),
+			rq("What problem does it cause?", "Higher rents", "Higher rents", "Lower wages", "Fewer tourists", "More rain"),
+			rq("What would happen without regulation?", "Cities would become unlivable", "Cities would become unlivable", "Tourism would stop", "Rents would fall", "Nothing"),
+		},
+	)
+
+	addReading(db, "B2 · Avanzado", "La salud mental",
+		"Read the article on mental health, then answer.", 14, 30,
+		[]models.ReadingLine{
+			rl("Durante mucho tiempo, la salud mental fue un tema tabú.", "For a long time, mental health was a taboo subject."),
+			rl("Hoy, aunque todavía existe estigma, se habla de ello más abiertamente.", "Today, although stigma still exists, it is talked about more openly."),
+			rl("Los expertos recomiendan que pidamos ayuda sin vergüenza.", "Experts recommend that we ask for help without shame."),
+			rl("De hecho, cuidar la mente es tan importante como cuidar el cuerpo.", "In fact, caring for the mind is as important as caring for the body."),
+		},
+		[]models.ReadingQuestion{
+			rq("How was mental health seen for a long time?", "A taboo", "A taboo", "A joke", "A luxury", "A myth"),
+			rq("How is it discussed today?", "More openly", "More openly", "Never", "Less than before", "Only by doctors"),
+			rq("What do experts recommend?", "Asking for help without shame", "Asking for help without shame", "Ignoring it", "Hiding it", "Waiting"),
+			rq("Caring for the mind is as important as…?", "Caring for the body", "Caring for the body", "Earning money", "Studying", "Sleeping"),
+		},
+	)
+
+	addReading(db, "B2 · Avanzado", "La globalización",
+		"Read the essay on globalization, then answer.", 15, 30,
+		[]models.ReadingLine{
+			rl("La globalización ha conectado el mundo como nunca antes.", "Globalization has connected the world like never before."),
+			rl("Gracias a ella, podemos acceder a productos y culturas de todo el planeta.", "Thanks to it, we can access products and cultures from all over the planet."),
+			rl("No obstante, algunos critican que favorece a las grandes empresas.", "Nevertheless, some criticize that it favours large companies."),
+			rl("Si fuéramos capaces de repartir mejor la riqueza, sus beneficios serían mayores.", "If we were able to distribute wealth better, its benefits would be greater."),
+		},
+		[]models.ReadingQuestion{
+			rq("What has globalization done?", "Connected the world", "Connected the world", "Divided the world", "Slowed the world", "Ended trade"),
+			rq("What can we access thanks to it?", "Products and cultures", "Products and cultures", "Only money", "Free travel", "Cheap homes"),
+			rq("What do some critics say?", "It favours large companies", "It favours large companies", "It helps the poor", "It's too slow", "It's harmless"),
+			rq("What would make its benefits greater?", "Better wealth distribution", "Better wealth distribution", "More companies", "Less trade", "Higher prices"),
+		},
+	)
+
+	addReading(db, "C1 · Superior", "Editorial: la era digital",
+		"Read the editorial, noting its tone, then answer.", 16, 32,
+		[]models.ReadingLine{
+			rl("Vivimos inmersos en una vorágine tecnológica de la que resulta difícil sustraerse.", "We live immersed in a technological whirlwind from which it's hard to escape."),
+			rl("Si bien las redes nos acercan, también han erosionado, paradójicamente, la conversación pausada.", "While networks bring us closer, they have, paradoxically, eroded unhurried conversation."),
+			rl("No se trata de demonizar el progreso, sino de aprender a convivir con él.", "It's not about demonizing progress, but learning to live with it."),
+			rl("En definitiva, la tecnología debería estar al servicio del ser humano, y no al revés.", "Ultimately, technology should serve humans, not the other way around."),
+		},
+		[]models.ReadingQuestion{
+			rq("How does the author describe our era?", "A technological whirlwind", "A technological whirlwind", "A golden age", "A quiet time", "A disaster"),
+			rq("What have networks paradoxically eroded?", "Unhurried conversation", "Unhurried conversation", "Our memory", "The economy", "Friendship entirely"),
+			rq("What is the author's stance on progress?", "Not to demonize but coexist with it", "Not to demonize but coexist with it", "To reject it", "To worship it", "To ignore it"),
+			rq("What is the editorial's tone?", "Reflective and balanced", "Reflective and balanced", "Furious", "Indifferent", "Comic"),
+		},
+	)
+
+	addReading(db, "C1 · Superior", "Fragmento literario",
+		"Read the literary excerpt, then answer.", 17, 32,
+		[]models.ReadingLine{
+			rl("Cuando regresó al pueblo, todo le pareció más pequeño, como si los años lo hubieran encogido.", "When he returned to the village, everything seemed smaller, as if the years had shrunk it."),
+			rl("Las calles que antaño recorría con entusiasmo guardaban ahora un silencio extraño.", "The streets he once walked with enthusiasm now held a strange silence."),
+			rl("Comprendió, no sin cierta melancolía, que el lugar no había cambiado: era él quien ya no era el mismo.", "He understood, not without some melancholy, that the place hadn't changed: it was he who was no longer the same."),
+		},
+		[]models.ReadingQuestion{
+			rq("How did the village seem on his return?", "Smaller", "Smaller", "Bigger", "Noisier", "Brand new"),
+			rq("What did the streets hold now?", "A strange silence", "A strange silence", "Loud music", "Crowds", "Markets"),
+			rq("What did he finally understand?", "He had changed, not the place", "He had changed, not the place", "The place had changed", "Nothing had meaning", "He should leave"),
+			rq("What feeling pervades the passage?", "Melancholy", "Melancholy", "Joy", "Anger", "Fear"),
+		},
+	)
+
+	addReading(db, "C1 · Superior", "La identidad cultural",
+		"Read the essay on cultural identity, then answer.", 18, 32,
+		[]models.ReadingLine{
+			rl("La identidad cultural no es un bloque inmutable, sino un proceso en constante construcción.", "Cultural identity is not an immutable block, but a process in constant construction."),
+			rl("Cada generación reinterpreta sus tradiciones a la luz de nuevos contextos.", "Each generation reinterprets its traditions in the light of new contexts."),
+			rl("Quienes defienden una identidad 'pura' suelen olvidar que toda cultura es, en esencia, mestiza.", "Those who defend a 'pure' identity often forget that every culture is, in essence, mixed."),
+			rl("Por consiguiente, abrazar la diversidad no debilita lo propio: lo enriquece.", "Consequently, embracing diversity does not weaken what is one's own: it enriches it."),
+		},
+		[]models.ReadingQuestion{
+			rq("How is cultural identity described?", "A process in constant construction", "A process in constant construction", "An immutable block", "A modern invention", "A lost cause"),
+			rq("What does each generation do with traditions?", "Reinterprets them", "Reinterprets them", "Abandons them", "Freezes them", "Forgets them"),
+			rq("What do defenders of a 'pure' identity forget?", "Every culture is mixed", "Every culture is mixed", "Culture is useless", "Traditions matter", "Languages die"),
+			rq("What does embracing diversity do, per the author?", "Enriches one's own culture", "Enriches one's own culture", "Weakens it", "Erases it", "Has no effect"),
+		},
+	)
+
+	addReading(db, "C2 · Maestría", "Elogio de la duda",
+		"Read the philosophical essay, attending to its rhetoric, then answer.", 19, 34,
+		[]models.ReadingLine{
+			rl("Vivimos en una época que premia la certeza y desconfía de quien titubea.", "We live in an age that rewards certainty and distrusts those who hesitate."),
+			rl("Y sin embargo, acaso sea la duda, y no la convicción ciega, el verdadero motor del pensamiento.", "And yet, perhaps it is doubt, not blind conviction, that is the true engine of thought."),
+			rl("Quien nunca duda no piensa: se limita a repetir certezas heredadas.", "Whoever never doubts does not think: they merely repeat inherited certainties."),
+			rl("Dudar, lejos de ser debilidad, es el primer acto de una mente libre.", "To doubt, far from being weakness, is the first act of a free mind."),
+		},
+		[]models.ReadingQuestion{
+			rq("What does the age reward, per the author?", "Certainty", "Certainty", "Doubt", "Silence", "Wealth"),
+			rq("What does the author call the true engine of thought?", "Doubt", "Doubt", "Blind conviction", "Memory", "Fear"),
+			rq("What does someone who never doubts do?", "Repeats inherited certainties", "Repeats inherited certainties", "Thinks deeply", "Stays silent", "Learns fast"),
+			rq("How does the author reframe doubting?", "The first act of a free mind", "The first act of a free mind", "A weakness", "A waste", "A sin"),
+		},
+	)
+
+	addReading(db, "C2 · Maestría", "Columna: la prisa",
+		"Read this ironic opinion column, attending to tone, then answer.", 20, 34,
+		[]models.ReadingLine{
+			rl("Enhorabuena: hemos inventado mil formas de ahorrar tiempo y ninguna de disfrutarlo.", "Congratulations: we've invented a thousand ways to save time and none to enjoy it."),
+			rl("Corremos para llegar antes, sin recordar ya adónde íbamos ni por qué.", "We rush to arrive sooner, no longer remembering where we were going or why."),
+			rl("Al parecer, el ocio se ha vuelto sospechoso, casi un delito que conviene justificar.", "Apparently, leisure has become suspect, almost a crime one had better justify."),
+			rl("Quizá detenerse, hoy, sea el más subversivo de los actos.", "Perhaps stopping, today, is the most subversive of acts."),
+		},
+		[]models.ReadingQuestion{
+			rq("What is the column's tone?", "Ironic", "Ironic", "Sincere praise", "Neutral", "Academic"),
+			rq("What have we invented, per the writer?", "Ways to save time, not enjoy it", "Ways to save time, not enjoy it", "Ways to travel", "Ways to earn money", "Ways to rest"),
+			rq("How is leisure now seen?", "As suspect, almost a crime", "As suspect, almost a crime", "As sacred", "As normal", "As free"),
+			rq("What does the writer call subversive today?", "Stopping", "Stopping", "Working", "Spending", "Competing"),
+		},
+	)
+
+	addReading(db, "C2 · Maestría", "Crítica literaria",
+		"Read the literary review, then answer.", 21, 34,
+		[]models.ReadingLine{
+			rl("La novela, de prosa contenida y estructura fragmentaria, indaga en la memoria y el desarraigo.", "The novel, of restrained prose and fragmentary structure, probes memory and rootlessness."),
+			rl("Cabe destacar el pulso con que el autor dosifica la información: nada sobra, nada falta.", "It's worth noting the steady hand with which the author measures out information: nothing is excessive, nothing lacking."),
+			rl("No obstante, el desenlace, quizá demasiado simbólico, exige un esfuerzo no siempre recompensado.", "However, the ending, perhaps too symbolic, demands an effort not always rewarded."),
+			rl("Con todo, estamos ante una obra valiente que se aparta de lo previsible.", "All in all, this is a bold work that departs from the predictable."),
+		},
+		[]models.ReadingQuestion{
+			rq("How is the novel's prose described?", "Restrained", "Restrained", "Excessive", "Careless", "Comic"),
+			rq("What does the reviewer praise?", "How information is measured out", "How information is measured out", "The cover", "The length", "The price"),
+			rq("What is the reviewer's reservation?", "The ending is too symbolic", "The ending is too symbolic", "The start is dull", "It's too short", "It's too cheap"),
+			rq("What is the overall judgement?", "A bold, unpredictable work", "A bold, unpredictable work", "A failure", "Mediocre", "Forgettable"),
 		},
 	)
 }

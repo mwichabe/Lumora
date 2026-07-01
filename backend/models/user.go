@@ -29,6 +29,14 @@ type User struct {
 	League        string `json:"league"`       // Bronze..Obsidian
 
 	LastActiveDate string    `json:"lastActiveDate"` // YYYY-MM-DD, drives streak logic
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+
+	// Monetization entitlement — set once the exam+certificate is paid for.
+	ExamUnlocked bool `json:"examUnlocked"`
+
+	// Hearts regenerate over time; this anchors the regen clock (the moment the
+	// current partial refill began). Zero when hearts are full.
+	HeartsUpdatedAt time.Time `json:"-"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }

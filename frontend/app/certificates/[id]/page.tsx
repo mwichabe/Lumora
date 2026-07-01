@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Download, ShieldCheck, Link2, Check } from "lucide-react";
+import { ArrowLeft, Download, ShieldCheck, Link2, Check, Trash2 } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { api } from "@/lib/api";
 import { languageName, languageMeta } from "@/lib/languages";
 import type { Certificate } from "@/lib/types";
@@ -16,6 +17,8 @@ export default function CertificatePage() {
   const [missing, setMissing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [verifyUrl, setVerifyUrl] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api
@@ -36,6 +39,18 @@ export default function CertificatePage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function doDelete() {
+    if (!cert) return;
+    setDeleting(true);
+    try {
+      await api.deleteCertificate(cert.id);
+      router.push("/certificates");
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   }
 
   if (missing) {
@@ -79,12 +94,19 @@ export default function CertificatePage() {
         {/* toolbar */}
         <div className="no-print mb-4 flex items-center justify-between">
           <button
-            onClick={() => router.push("/profile")}
+            onClick={() => router.push("/certificates")}
             className="flex items-center gap-1.5 text-body-sm font-semibold text-slatey transition hover:text-purple"
           >
             <ArrowLeft size={16} /> Back
           </button>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete certificate"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-400 transition hover:bg-coral/10 hover:text-coral"
+            >
+              <Trash2 size={18} />
+            </button>
             <Button variant="outline" onClick={copyLink} className="h-10 px-4">
               <span className="flex items-center gap-2">
                 {copied ? <Check size={16} /> : <Link2 size={16} />}
@@ -98,6 +120,16 @@ export default function CertificatePage() {
             </Button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Delete certificate?"
+          message="This permanently removes this certificate. You'll be able to retake that level."
+          confirmLabel={deleting ? "Deleting…" : "Delete"}
+          danger
+          onConfirm={doDelete}
+          onCancel={() => (deleting ? null : setConfirmDelete(false))}
+        />
 
         {/* the certificate */}
         <div
@@ -192,14 +224,11 @@ export default function CertificatePage() {
                 <p className="text-label-sm text-gray-500">Date issued</p>
               </div>
               <div className="text-right">
-                <p
-                  className="pt-1 text-heading-md text-purple"
-                  style={{ fontFamily: "cursive" }}
-                >
+                <p className="text-heading-md font-extrabold tracking-tight text-purple">
                   Lumora
                 </p>
                 <p className="border-t-2 border-gray-200 pt-1 text-label-sm text-gray-500">
-                  Lumora Academy
+                  Lumora Language Academy
                 </p>
               </div>
             </div>
@@ -218,6 +247,9 @@ export default function CertificatePage() {
                 </p>
               )}
             </div>
+
+            {/* rubber stamp — pressed over the certificate */}
+            <LumoraStamp level={cert.level} />
           </div>
         </div>
 
@@ -226,6 +258,62 @@ export default function CertificatePage() {
           confirm this certificate is genuine using the verification link.
         </p>
       </div>
+    </div>
+  );
+}
+
+/** A circular, ink-pressed "official" rubber stamp. */
+function LumoraStamp({ level }: { level: string }) {
+  const ink = "#B23A6B"; // stamp ink
+  return (
+    <div
+      className="pointer-events-none absolute bottom-6 right-6 h-32 w-32 opacity-70 sm:h-36 sm:w-36"
+      style={{ transform: "rotate(-13deg)", mixBlendMode: "multiply" }}
+      aria-hidden
+    >
+      <svg viewBox="0 0 200 200" className="h-full w-full">
+        <defs>
+          <path id="stampTop" d="M 100,100 m -74,0 a 74,74 0 1,1 148,0" />
+          <path id="stampBottom" d="M 100,100 m -60,0 a 60,60 0 1,0 120,0" />
+        </defs>
+        <g fill="none" stroke={ink}>
+          <circle cx="100" cy="100" r="92" strokeWidth="3" />
+          <circle cx="100" cy="100" r="80" strokeWidth="1.5" />
+          <circle cx="100" cy="100" r="46" strokeWidth="2" />
+        </g>
+        <text fill={ink} fontSize="15" fontWeight="700" letterSpacing="2">
+          <textPath href="#stampTop" startOffset="50%" textAnchor="middle">
+            LUMORA LANGUAGE ACADEMY
+          </textPath>
+        </text>
+        <text fill={ink} fontSize="13" fontWeight="700" letterSpacing="3">
+          <textPath href="#stampBottom" startOffset="50%" textAnchor="middle">
+            ★ OFFICIALLY CERTIFIED ★
+          </textPath>
+        </text>
+        <text
+          x="100"
+          y="94"
+          textAnchor="middle"
+          fill={ink}
+          fontSize="20"
+          fontWeight="800"
+          letterSpacing="1"
+        >
+          {level}
+        </text>
+        <text
+          x="100"
+          y="116"
+          textAnchor="middle"
+          fill={ink}
+          fontSize="11"
+          fontWeight="700"
+          letterSpacing="1"
+        >
+          VERIFIED
+        </text>
+      </svg>
     </div>
   );
 }

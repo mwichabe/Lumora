@@ -24,6 +24,10 @@ func Register(app *fiber.App, cfg config.Config) {
 	publicExam := &controllers.ExamController{}
 	api.Get("/verify/:serial", publicExam.Verify)
 
+	// Paystack webhook — public, but authenticated by the signature header.
+	payments := &controllers.PaymentController{Cfg: cfg}
+	api.Post("/paystack/webhook", payments.Webhook)
+
 	// Protected routes require a valid Bearer token.
 	protected := api.Group("", middleware.Protected(cfg.JWTSecret))
 
@@ -43,6 +47,10 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/home", progress.Home)
 	protected.Post("/lessons/:id/complete", progress.CompleteLesson)
 
+	hearts := &controllers.HeartsController{}
+	protected.Get("/hearts", hearts.Status)
+	protected.Post("/hearts/lose", hearts.Lose)
+
 	listening := &controllers.ListeningController{}
 	protected.Get("/listening", listening.List)
 	protected.Get("/listening/:id", listening.Get)
@@ -60,6 +68,8 @@ func Register(app *fiber.App, cfg config.Config) {
 
 	practice := &controllers.PracticeController{}
 	protected.Get("/practice", practice.Pool)
+	protected.Get("/practice/listening", practice.Listening)
+	protected.Get("/practice/reading", practice.Reading)
 	protected.Post("/practice/complete", practice.Complete)
 	protected.Post("/mistakes", practice.RecordMistake)
 	protected.Post("/mistakes/resolve", practice.ResolveMistakes)
@@ -73,6 +83,8 @@ func Register(app *fiber.App, cfg config.Config) {
 	notifications := &controllers.NotificationController{}
 	protected.Get("/notifications", notifications.List)
 	protected.Post("/notifications/read", notifications.MarkRead)
+	protected.Post("/notifications/:id/read", notifications.MarkOneRead)
+	protected.Delete("/notifications/:id", notifications.Delete)
 
 	chat := &controllers.ChatController{}
 	protected.Get("/chat/contacts", chat.Contacts)
@@ -81,11 +93,18 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/chat/with/:id", chat.Messages)
 	protected.Post("/chat/with/:id", chat.Send)
 
+	protected.Get("/payments/status", payments.Status)
+	protected.Post("/payments/initialize", payments.Initialize)
+	protected.Get("/payments/verify", payments.Verify)
+
 	exam := &controllers.ExamController{}
 	protected.Get("/exam/meta", exam.Meta)
+	protected.Get("/exam/paper", exam.Paper)
+	protected.Post("/exam/start", exam.Start)
 	protected.Post("/exam/submit", exam.Submit)
 	protected.Get("/certificates", exam.ListCertificates)
 	protected.Get("/certificates/:id", exam.GetCertificate)
+	protected.Delete("/certificates/:id", exam.DeleteCertificate)
 
 	leaderboard := &controllers.LeaderboardController{}
 	protected.Get("/leaderboard", leaderboard.League)

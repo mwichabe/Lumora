@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Heart, Flame, Gem } from "lucide-react";
+import { Heart, Flame, Gem, Clock } from "lucide-react";
+import { fmtCountdown } from "@/lib/hearts";
 
 // XP progress bar — amber gradient fill, animated on change (spec 5.5).
 export function XPBar({ value, max }: { value: number; max: number }) {
@@ -19,8 +20,15 @@ export function XPBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-// Row of 5 hearts; full hearts coral, empty hearts outlined (spec 5.5).
-export function HeartIndicator({ hearts }: { hearts: number }) {
+// Row of 5 hearts; full hearts coral, empty hearts outlined (spec 5.5). When not
+// full, a small countdown to the next regenerated heart is shown.
+export function HeartIndicator({
+  hearts,
+  secondsToNext = 0,
+}: {
+  hearts: number;
+  secondsToNext?: number;
+}) {
   return (
     <div className="flex items-center gap-1">
       {Array.from({ length: 5 }).map((_, i) => (
@@ -32,6 +40,12 @@ export function HeartIndicator({ hearts }: { hearts: number }) {
           strokeWidth={2}
         />
       ))}
+      {hearts < 5 && secondsToNext > 0 && (
+        <span className="ml-1 flex items-center gap-0.5 rounded-full bg-coral/10 px-1.5 py-0.5 text-label-sm font-bold tabular-nums text-coral">
+          <Clock size={11} />
+          {fmtCountdown(secondsToNext)}
+        </span>
+      )}
     </div>
   );
 }

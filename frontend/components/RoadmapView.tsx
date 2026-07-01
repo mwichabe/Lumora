@@ -11,11 +11,9 @@ import type { Skill } from "@/lib/types";
  */
 export function RoadmapView({
   skills,
-  userXp,
   onOpen,
 }: {
   skills: Skill[];
-  userXp: number;
   onOpen: (lessonId: number) => void;
 }) {
   // Group by unit, preserving backend order.
@@ -88,7 +86,7 @@ export function RoadmapView({
                   </p>
                   {locked ? (
                     <p className="text-label-md text-amber">
-                      {Math.max(0, s.requiredXp - userXp)} XP to unlock
+                      Finish the previous skill
                     </p>
                   ) : (
                     <p className="text-label-md text-slatey">

@@ -2,20 +2,59 @@
 
 /**
  * Character voices via the browser's built-in Web Speech API (no API key
- * required). Each character gets a distinct profile — a preferred Spanish voice
- * plus a unique pitch/rate — so they sound recognisably different even on
- * machines that only ship one Spanish voice.
+ * required). Each character gets a distinct profile — a unique pitch/rate plus
+ * voice-name hints — so they sound recognisably different.
  *
- * To upgrade to studio-quality, per-character cloned voices later, swap
- * `speakAs` to call a backend TTS proxy (see the notes shared in chat).
+ * IMPORTANT: pronunciation must match the CONTENT language. The active learning
+ * language is set via `setSpeechLanguage()` (wired to the user's target
+ * language), so German text is spoken with a German voice, French with French,
+ * etc. The per-character pitch/rate still differentiates speakers within any
+ * language. To upgrade to studio-quality cloned voices later, swap `speakAs` to
+ * call a backend TTS proxy.
  */
 
 export interface VoiceProfile {
   pitch: number; // 0–2 (1 = default)
   rate: number; // 0.1–10 (1 = default)
-  lang: string; // preferred BCP-47 tag
+  lang: string; // preferred BCP-47 tag (region nudge within the active language)
   gender: "female" | "male"; // preferred voice gender
   hints: string[]; // substrings to match a system voice name, in priority order
+}
+
+// Map a language code to a sensible default locale for speech.
+const LANG_LOCALE: Record<string, string> = {
+  es: "es-ES",
+  de: "de-DE",
+  fr: "fr-FR",
+  en: "en-US",
+  it: "it-IT",
+  pt: "pt-PT",
+  ja: "ja-JP",
+  zh: "zh-CN",
+  ar: "ar-SA",
+  sw: "sw-KE",
+};
+
+/** Normalise a language code or locale into a BCP-47 locale (e.g. "de" → "de-DE"). */
+function toLocale(x?: string): string {
+  if (!x) return activeLocale;
+  if (x.includes("-")) return x;
+  return LANG_LOCALE[x] || x;
+}
+
+// The active learning language drives which system voice is used. Defaults to
+// Spanish for backward compatibility until setSpeechLanguage() is called.
+let activeLocale = "es-ES";
+
+/** Set the language all subsequent speech/recognition should use. */
+export function setSpeechLanguage(code?: string) {
+  if (!code) return;
+  activeLocale = toLocale(code);
+}
+
+/** The locale currently used for speech (e.g. for SpeechRecognition). */
+export function getSpeechLocale(): string {
+  return activeLocale;
 }
 
 const DEFAULT_PROFILE: VoiceProfile = {
@@ -51,8 +90,30 @@ export const CHARACTER_VOICES: Record<string, VoiceProfile> = {
 };
 
 // Common female/male voice-name fragments used to honour `gender` when picking.
-const FEMALE_HINTS = ["female", "mónica", "monica", "paulina", "helena", "elvira", "sabina", "marisol", "lucia", "laura", "mujer"];
-const MALE_HINTS = ["male", "jorge", "diego", "juan", "carlos", "enrique", "pablo", "hombre"];
+// Spans several languages so gender matching also works for German/French/English
+// system voices, not just Spanish.
+const FEMALE_HINTS = [
+  "female", "mujer", "femme", "frau", "weiblich",
+  // Spanish
+  "mónica", "monica", "paulina", "helena", "elvira", "sabina", "marisol", "lucia", "laura",
+  // German
+  "katja", "hedda", "marlene", "gisela", "vicki", "amala", "petra", "anna",
+  // French
+  "amelie", "amélie", "audrey", "julie", "hortense", "céline", "celine", "denise", "léa",
+  // English
+  "zira", "samantha", "susan", "karen", "fiona", "moira", "tessa", "serena", "aria", "jenny", "michelle",
+];
+const MALE_HINTS = [
+  "male", "hombre", "homme", "mann", "männlich",
+  // Spanish
+  "jorge", "diego", "juan", "carlos", "enrique", "pablo",
+  // German
+  "conrad", "stefan", "hans", "klaus", "bernd", "yannick",
+  // French
+  "thomas", "paul", "claude", "henri", "nicolas", "mathieu",
+  // English
+  "david", "mark", "george", "daniel", "alex", "fred", "guy", "ryan", "eric", "brian",
+];
 
 export function profileFor(character?: string): VoiceProfile {
   return (character && CHARACTER_VOICES[character]) || DEFAULT_PROFILE;
@@ -79,27 +140,36 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => loadVoices();
 }
 
-// Score a voice for a profile. Higher = better. Prioritises clear, natural
-// voices (Google / neural / online, non-local) of the correct gender, which
-// fixes thin/robotic/"whispering" output from low-quality local engines.
-function scoreVoice(v: SpeechSynthesisVoice, profile: VoiceProfile): number {
+// Score a voice for a profile at a given locale. Higher = better. The CONTENT
+// language is by far the most important factor (so German is spoken by a German
+// voice); after that we prefer clear, natural voices of the correct gender.
+function scoreVoice(
+  v: SpeechSynthesisVoice,
+  profile: VoiceProfile,
+  locale: string
+): number {
   const name = v.name.toLowerCase();
-  const lang = (v.lang || "").toLowerCase();
+  const vlang = (v.lang || "").toLowerCase().replace("_", "-");
+  const base = locale.split("-")[0].toLowerCase();
   let s = 0;
 
-  if (lang.startsWith("es")) s += 5;
-  if (lang === profile.lang.toLowerCase()) s += 3;
+  // Matching the spoken language is critical for correct pronunciation.
+  if (vlang.startsWith(base)) s += 40;
+  if (vlang === locale.toLowerCase()) s += 8; // exact region match
+  if (vlang === profile.lang.toLowerCase()) s += 3; // character's region nudge
 
   // Specific name hints, in priority order.
   profile.hints.forEach((h, i) => {
-    if (name.includes(h.toLowerCase())) s += 30 - i;
+    if (name.includes(h.toLowerCase())) s += 20 - i;
   });
 
-  // Gender: reward the right gender, punish the wrong one.
+  // Gender: strongly reward the right gender, heavily punish the wrong one, so a
+  // male character never ends up on a clearly-female named voice when a male one
+  // exists for the language.
   const wanted = profile.gender === "male" ? MALE_HINTS : FEMALE_HINTS;
   const opposite = profile.gender === "male" ? FEMALE_HINTS : MALE_HINTS;
-  if (wanted.some((g) => name.includes(g))) s += 8;
-  if (opposite.some((g) => name.includes(g))) s -= 10;
+  if (wanted.some((g) => name.includes(g))) s += 25;
+  if (opposite.some((g) => name.includes(g))) s -= 30;
 
   // Quality signals — these are the clear, natural-sounding engines.
   if (/(natural|neural|online|wavenet|premium)/.test(name)) s += 12;
@@ -113,17 +183,51 @@ function scoreVoice(v: SpeechSynthesisVoice, profile: VoiceProfile): number {
   return s;
 }
 
-function pickVoice(profile: VoiceProfile): SpeechSynthesisVoice | undefined {
+/** Web Speech pitch is valid in [0, 2]; keep it in a usable, non-robotic range. */
+function clampPitch(p: number): number {
+  return Math.max(0.3, Math.min(2, p));
+}
+
+/** Guess a system voice's gender from its name; "unknown" when not encoded. */
+export function voiceGender(
+  v?: SpeechSynthesisVoice
+): "male" | "female" | "unknown" {
+  if (!v) return "unknown";
+  const n = v.name.toLowerCase();
+  if (MALE_HINTS.some((g) => n.includes(g))) return "male";
+  if (FEMALE_HINTS.some((g) => n.includes(g))) return "female";
+  return "unknown";
+}
+
+function pickVoice(
+  profile: VoiceProfile,
+  locale: string
+): SpeechSynthesisVoice | undefined {
   const voices = loadVoices();
   if (!voices.length) return undefined;
 
-  const spanish = voices.filter((v) => v.lang?.toLowerCase().startsWith("es"));
-  const pool = spanish.length ? spanish : voices;
+  // Only consider voices in the content language when any are installed, so we
+  // never read German text with a Spanish/English voice.
+  const base = locale.split("-")[0].toLowerCase();
+  const matching = voices.filter((v) =>
+    (v.lang || "").toLowerCase().replace("_", "-").startsWith(base)
+  );
+  const langPool = matching.length ? matching : voices;
+
+  // Prefer voices of the requested gender; otherwise gender-neutral names;
+  // never fall onto an opposite-gender named voice unless nothing else exists.
+  const sameGender = langPool.filter((v) => voiceGender(v) === profile.gender);
+  const neutral = langPool.filter((v) => voiceGender(v) === "unknown");
+  const pool = sameGender.length
+    ? sameGender
+    : neutral.length
+    ? neutral
+    : langPool;
 
   let best: SpeechSynthesisVoice | undefined;
   let bestScore = -Infinity;
   for (const v of pool) {
-    const sc = scoreVoice(v, profile);
+    const sc = scoreVoice(v, profile, locale);
     if (sc > bestScore) {
       bestScore = sc;
       best = v;
@@ -146,11 +250,12 @@ export function stopSpeaking() {
   synth()?.cancel();
 }
 
-/** Speak a single line in a character's voice. Resolves when finished. */
+/** Speak a single line in a character's voice. Resolves when finished. Pass
+ *  `opts.lang` to override the active language for this utterance. */
 export function speakAs(
   character: string | undefined,
   text: string,
-  opts: { onStart?: () => void; onEnd?: () => void } = {}
+  opts: { onStart?: () => void; onEnd?: () => void; lang?: string } = {}
 ): Promise<void> {
   return new Promise((resolve) => {
     const s = synth();
@@ -162,13 +267,28 @@ export function speakAs(
     s.cancel();
 
     const profile = profileFor(character);
+    const locale = toLocale(opts.lang);
     const u = new SpeechSynthesisUtterance(text);
-    const voice = pickVoice(profile);
+    const voice = pickVoice(profile, locale);
     if (voice) u.voice = voice;
-    u.lang = voice?.lang || profile.lang;
-    u.pitch = profile.pitch;
+    u.lang = voice?.lang || locale;
     u.rate = profile.rate;
     u.volume = 1; // full volume — avoids the faint/"whispering" feel
+
+    // Make gender unmistakable across every language. Per-language system voices
+    // often have no gender in their name ("unknown") and may sound male or
+    // female depending on the OS — so we can't rely on the voice alone. Whenever
+    // the chosen voice isn't *confirmed* to match the character's gender, we bend
+    // the pitch to it: deep for men, high for women. (Per-character base pitch
+    // keeps them distinct.) A voice already confirmed to match is left natural.
+    const vg = voiceGender(voice);
+    let pitch = profile.pitch;
+    if (profile.gender === "male" && vg !== "male") {
+      pitch = clampPitch(0.5 + (profile.pitch - 0.8) * 0.25); // ~0.50–0.60, deep
+    } else if (profile.gender === "female" && vg !== "female") {
+      pitch = clampPitch(1.4 + (profile.pitch - 0.8) * 0.4); // ~1.42–1.60, high
+    }
+    u.pitch = pitch;
 
     u.onstart = () => opts.onStart?.();
     u.onend = () => {
@@ -196,8 +316,9 @@ export function speechRecognitionSupported(): boolean {
   return !!getRecognition();
 }
 
-/** Listen to the microphone once and resolve with the recognised transcript. */
-export function recognizeSpeech(lang = "es-ES"): Promise<string> {
+/** Listen to the microphone once and resolve with the recognised transcript.
+ *  Defaults to the active learning language so scoring matches what's spoken. */
+export function recognizeSpeech(lang?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const Rec = getRecognition();
     if (!Rec) {
@@ -206,7 +327,7 @@ export function recognizeSpeech(lang = "es-ES"): Promise<string> {
     }
     stopSpeaking();
     const rec = new Rec();
-    rec.lang = lang;
+    rec.lang = toLocale(lang);
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     let done = false;
@@ -288,13 +409,14 @@ export interface SpokenLine {
 export async function speakSequence(
   lines: SpokenLine[],
   onLine?: (index: number) => void,
-  shouldContinue?: () => boolean
+  shouldContinue?: () => boolean,
+  lang?: string
 ): Promise<void> {
   for (let i = 0; i < lines.length; i++) {
     if (shouldContinue && !shouldContinue()) return;
     onLine?.(i);
     // small gap between speakers
-    await speakAs(lines[i].character, lines[i].text);
+    await speakAs(lines[i].character, lines[i].text, { lang });
     await new Promise((r) => setTimeout(r, 250));
   }
 }

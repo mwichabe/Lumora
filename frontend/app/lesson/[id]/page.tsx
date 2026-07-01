@@ -7,7 +7,11 @@ import { X, Volume2, Check, Mic } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { SpeechBubble, HeartIndicator } from "@/components/widgets";
 import { Button } from "@/components/Button";
-import { useAuth } from "@/lib/auth";
+import { MistakesReview, ReviewItem } from "@/components/MistakesReview";
+import { SpeakerAvatar, SpeakerChip } from "@/components/Speaker";
+import { OutOfHeartsModal } from "@/components/OutOfHeartsModal";
+import { characterInfo } from "@/lib/characters";
+import { useHearts } from "@/lib/hearts";
 import { api } from "@/lib/api";
 import {
   speakAs,
@@ -23,12 +27,14 @@ type Feedback = null | "correct" | "incorrect";
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuth();
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [phase, setPhase] = useState<"vocab" | "practice">("vocab");
+  const [phase, setPhase] = useState<"vocab" | "practice" | "review">("vocab");
   const [idx, setIdx] = useState(0);
-  const [hearts, setHearts] = useState(user?.hearts ?? 5);
+  const [misses, setMisses] = useState<ReviewItem[]>([]);
+  const { hearts, secondsToNext, status: heartsStatus, lose, buy } = useHearts();
+  const [outOfHearts, setOutOfHearts] = useState(false);
+  const [buyingHearts, setBuyingHearts] = useState(false);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -45,6 +51,11 @@ export default function LessonPage() {
       })
       .catch(() => {});
   }, [id]);
+
+  // Starting (or continuing) with no hearts isn't allowed — show the gate.
+  useEffect(() => {
+    if (heartsStatus && heartsStatus.hearts <= 0) setOutOfHearts(true);
+  }, [heartsStatus]);
 
   // Stop any speech when leaving the lesson.
   useEffect(() => () => stopSpeaking(), []);
@@ -94,8 +105,11 @@ export default function LessonPage() {
       setCorrectCount((c) => c + 1);
       setFeedback("correct");
     } else {
-      setHearts((h) => Math.max(0, h - 1));
       setFeedback("incorrect");
+      // Spend a heart on the server; if that empties them, the lesson ends.
+      lose().then((s) => {
+        if (s && s.hearts <= 0) setOutOfHearts(true);
+      });
       // Remember the miss so it shows up in Practice → Review Mistakes.
       api
         .recordMistake({
@@ -104,6 +118,17 @@ export default function LessonPage() {
           correctAnswer: ex.correctAnswer,
         })
         .catch(() => {});
+      // ...and collect it for the end-of-lesson review.
+      setMisses((m) => [
+        ...m,
+        {
+          prompt: ex.prompt,
+          question: ex.question,
+          correctAnswer: ex.correctAnswer,
+          playText: ex.type === "listen" ? ex.question : undefined,
+          speaker: ex.character,
+        },
+      ]);
     }
   }
 
@@ -112,6 +137,8 @@ export default function LessonPage() {
     setAnswer("");
     if (idx + 1 < total) {
       setIdx((i) => i + 1);
+    } else if (misses.length > 0) {
+      setPhase("review"); // study misses before the completion screen
     } else {
       finish();
     }
@@ -141,6 +168,25 @@ export default function LessonPage() {
     }
   }
 
+  // Out of hearts (either on entry, or after a wrong answer) ends the lesson.
+  const heartsModal = (
+    <OutOfHeartsModal
+      status={heartsStatus}
+      secondsToNext={secondsToNext}
+      note="You ran out of hearts, so this lesson has ended. Refill to try again now, or wait for a heart and restart it."
+      closeLabel="Back to lessons"
+      buying={buyingHearts}
+      onBuy={() => {
+        setBuyingHearts(true);
+        buy();
+      }}
+      onClose={() => {
+        stopSpeaking();
+        router.push("/learn");
+      }}
+    />
+  );
+
   if (!lesson) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-cream">
@@ -164,14 +210,21 @@ export default function LessonPage() {
             transition={{ duration: 0.3 }}
           />
         </div>
-        <HeartIndicator hearts={hearts} />
+        <HeartIndicator hearts={hearts} secondsToNext={secondsToNext} />
       </header>
+      {outOfHearts && heartsModal}
 
       <div className="flex flex-1 flex-col px-5 pt-4 lg:px-8">
         {phase === "vocab" ? (
           <VocabPhase
             vocab={lesson.vocab || []}
             onDone={() => setPhase("practice")}
+          />
+        ) : phase === "review" ? (
+          <MistakesReview
+            items={misses}
+            finishLabel={submitting ? "Finishing…" : "Finish lesson"}
+            onDone={finish}
           />
         ) : (
         <>
@@ -327,9 +380,9 @@ function VocabPhase({
               </button>
             )}
             {item.speaker && (
-              <p className="mt-3 text-label-md text-gray-500">
-                Voiced by {item.speaker}
-              </p>
+              <div className="mt-4 flex justify-center">
+                <SpeakerChip name={item.speaker} />
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
@@ -394,7 +447,8 @@ function NarrativeCard({ ex }: { ex: Exercise }) {
 function QuestionArea({ ex }: { ex: Exercise }) {
   if (ex.type === "listen") {
     return (
-      <div className="flex flex-col items-center gap-4 py-4">
+      <div className="flex flex-col items-center gap-3 py-4">
+        <SpeakerChip name="Mira" />
         <button
           onClick={() => speakAs("Mira", ex.question)}
           className="flex h-16 w-16 items-center justify-center rounded-full bg-purple text-white shadow-float"
@@ -501,7 +555,7 @@ function SpeakControl({ phrase, disabled }: { phrase: string; disabled: boolean 
     setScore(null);
     setListening(true);
     try {
-      const said = await recognizeSpeech("es-ES");
+      const said = await recognizeSpeech();
       setHeard(said);
       setScore(scorePronunciation(phrase, said));
     } catch {
@@ -622,21 +676,16 @@ function FeedbackBar({
 }
 
 function CharacterAvatar({ name }: { name: string }) {
-  const map: Record<string, string> = {
-    Lumora: "🦊",
-    "Professor Finch": "🦅",
-    Cora: "🐙",
-    Blaze: "🔥",
-    Mira: "🐆",
-    Riko: "🐼",
-    Zephyr: "🌬️",
-    Nana: "🐢",
-    Pip: "🦔",
-  };
-  if (name === "Lumora") return <FoxMascot size={120} glow bounce />;
+  const info = characterInfo(name);
   return (
-    <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-purple bg-white text-5xl">
-      {map[name] || "🦊"}
+    <div className="flex flex-col items-center gap-1.5">
+      <div
+        className="rounded-full border-4 p-0.5"
+        style={{ borderColor: info.color }}
+      >
+        <SpeakerAvatar name={name} size={92} />
+      </div>
+      <span className="text-body-md font-extrabold text-ink">{info.name}</span>
     </div>
   );
 }

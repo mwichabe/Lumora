@@ -56,6 +56,13 @@ function CourseScreen() {
   const [error, setError] = useState(false);
   const [view, setView] = useState<"course" | "roadmap">("course");
 
+  // Honour ?view=roadmap (e.g. from the home "Explore the galaxy map" link).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = new URLSearchParams(window.location.search).get("view");
+    if (v === "roadmap") setView("roadmap");
+  }, []);
+
   const load = useCallback(() => {
     setError(false);
     api
@@ -160,7 +167,6 @@ function CourseScreen() {
         ) : view === "roadmap" ? (
           <RoadmapView
             skills={skills}
-            userXp={user?.xp ?? 0}
             onOpen={(id) => router.push(`/lesson/${id}`)}
           />
         ) : (
@@ -183,7 +189,6 @@ function CourseScreen() {
                         key={s.id}
                         skill={s}
                         onOpen={(id) => router.push(`/lesson/${id}`)}
-                        userXp={user?.xp ?? 0}
                       />
                     ))}
                   </div>
@@ -384,11 +389,9 @@ function ListeningCard({
 function SkillCard({
   skill,
   onOpen,
-  userXp,
 }: {
   skill: Skill;
   onOpen: (lessonId: number) => void;
-  userXp: number;
 }) {
   const lessons = skill.lessons || [];
   const pct = skill.lessonCount
@@ -396,7 +399,6 @@ function SkillCard({
     : 0;
 
   if (!skill.unlocked) {
-    const remaining = Math.max(0, skill.requiredXp - userXp);
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-4 opacity-90 shadow-card">
         <div className="flex items-center gap-3">
@@ -413,7 +415,7 @@ function SkillCard({
           </div>
         </div>
         <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-body-sm font-semibold text-slatey">
-          Earn {remaining} more XP to unlock
+          Complete the previous skill to unlock this one
         </p>
       </div>
     );

@@ -18,6 +18,26 @@ export interface User {
   streak: number;
   fluencyScore: number;
   league: string;
+  examUnlocked?: boolean;
+}
+
+export interface PaymentStatus {
+  paymentsEnabled: boolean;
+  currency: string;
+  prices: Record<string, number>; // level -> price in KES
+  pricesUsd: Record<string, number>; // level -> approx price in USD
+  paid: Record<string, boolean>; // level -> has an unconsumed paid attempt
+}
+
+export interface HeartsStatus {
+  hearts: number;
+  max: number;
+  full: boolean;
+  secondsToNext: number; // until the next heart regenerates (0 when full)
+  regenMinutes: number;
+  paymentsEnabled: boolean;
+  refillPriceKes: number;
+  refillPriceUsd: number;
 }
 
 export type ExerciseType =
@@ -103,6 +123,39 @@ export interface ExamResult {
 export interface ExamMeta {
   weights: ExamSectionWeights;
   levels: Record<string, { passMark: number; durationSeconds: number }>;
+}
+
+export interface PaperQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export interface PaperLine {
+  character: string;
+  text: string;
+  translation: string;
+}
+
+export interface ExamPaper {
+  ready: boolean;
+  language: string;
+  level: string;
+  durationSeconds: number;
+  passMark: number;
+  weights: ExamSectionWeights;
+  listening: {
+    title: string;
+    lines: PaperLine[];
+    questions: PaperQuestion[];
+  } | null;
+  reading: {
+    title: string;
+    paragraphs: string[];
+    questions: PaperQuestion[];
+  } | null;
+  writing: { prompt: string; minWords: number };
+  speaking: { phrase: string; speaker: string; translation: string };
 }
 
 export interface CertVerification {

@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Sparkles,
   BookMarked,
+  MessagesSquare,
+  BookOpenText,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SpeechBubble } from "@/components/widgets";
@@ -30,6 +32,8 @@ function PracticeContent() {
   const { user } = useAuth();
   const [vocabCount, setVocabCount] = useState<number | null>(null);
   const [mistakeCount, setMistakeCount] = useState(0);
+  const [listeningCount, setListeningCount] = useState(0);
+  const [readingCount, setReadingCount] = useState(0);
 
   useEffect(() => {
     api
@@ -37,6 +41,8 @@ function PracticeContent() {
       .then((d) => {
         setVocabCount(d.vocab.length);
         setMistakeCount(d.mistakes.length);
+        setListeningCount(d.listeningCount || 0);
+        setReadingCount(d.readingCount || 0);
       })
       .catch(() => setVocabCount(0));
   }, [user?.targetLanguage]);
@@ -47,17 +53,39 @@ function PracticeContent() {
     {
       key: "quiz",
       title: "Vocabulary Quiz",
-      desc: "Match words to their meaning.",
+      desc: "Fresh words every time — choose the meaning.",
       icon: ListChecks,
       tint: "#6C3FC5",
       disabled: !hasVocab,
+    },
+    {
+      key: "listening",
+      title: "Listening Comprehension",
+      desc:
+        listeningCount > 0
+          ? `${listeningCount} unlocked conversations · listen & answer`
+          : "Unlock units to practise listening.",
+      icon: MessagesSquare,
+      tint: "#00C2A8",
+      disabled: listeningCount === 0,
+    },
+    {
+      key: "reading",
+      title: "Reading Comprehension",
+      desc:
+        readingCount > 0
+          ? `${readingCount} unlocked passages · read & answer`
+          : "Unlock units to practise reading.",
+      icon: BookOpenText,
+      tint: "#17A3DD",
+      disabled: readingCount === 0,
     },
     {
       key: "listen",
       title: "Listening Drill",
       desc: "Hear a word, choose what it means.",
       icon: Headphones,
-      tint: "#00C2A8",
+      tint: "#0E9F8A",
       disabled: !hasVocab,
     },
     {
@@ -107,7 +135,7 @@ function PracticeContent() {
               Words ready
             </span>
           </div>
-          <p className="mt-1 text-display-md font-extrabold text-ink">
+          <p className="mt-1 text-heading-xl font-extrabold text-ink">
             {vocabCount === null ? "—" : vocabCount}
           </p>
           <p className="text-body-sm text-slatey">grows as you unlock units</p>
@@ -119,7 +147,7 @@ function PracticeContent() {
               To review
             </span>
           </div>
-          <p className="mt-1 text-display-md font-extrabold text-ink">
+          <p className="mt-1 text-heading-xl font-extrabold text-ink">
             {mistakeCount}
           </p>
           <p className="text-body-sm text-slatey">

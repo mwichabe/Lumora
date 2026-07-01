@@ -14,6 +14,9 @@ import type {
   Certificate,
   ExamResult,
   ExamMeta,
+  PaymentStatus,
+  HeartsStatus,
+  ExamPaper,
   CertVerification,
   ChatUser,
   ChatMessage,
@@ -247,7 +250,18 @@ export const api = {
     ),
 
   practice: () =>
-    request<{ vocab: VocabItem[]; mistakes: Mistake[] }>("/api/practice"),
+    request<{
+      vocab: VocabItem[];
+      mistakes: Mistake[];
+      listeningCount: number;
+      readingCount: number;
+    }>("/api/practice"),
+
+  practiceListening: () =>
+    request<{ sessions: ListeningSession[] }>("/api/practice/listening"),
+
+  practiceReading: () =>
+    request<{ sessions: ReadingSession[] }>("/api/practice/reading"),
 
   recordMistake: (m: { prompt: string; question: string; correctAnswer: string }) =>
     request<{ ok: boolean }>("/api/mistakes", {
@@ -275,6 +289,17 @@ export const api = {
   markNotificationsRead: () =>
     request<{ ok: boolean }>("/api/notifications/read", { method: "POST" }),
 
+  markNotificationRead: (id: number | string) =>
+    request<{ ok: boolean; unread: number }>(
+      `/api/notifications/${id}/read`,
+      { method: "POST" }
+    ),
+
+  deleteNotification: (id: number | string) =>
+    request<{ ok: boolean; unread: number }>(`/api/notifications/${id}`, {
+      method: "DELETE",
+    }),
+
   submitExam: (body: {
     language: string;
     level: string;
@@ -288,13 +313,51 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // Payments (Paystack)
+  paymentStatus: () => request<PaymentStatus>("/api/payments/status"),
+
+  initializePayment: (level: string) =>
+    request<{ authorizationUrl?: string; reference?: string }>(
+      "/api/payments/initialize",
+      { method: "POST", body: JSON.stringify({ level }) }
+    ),
+
+  verifyPayment: (reference: string) =>
+    request<{
+      status: string;
+      success: boolean;
+      level: string;
+      product: string;
+    }>(`/api/payments/verify?reference=${encodeURIComponent(reference)}`),
+
   examMeta: () => request<ExamMeta>("/api/exam/meta"),
+
+  startExam: (level: string, language: string) =>
+    request<{ ok: boolean }>("/api/exam/start", {
+      method: "POST",
+      body: JSON.stringify({ level, language }),
+    }),
+
+  // Hearts
+  heartsStatus: () => request<HeartsStatus>("/api/hearts"),
+  loseHeart: () => request<HeartsStatus>("/api/hearts/lose", { method: "POST" }),
+  buyHearts: () =>
+    request<{ authorizationUrl?: string; reference?: string }>(
+      "/api/payments/initialize",
+      { method: "POST", body: JSON.stringify({ product: "hearts" }) }
+    ),
+
+  examPaper: (level: string) =>
+    request<ExamPaper>(`/api/exam/paper?level=${encodeURIComponent(level)}`),
 
   certificates: () =>
     request<{ certificates: Certificate[] }>("/api/certificates"),
 
   certificate: (id: number | string) =>
     request<{ certificate: Certificate }>(`/api/certificates/${id}`),
+
+  deleteCertificate: (id: number | string) =>
+    request<{ ok: boolean }>(`/api/certificates/${id}`, { method: "DELETE" }),
 
   // Public — no auth header needed; anyone can verify a certificate by serial.
   verifyCertificate: async (serial: string): Promise<CertVerification> => {

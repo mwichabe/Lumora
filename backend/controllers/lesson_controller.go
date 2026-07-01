@@ -47,7 +47,11 @@ func (l *LessonController) GalaxyMap(c *fiber.Ctx) error {
 		completedLessons[d.LessonID] = true
 	}
 
+	// Unlocking is sequential: the first skill is always open, and each later
+	// skill unlocks only once the previous one is fully completed. (A skill with
+	// no lessons can't be completed, so it never blocks progress.)
 	nodes := make([]skillNode, 0, len(skills))
+	prevCleared := true
 	for _, s := range skills {
 		completed := 0
 		for _, ls := range s.Lessons {
@@ -55,13 +59,16 @@ func (l *LessonController) GalaxyMap(c *fiber.Ctx) error {
 				completed++
 			}
 		}
+		isCompleted := len(s.Lessons) > 0 && completed == len(s.Lessons)
 		nodes = append(nodes, skillNode{
 			Skill:          s,
-			Unlocked:       user.XP >= s.RequiredXP,
-			Completed:      len(s.Lessons) > 0 && completed == len(s.Lessons),
+			Unlocked:       prevCleared,
+			Completed:      isCompleted,
 			LessonCount:    len(s.Lessons),
 			CompletedCount: completed,
 		})
+		// The next skill opens once this one is done (empty skills don't block).
+		prevCleared = isCompleted || len(s.Lessons) == 0
 	}
 
 	return c.JSON(fiber.Map{"skills": nodes})

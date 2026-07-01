@@ -47,7 +47,104 @@ func (p *PracticeController) Pool(c *fiber.Ctx) error {
 	database.DB.Where("user_id = ? AND language = ?", user.ID, lang).
 		Order("created_at desc").Find(&mistakes)
 
-	return c.JSON(fiber.Map{"vocab": vocab, "mistakes": mistakes})
+	// Counts of comprehension practice the learner has unlocked, so the Practice
+	// tab can show/enable the Listening and Reading modes.
+	unlocked := unitUnlocker(lang, user.XP)
+	listeningCount := countUnlockedSessions("listening_sessions", lang, unlocked)
+	readingCount := countUnlockedSessions("reading_sessions", lang, unlocked)
+
+	return c.JSON(fiber.Map{
+		"vocab":          vocab,
+		"mistakes":       mistakes,
+		"listeningCount": listeningCount,
+		"readingCount":   readingCount,
+	})
+}
+
+// unitUnlocker returns a predicate telling whether a unit has been reached. A
+// unit is reached once the user's XP meets the lowest skill gate in that unit,
+// matching the lock logic on the Learn tab — so practice only ever serves
+// content the learner has actually unlocked.
+func unitUnlocker(lang string, xp int) func(string) bool {
+	var skills []models.Skill
+	database.DB.Where("language = ?", lang).Find(&skills)
+	minXP := map[string]int{}
+	for _, s := range skills {
+		if v, ok := minXP[s.Unit]; !ok || s.RequiredXP < v {
+			minXP[s.Unit] = s.RequiredXP
+		}
+	}
+	return func(unit string) bool {
+		req, ok := minXP[unit]
+		if !ok {
+			return true // no gate info → treat as available
+		}
+		return xp >= req
+	}
+}
+
+// countUnlockedSessions counts listening/reading sessions in unlocked units.
+func countUnlockedSessions(table, lang string, unlocked func(string) bool) int {
+	type unitRow struct{ Unit string }
+	var rows []unitRow
+	database.DB.Table(table).Select("unit").Where("language = ?", lang).Find(&rows)
+	n := 0
+	for _, r := range rows {
+		if unlocked(r.Unit) {
+			n++
+		}
+	}
+	return n
+}
+
+// Listening returns the unlocked listening sessions for comprehension practice.
+func (p *PracticeController) Listening(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	lang := user.TargetLanguage
+	if lang == "" {
+		lang = "es"
+	}
+	unlocked := unitUnlocker(lang, user.XP)
+
+	var sessions []models.ListeningSession
+	database.DB.
+		Preload("Lines", orderByIndex).
+		Preload("Questions", orderByIndex).
+		Where("language = ?", lang).Order("order_index asc").Find(&sessions)
+
+	out := make([]models.ListeningSession, 0, len(sessions))
+	for i := range sessions {
+		if unlocked(sessions[i].Unit) {
+			hydrateQuestions(sessions[i].Questions)
+			out = append(out, sessions[i])
+		}
+	}
+	return c.JSON(fiber.Map{"sessions": out})
+}
+
+// Reading returns the unlocked reading sessions for comprehension practice.
+func (p *PracticeController) Reading(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	lang := user.TargetLanguage
+	if lang == "" {
+		lang = "es"
+	}
+	unlocked := unitUnlocker(lang, user.XP)
+
+	var sessions []models.ReadingSession
+	database.DB.
+		Preload("Lines", orderByIndex).
+		Preload("Questions", orderByIndex).
+		Where("language = ?", lang).Order("order_index asc").Find(&sessions)
+
+	out := make([]models.ReadingSession, 0, len(sessions))
+	for i := range sessions {
+		if unlocked(sessions[i].Unit) {
+			hydrateReadingQuestions(sessions[i].Questions)
+			out = append(out, sessions[i])
+		}
+	}
+	return c.JSON(fiber.Map{"sessions": out})
 }
 
 type mistakeInput struct {

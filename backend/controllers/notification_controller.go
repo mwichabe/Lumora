@@ -40,6 +40,41 @@ func (nc *NotificationController) MarkRead(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
+// MarkOneRead marks a single notification (the one the user opened) as read.
+func (nc *NotificationController) MarkOneRead(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	id := c.Params("id")
+
+	var n models.Notification
+	if err := database.DB.Where("id = ? AND user_id = ?", id, user.ID).
+		First(&n).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "notification not found"})
+	}
+	if !n.Read {
+		database.DB.Model(&n).Update("read", true)
+	}
+
+	var unread int64
+	database.DB.Model(&models.Notification{}).
+		Where("user_id = ? AND read = ?", user.ID, false).Count(&unread)
+	return c.JSON(fiber.Map{"ok": true, "unread": unread})
+}
+
+// Delete removes a single notification the user owns.
+func (nc *NotificationController) Delete(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	id := c.Params("id")
+	res := database.DB.Where("id = ? AND user_id = ?", id, user.ID).
+		Delete(&models.Notification{})
+	if res.RowsAffected == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "notification not found"})
+	}
+	var unread int64
+	database.DB.Model(&models.Notification{}).
+		Where("user_id = ? AND read = ?", user.ID, false).Count(&unread)
+	return c.JSON(fiber.Map{"ok": true, "unread": unread})
+}
+
 // --- delivery ----------------------------------------------------------------
 
 type campaignItem struct {
@@ -83,6 +118,138 @@ func DeliverWelcome(userID uint) {
 		Key: "welcome", Kind: "welcome", Emoji: "🦊", Tint: "#6C3FC5",
 		Title: "Welcome to Lumora! 🎉",
 		Body:  "I'm Lumora, your guide. Finish your first lesson to start a streak — you've got this!",
+	})
+}
+
+// DeliverLoginWelcome greets a returning user by name. To avoid spamming on
+// frequent logins, at most one is created every few hours.
+func DeliverLoginWelcome(user models.User) {
+	var recent int64
+	database.DB.Model(&models.Notification{}).
+		Where("user_id = ? AND kind = ? AND created_at > ?",
+			user.ID, "welcome_back", time.Now().Add(-3*time.Hour)).
+		Count(&recent)
+	if recent > 0 {
+		return
+	}
+	name := displayName(user)
+	database.DB.Create(&models.Notification{
+		UserID: user.ID, Kind: "welcome_back", Emoji: "👋", Tint: "#6C3FC5",
+		Title: "Welcome back, " + name + "!",
+		Body:  "Great to see you again. Keep your streak alive with a quick lesson today.",
+	})
+}
+
+// DeliverUnitComplete congratulates a user for finishing a whole unit (once).
+func DeliverUnitComplete(userID uint, unit string) {
+	ensureNotification(userID, campaignItem{
+		Key: "unit_done_" + unit, Kind: "milestone", Emoji: "🏆", Tint: "#00C2A8",
+		Title: "Unit complete! 🎉",
+		Body:  "You finished " + unit + ". Brilliant work — the next unit is unlocked. Keep the momentum going!",
+	})
+}
+
+// DeliverLevelUp celebrates reaching a new CEFR level (once per level).
+func DeliverLevelUp(userID uint, cefr, levelName string) {
+	ensureNotification(userID, campaignItem{
+		Key: "levelup_" + cefr, Kind: "milestone", Emoji: "⭐", Tint: "#F5A623",
+		Title: "Level up! You reached " + cefr,
+		Body:  "You've advanced to " + levelName + " (" + cefr + "). Your hard work is paying off!",
+	})
+}
+
+// DeliverExamStarted notifies the user that they've begun an exam attempt. Not
+// deduped — every attempt gets its own notification (empty Key).
+func DeliverExamStarted(userID uint, level, langName string) {
+	ensureNotification(userID, campaignItem{
+		Kind: "exam", Emoji: "📝", Tint: "#6C3FC5",
+		Title: "Exam started — " + level,
+		Body:  "You've started the " + level + " " + langName + " exam. Stay focused and good luck!",
+	})
+}
+
+// DeliverExamPassed congratulates the user and links to the certificate.
+func DeliverExamPassed(userID uint, level string, score int, certLink string) {
+	database.DB.Create(&models.Notification{
+		UserID: userID, Kind: "exam", Emoji: "🎓", Tint: "#00C2A8",
+		Title: "You passed the " + level + " exam! 🎉",
+		Body: "Congratulations! You scored " + strconv.Itoa(score) +
+			"%. Your certificate is ready to view and download.",
+		Link: certLink,
+	})
+}
+
+// DeliverExamFailed encourages the user and points them back to the exam.
+func DeliverExamFailed(userID uint, level string, score, passMark int) {
+	database.DB.Create(&models.Notification{
+		UserID: userID, Kind: "exam", Emoji: "📚", Tint: "#F5A623",
+		Title: level + " exam — not passed this time",
+		Body: "You scored " + strconv.Itoa(score) + "% (pass mark " +
+			strconv.Itoa(passMark) + "%). Don't give up — review and retake when you're ready.",
+		Link: "/exam",
+	})
+}
+
+// DeliverHeartsEmpty tells the user they've run out of hearts.
+func DeliverHeartsEmpty(userID uint, secondsToNext, regenMinutes int) {
+	database.DB.Create(&models.Notification{
+		UserID: userID, Kind: "hearts", Emoji: "💔", Tint: "#FF5C5C",
+		Title: "You're out of hearts",
+		Body: "A new heart regenerates about every " + strconv.Itoa(regenMinutes) +
+			" minutes. Wait for one, or refill instantly to keep learning.",
+		Link: "/learn",
+	})
+}
+
+// DeliverHeartsFull tells the user their hearts have fully regenerated.
+func DeliverHeartsFull(userID uint) {
+	database.DB.Create(&models.Notification{
+		UserID: userID, Kind: "hearts", Emoji: "❤️", Tint: "#00C2A8",
+		Title: "Your hearts are full!",
+		Body:  "All five hearts have regenerated. Jump back in and keep your streak alive!",
+		Link:  "/learn",
+	})
+}
+
+// DeliverHeartsPurchased confirms a hearts refill purchase.
+func DeliverHeartsPurchased(userID uint) {
+	database.DB.Create(&models.Notification{
+		UserID: userID, Kind: "hearts", Emoji: "❤️", Tint: "#00C2A8",
+		Title: "Hearts refilled 🎉",
+		Body:  "Thanks! Your hearts are full again. Happy learning!",
+		Link:  "/learn",
+	})
+}
+
+// DeliverPaymentSuccess tells the user their payment went through and the exam
+// is unlocked (deduped per transaction reference).
+func DeliverPaymentSuccess(userID uint, reference string) {
+	ensureNotification(userID, campaignItem{
+		Key: "pay_ok_" + reference, Kind: "payment", Emoji: "✅", Tint: "#00C2A8",
+		Title: "Payment successful",
+		Body:  "Your payment went through — your exam attempt is ready. Head to the exam whenever you like. Good luck!",
+	})
+}
+
+// DeliverPaymentFailed tells the user a payment didn't complete (deduped per
+// transaction reference).
+func DeliverPaymentFailed(userID uint, reference string) {
+	ensureNotification(userID, campaignItem{
+		Key: "pay_fail_" + reference, Kind: "payment", Emoji: "⚠️", Tint: "#FF5C5C",
+		Title: "Payment not completed",
+		Body:  "We couldn't confirm your payment. If you were charged it will be applied automatically — otherwise please try again.",
+	})
+}
+
+// DeliverStreakMilestone celebrates streak milestones (7, 30, 100… once each).
+func DeliverStreakMilestone(userID, days int) {
+	if days != 3 && days != 7 && days != 14 && days != 30 && days != 100 {
+		return
+	}
+	ensureNotification(uint(userID), campaignItem{
+		Key: "streak_" + strconv.Itoa(days), Kind: "streak", Emoji: "🔥", Tint: "#FF5C5C",
+		Title: strconv.Itoa(days) + "-day streak! 🔥",
+		Body:  "You've practised " + strconv.Itoa(days) + " days in a row. Don't break the chain!",
 	})
 }
 

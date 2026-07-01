@@ -25,8 +25,9 @@ type examSubmit struct {
 }
 
 // Each level requires a higher overall score to pass — harder as you climb.
+// FINAL is the comprehensive A1→C2 mastery exam.
 var levelPassMark = map[string]int{
-	"A1": 50, "A2": 58, "B1": 65, "B2": 72, "C1": 80, "C2": 88,
+	"A1": 50, "A2": 58, "B1": 65, "B2": 72, "C1": 80, "C2": 88, "FINAL": 80,
 }
 
 // Section weights (sum to 100). Listening & Reading carry the most weight; the
@@ -38,7 +39,8 @@ var sectionWeights = map[string]int{
 // Per-level time limit (seconds). Higher levels get a longer but more demanding
 // paper — combined with a tougher pass mark, the exam gets harder as you climb.
 var levelDuration = map[string]int{
-	"A1": 420, "A2": 540, "B1": 660, "B2": 780, "C1": 900, "C2": 1020,
+	"A1": 600, "A2": 780, "B1": 960, "B2": 1140, "C1": 1320, "C2": 1500,
+	"FINAL": 2100, // 35 minutes — the comprehensive mastery paper
 }
 
 func passMarkForLevel(level string) int {
@@ -90,9 +92,12 @@ func levelFromScore(s int) string {
 	}
 }
 
-// Submit scores the four sections, and (on a pass) issues a certificate.
+// Submit scores the four sections, and (on a pass) issues a certificate. Each
+// attempt consumes one paid attempt for that level — retaking requires paying
+// again.
 func (ec *ExamController) Submit(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
+
 	var in examSubmit
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
@@ -106,17 +111,13 @@ func (ec *ExamController) Submit(c *fiber.Ctx) error {
 		level = "A1"
 	}
 
-	// Already certified at this language + level? Don't retake / duplicate.
-	var existing models.Certificate
-	if database.DB.Where("user_id = ? AND language = ? AND level = ?", user.ID, lang, level).
-		First(&existing).Error == nil {
-		return c.JSON(fiber.Map{
-			"passed":      true,
-			"alreadyTaken": true,
-			"overall":     existing.Score,
-			"level":       existing.Level,
-			"certificate": existing,
-		})
+	// Monetization gate: when payments are enabled, each attempt needs a paid,
+	// unconsumed token for this level — consume it now (retakes must pay again).
+	if PaymentsEnabled() {
+		if !consumePaidAttempt(user.ID, level) {
+			return c.Status(fiber.StatusPaymentRequired).
+				JSON(fiber.Map{"error": "payment required", "code": "payment_required"})
+		}
 	}
 
 	l := clamp100(in.Listening)
@@ -139,22 +140,67 @@ func (ec *ExamController) Submit(c *fiber.Ctx) error {
 	}
 
 	if passed {
-		cert := models.Certificate{
-			UserID:   user.ID,
-			UserName: displayName(*user),
-			Language: lang,
-			Level:    level,
-			Score:    overall,
-			Listening: l, Reading: r, Writing: w, Speaking: s,
-			IssuedAt: time.Now(),
+		// Upsert: a retake refreshes the certificate (keeps its serial).
+		var cert models.Certificate
+		exists := database.DB.
+			Where("user_id = ? AND language = ? AND level = ?", user.ID, lang, level).
+			First(&cert).Error == nil
+
+		cert.UserID = user.ID
+		cert.UserName = displayName(*user)
+		cert.Language = lang
+		cert.Level = level
+		cert.Score = overall
+		cert.Listening, cert.Reading, cert.Writing, cert.Speaking = l, r, w, s
+		cert.IssuedAt = time.Now()
+
+		if exists {
+			database.DB.Save(&cert)
+		} else {
+			database.DB.Create(&cert)
+			cert.Serial = fmt.Sprintf("LUM-%s-%04d", time.Now().Format("2006"), cert.ID)
+			database.DB.Save(&cert)
 		}
-		database.DB.Create(&cert)
-		cert.Serial = fmt.Sprintf("LUM-%s-%04d", time.Now().Format("2006"), cert.ID)
-		database.DB.Save(&cert)
 		resp["certificate"] = cert
+		DeliverExamPassed(user.ID, level, overall, fmt.Sprintf("/certificates/%d", cert.ID))
+	} else {
+		DeliverExamFailed(user.ID, level, overall, passMark)
 	}
 
 	return c.JSON(resp)
+}
+
+// examLangDisplay maps a language code to a friendly name for notifications.
+var examLangDisplay = map[string]string{
+	"es": "Spanish", "de": "German", "fr": "French", "it": "Italian",
+	"pt": "Portuguese", "en": "English",
+}
+
+func langDisplay(code string) string {
+	if n, ok := examLangDisplay[code]; ok {
+		return n
+	}
+	return code
+}
+
+// Start notifies the user that they've begun an exam attempt.
+func (ec *ExamController) Start(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	var in struct {
+		Level    string `json:"level"`
+		Language string `json:"language"`
+	}
+	_ = c.BodyParser(&in)
+	level := in.Level
+	if _, ok := levelPassMark[level]; !ok {
+		level = "A1"
+	}
+	lang := in.Language
+	if lang == "" {
+		lang = user.TargetLanguage
+	}
+	DeliverExamStarted(user.ID, level, langDisplay(lang))
+	return c.JSON(fiber.Map{"ok": true})
 }
 
 // Meta describes the exam rules the frontend shows before the user starts:
@@ -200,6 +246,19 @@ func (ec *ExamController) ListCertificates(c *fiber.Ctx) error {
 	var certs []models.Certificate
 	database.DB.Where("user_id = ?", user.ID).Order("issued_at desc").Find(&certs)
 	return c.JSON(fiber.Map{"certificates": certs})
+}
+
+// DeleteCertificate removes a certificate the user owns. Because each level can
+// only be passed once, deleting a certificate also frees that level to retake.
+func (ec *ExamController) DeleteCertificate(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	id := c.Params("id")
+	var cert models.Certificate
+	if err := database.DB.Where("id = ? AND user_id = ?", id, user.ID).First(&cert).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "certificate not found"})
+	}
+	database.DB.Delete(&cert)
+	return c.JSON(fiber.Map{"ok": true})
 }
 
 // GetCertificate returns a single certificate the user owns.

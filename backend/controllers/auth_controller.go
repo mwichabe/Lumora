@@ -95,12 +95,19 @@ func (a *AuthController) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
 	}
 
+	// Greet the returning user in their notifications.
+	DeliverLoginWelcome(user)
+
 	return a.tokenResponse(c, user)
 }
 
-// Me returns the authenticated user.
+// Me returns the authenticated user (with hearts regenerated up to now).
 func (a *AuthController) Me(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
+	if refreshHearts(user) {
+		DeliverHeartsFull(user.ID)
+	}
+	database.DB.Save(user)
 	return c.JSON(fiber.Map{"user": user})
 }
 

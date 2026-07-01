@@ -22,6 +22,10 @@ var levelNames = map[string]string{
 func (p *ProgressController) Home(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	rollOverDay(user)
+	if refreshHearts(user) {
+		DeliverHeartsFull(user.ID)
+	}
+	database.DB.Save(user)
 
 	lang := user.TargetLanguage
 	if lang == "" {
@@ -107,9 +111,11 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 	user.Gems += 5
 	user.FluencyScore = clamp(user.FluencyScore+in.Accuracy/10, 0, 1000)
 
+	prevStreak := user.Streak
 	touchStreak(user)
 
 	// CEFR promotion every 100 XP (demo-friendly thresholds).
+	prevCEFR := user.CEFRLevel
 	promoteLevel(user)
 	user.League = leagueForXP(user.XP)
 
@@ -117,6 +123,17 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 
 	// Update quest progress.
 	updateQuestsOnLesson(user.ID, in.Accuracy)
+
+	// Milestone notifications: level-up, streak, and finishing a whole unit.
+	if user.CEFRLevel != prevCEFR {
+		DeliverLevelUp(user.ID, user.CEFRLevel, user.LevelName)
+	}
+	if user.Streak > prevStreak {
+		DeliverStreakMilestone(int(user.ID), user.Streak)
+	}
+	if unit := unitCompletedByLesson(user.ID, lesson.SkillID); unit != "" {
+		DeliverUnitComplete(user.ID, unit)
+	}
 
 	leveledUp := first // surface a celebration the first time a lesson is cleared
 
@@ -166,9 +183,8 @@ func rollOverDay(user *models.User) {
 		user.Streak = 0 // missed more than a day
 	}
 	user.XPToday = 0
-	if user.Hearts < 5 {
-		user.Hearts = 5 // hearts refill daily in the free tier
-	}
+	// Hearts no longer refill daily — they regenerate over time (see
+	// hearts_controller) or can be purchased.
 	database.DB.Save(user)
 }
 
@@ -188,6 +204,42 @@ func promoteLevel(user *models.User) {
 		user.CEFRLevel = order[target]
 		user.LevelName = levelNames[user.CEFRLevel]
 	}
+}
+
+// unitCompletedByLesson returns the unit name if every lesson in every skill of
+// the just-completed lesson's unit is now done — otherwise "". (Dedup for the
+// notification itself is handled by its campaign key.)
+func unitCompletedByLesson(userID, skillID uint) string {
+	var skill models.Skill
+	if database.DB.First(&skill, skillID).Error != nil || skill.Unit == "" {
+		return ""
+	}
+
+	var unitSkills []models.Skill
+	database.DB.Preload("Lessons").
+		Where("language = ? AND unit = ?", skill.Language, skill.Unit).
+		Find(&unitSkills)
+
+	completed := map[uint]bool{}
+	var done []models.LessonProgress
+	database.DB.Where("user_id = ? AND completed = ?", userID, true).Find(&done)
+	for _, d := range done {
+		completed[d.LessonID] = true
+	}
+
+	anyLessons := false
+	for _, s := range unitSkills {
+		for _, l := range s.Lessons {
+			anyLessons = true
+			if !completed[l.ID] {
+				return ""
+			}
+		}
+	}
+	if !anyLessons {
+		return ""
+	}
+	return skill.Unit
 }
 
 func clamp(v, lo, hi int) int {

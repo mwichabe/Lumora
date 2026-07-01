@@ -6,22 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause, Volume2, Check } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
+import { SpeakerAvatar } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { speakAs, speakSequence, stopSpeaking } from "@/lib/voices";
 import type { ListeningSession } from "@/lib/types";
-
-const CHAR_EMOJI: Record<string, string> = {
-  Lumora: "🦊",
-  "Professor Finch": "🦅",
-  Cora: "🐙",
-  Blaze: "🔥",
-  Mira: "🐆",
-  Riko: "🐼",
-  Zephyr: "🌬️",
-  Nana: "🐢",
-  Pip: "🦔",
-};
 
 type Phase = "match" | "listen" | "quiz" | "done";
 
@@ -273,9 +262,7 @@ function ListenPhase({
                 isActive ? "border-purple bg-purple-light" : "border-gray-100 bg-white"
               }`}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-50 text-xl">
-                {CHAR_EMOJI[l.character] || "🦊"}
-              </span>
+              <SpeakerAvatar name={l.character} size={40} />
               <div className="min-w-0 flex-1">
                 <p className="text-label-md font-bold text-slatey">{l.character}</p>
                 <p className="text-body-lg font-semibold text-ink">{l.text}</p>

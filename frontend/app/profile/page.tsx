@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Avatar } from "@/components/Avatar";
+import { SpeakerAvatar } from "@/components/Speaker";
+import { CharacterBioModal } from "@/components/CharacterBioModal";
 import { CropModal } from "@/components/CropModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
@@ -33,6 +35,8 @@ export default function ProfilePage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [switching, setSwitching] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
+  const [selectedChar, setSelectedChar] =
+    useState<CharacterWithFriendship | null>(null);
 
   useEffect(() => {
     api
@@ -210,7 +214,7 @@ export default function ProfilePage() {
             </Link>
           ) : (
             <div className="space-y-2">
-              {certificates.map((cert) => (
+              {certificates.slice(0, 4).map((cert) => (
                 <Link
                   key={cert.id}
                   href={`/certificates/${cert.id}`}
@@ -233,6 +237,15 @@ export default function ProfilePage() {
                   <ChevronRight size={18} className="text-gray-300" />
                 </Link>
               ))}
+              <Link
+                href="/certificates"
+                className="flex items-center justify-center gap-1.5 rounded-2xl bg-white py-3 text-body-md font-bold text-purple shadow-card transition hover:shadow-card-lg"
+              >
+                {certificates.length > 4
+                  ? `View all ${certificates.length} certificates`
+                  : "Manage certificates"}
+                <ChevronRight size={16} />
+              </Link>
             </div>
           )}
         </div>
@@ -244,20 +257,17 @@ export default function ProfilePage() {
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
             {characters.map((c) => (
-              <motion.div
+              <motion.button
                 key={c.id}
                 whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center rounded-2xl bg-white p-3 shadow-card"
+                onClick={() => setSelectedChar(c)}
+                className="flex flex-col items-center rounded-2xl bg-white p-3 text-center shadow-card transition hover:shadow-card-lg"
               >
-                <div
-                  className="flex h-14 w-14 items-center justify-center rounded-full text-3xl"
-                  style={{ backgroundColor: (c.color || "#EDE7F6") + "33" }}
-                >
-                  {c.emoji}
-                </div>
-                <div className="mt-2 text-center text-label-md font-extrabold text-ink">
+                <SpeakerAvatar name={c.name} size={56} />
+                <div className="mt-2 text-label-md font-extrabold text-ink">
                   {c.name}
                 </div>
+                <div className="text-label-sm text-slatey">{c.role}</div>
                 <div className="mt-1 flex gap-0.5">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <span
@@ -268,7 +278,7 @@ export default function ProfilePage() {
                     />
                   ))}
                 </div>
-              </motion.div>
+              </motion.button>
             ))}
             {characters.length === 0 &&
               Array.from({ length: 6 }).map((_, i) => (
@@ -309,6 +319,11 @@ export default function ProfilePage() {
             logout();
           }}
           onCancel={() => setConfirmOut(false)}
+        />
+
+        <CharacterBioModal
+          character={selectedChar}
+          onClose={() => setSelectedChar(null)}
         />
       </div>
     </AppShell>

@@ -18,6 +18,7 @@ import {
   getStoredUser,
   setStoredUser,
 } from "./api";
+import { setSpeechLanguage } from "./voices";
 import type { User } from "./types";
 
 interface AuthContextValue {
@@ -73,6 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (cached) setUserInternal(cached);
     refresh();
   }, [refresh]);
+
+  // Keep speech (TTS + recognition) in the user's learning language so words are
+  // pronounced correctly — German with a German voice, French with French, etc.
+  useEffect(() => {
+    setSpeechLanguage(user?.targetLanguage);
+  }, [user?.targetLanguage]);
 
   const login = async (email: string, password: string) => {
     const { token, user } = await api.login(email, password);

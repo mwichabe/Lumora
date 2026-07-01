@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Volume2, Check } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
+import { SpeakerChip } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { speakAs, stopSpeaking } from "@/lib/voices";
@@ -103,6 +104,11 @@ function ReadPhase({
   return (
     <div className="flex flex-1 flex-col">
       <p className="text-body-md text-slatey">{session.description}</p>
+
+      <div className="mt-3">
+        <SpeakerChip name="Mira" />
+        <span className="ml-2 text-body-sm text-slatey">reads with you</span>
+      </div>
 
       <div className="mt-4 space-y-3">
         {lines.map((l) => (
