@@ -141,6 +141,18 @@ export const api = {
 
   me: () => request<{ user: User }>("/api/auth/me"),
 
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: boolean }>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
   setup: (targetLanguage: string, dailyGoalXp: number, reason: string) =>
     request<{ user: User }>("/api/auth/setup", {
       method: "POST",

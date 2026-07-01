@@ -19,6 +19,8 @@ func Register(app *fiber.App, cfg config.Config) {
 	auth := &controllers.AuthController{Cfg: cfg}
 	api.Post("/auth/register", auth.Register)
 	api.Post("/auth/login", auth.Login)
+	api.Post("/auth/forgot-password", auth.ForgotPassword)
+	api.Post("/auth/reset-password", auth.ResetPassword)
 
 	// Public certificate verification — anyone with a serial can confirm it.
 	publicExam := &controllers.ExamController{}

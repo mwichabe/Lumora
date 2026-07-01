@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"lumora/backend/database"
 	"lumora/backend/middleware"
 	"lumora/backend/models"
+	"lumora/backend/utils"
 )
 
 // PaymentController handles Paystack checkout for exam attempts. Pricing is
@@ -205,7 +207,7 @@ func (pc *PaymentController) Verify(c *fiber.Ctx) error {
 
 	success := res.Data.Status == "success"
 	if success {
-		fulfillPayment(reference, res.Data.Channel)
+		pc.fulfillPayment(reference, res.Data.Channel)
 	} else {
 		DeliverPaymentFailed(user.ID, reference)
 	}
@@ -245,14 +247,15 @@ func (pc *PaymentController) Webhook(c *fiber.Ctx) error {
 	}
 
 	if evt.Event == "charge.success" && evt.Data.Status == "success" {
-		fulfillPayment(evt.Data.Reference, evt.Data.Channel)
+		pc.fulfillPayment(evt.Data.Reference, evt.Data.Channel)
 	}
 	return c.SendStatus(fiber.StatusOK) // always 200 so Paystack stops retrying
 }
 
 // fulfillPayment marks a payment successful (an unconsumed, ready-to-use exam
-// attempt), once, and notifies the user.
-func fulfillPayment(reference, channel string) {
+// attempt or a hearts refill), once, notifies the user in-app and emails a
+// receipt on the first successful fulfilment.
+func (pc *PaymentController) fulfillPayment(reference, channel string) {
 	var p models.Payment
 	if database.DB.Where("reference = ?", reference).First(&p).Error != nil {
 		return // unknown reference — ignore
@@ -265,6 +268,9 @@ func fulfillPayment(reference, channel string) {
 		database.DB.Save(&p)
 	}
 
+	log.Printf("[payment] fulfilling %s product=%s alreadyDone=%v receiptSent=%v",
+		reference, p.Product, alreadyDone, p.ReceiptSent)
+
 	switch p.Product {
 	case productHearts:
 		grantFullHearts(p.UserID)
@@ -273,6 +279,25 @@ func fulfillPayment(reference, channel string) {
 		}
 	default: // exam attempt
 		DeliverPaymentSuccess(p.UserID, reference)
+	}
+
+	// Email a receipt exactly once. Sent synchronously so failures are logged
+	// and we only mark it sent on success (a later verify/webhook call retries).
+	if !p.ReceiptSent {
+		var u models.User
+		if database.DB.First(&u, p.UserID).Error == nil {
+			item := "Exam attempt"
+			if p.Level != "" {
+				item = p.Level + " exam attempt"
+			}
+			if p.Product == productHearts {
+				item = "Hearts refill (full set)"
+			}
+			amountLabel := fmt.Sprintf("%s %d", p.Currency, p.Amount/100)
+			if err := utils.SendPaymentEmail(pc.Cfg, u.Email, u.Name, item, amountLabel); err == nil {
+				database.DB.Model(&p).Update("receipt_sent", true)
+			}
+		}
 	}
 }
 

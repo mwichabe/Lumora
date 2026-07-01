@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -217,6 +218,7 @@ export default function WelcomeScreen() {
                     placeholder="you@email.com"
                     type="email"
                     icon={<Mail size={18} />}
+                    autoComplete="email"
                     autoFocus={mode === "signin"}
                   />
                   <Field
@@ -227,6 +229,7 @@ export default function WelcomeScreen() {
                     placeholder="6+ characters"
                     type={showPw ? "text" : "password"}
                     icon={<Lock size={18} />}
+                    autoComplete="new-password"
                     trailing={
                       <button
                         type="button"
@@ -238,6 +241,17 @@ export default function WelcomeScreen() {
                       </button>
                     }
                   />
+
+                  {mode === "signin" && (
+                    <div className="text-right">
+                      <Link
+                        href="/forgot-password"
+                        className="text-body-sm font-semibold text-purple transition hover:text-purple-dark"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                  )}
 
                   <AnimatePresence>
                     {error && (
@@ -308,6 +322,7 @@ function Field({
   icon,
   trailing,
   autoFocus,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -318,6 +333,7 @@ function Field({
   icon?: React.ReactNode;
   trailing?: React.ReactNode;
   autoFocus?: boolean;
+  autoComplete?: string;
 }) {
   return (
     <label className="block">
@@ -335,6 +351,7 @@ function Field({
           value={value}
           placeholder={placeholder}
           autoFocus={autoFocus}
+          autoComplete={autoComplete}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") onSubmit?.();

@@ -43,6 +43,7 @@ func Connect(path string) {
 		&models.Quest{},
 		&models.UserQuest{},
 		&models.Payment{},
+		&models.PasswordReset{},
 	); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}

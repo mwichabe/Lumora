@@ -95,19 +95,27 @@ func (a *AuthController) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
 	}
 
-	// Greet the returning user in their notifications.
-	DeliverLoginWelcome(user)
+	// Greet the returning user, and email a sign-in alert (throttled to ~3h).
+	if DeliverLoginWelcome(user) {
+		go utils.SendLoginEmail(a.Cfg, user.Email, user.Name)
+	}
 
 	return a.tokenResponse(c, user)
 }
 
-// Me returns the authenticated user (with hearts regenerated up to now).
+// Me returns the authenticated user (with hearts regenerated up to now). Also
+// treats a session resume as a "sign-in": greets + emails, throttled to ~3h so
+// frequent app opens / background refreshes don't spam.
 func (a *AuthController) Me(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	if refreshHearts(user) {
 		DeliverHeartsFull(user.ID)
 	}
 	database.DB.Save(user)
+
+	if DeliverLoginWelcome(*user) {
+		go utils.SendLoginEmail(a.Cfg, user.Email, user.Name)
+	}
 	return c.JSON(fiber.Map{"user": user})
 }
 
@@ -229,6 +237,67 @@ func (a *AuthController) ChangePassword(c *fiber.Ctx) error {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(in.NewPassword), bcrypt.DefaultCost)
 	user.PasswordHash = string(hash)
 	database.DB.Save(user)
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+type forgotInput struct {
+	Email string `json:"email"`
+}
+
+// ForgotPassword issues a single-use reset link by email. It always responds OK
+// (never revealing whether an account exists) to avoid account enumeration.
+func (a *AuthController) ForgotPassword(c *fiber.Ctx) error {
+	var in forgotInput
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+
+	var user models.User
+	if email != "" && database.DB.Where("email = ?", email).First(&user).Error == nil {
+		token := utils.RandomToken(32)
+		database.DB.Create(&models.PasswordReset{
+			UserID: user.ID, Token: token,
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+		resetURL := a.Cfg.AppURL + "/reset-password?token=" + token
+		go utils.SendPasswordResetEmail(a.Cfg, user.Email, user.Name, resetURL)
+	}
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+type resetInput struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+// ResetPassword consumes a valid, unexpired token and sets a new password.
+func (a *AuthController) ResetPassword(c *fiber.Ctx) error {
+	var in resetInput
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	if len(in.Password) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password must be at least 6 characters"})
+	}
+
+	var pr models.PasswordReset
+	if database.DB.Where("token = ? AND used = ?", in.Token, false).First(&pr).Error != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this reset link is invalid or has already been used"})
+	}
+	if time.Now().After(pr.ExpiresAt) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this reset link has expired — please request a new one"})
+	}
+
+	var user models.User
+	if database.DB.First(&user, pr.UserID).Error != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "account not found"})
+	}
+	hash, _ := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
+	user.PasswordHash = string(hash)
+	database.DB.Save(&user)
+	database.DB.Model(&pr).Update("used", true)
+
 	return c.JSON(fiber.Map{"ok": true})
 }
 

@@ -6,32 +6,121 @@ import (
 	"log"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"lumora/backend/config"
 )
 
-// SendWelcomeEmail sends a no-reply welcome message from Lumora to a new user.
-// It is safe to call in a goroutine: failures are logged, never fatal, and if
-// SMTP isn't configured it simply no-ops so registration is never blocked.
-func SendWelcomeEmail(cfg config.Config, toEmail, name string) {
+// SendEmail is the core sender: builds a MIME multipart message and sends it via
+// Gmail SMTP (STARTTLS on port 587) using the App Password from config. Safe to
+// call in a goroutine — failures are logged, never fatal, and if SMTP isn't
+// configured it simply no-ops.
+func SendEmail(cfg config.Config, toEmail, subject, plain, html string) error {
 	if cfg.SMTPHost == "" || cfg.SMTPUser == "" {
-		log.Printf("[email] SMTP not configured — skipping welcome email to %s", toEmail)
-		return
+		log.Printf("[email] SMTP not configured — skipping '%s' to %s", subject, toEmail)
+		return nil
 	}
-	if strings.TrimSpace(name) == "" {
-		name = "there"
-	}
-
-	subject := "Welcome to Lumora 🦊"
-	msg := buildMIME(cfg, toEmail, subject, welcomePlain(name), welcomeHTML(cfg, name))
-
+	msg := buildMIME(cfg, toEmail, subject, plain, html)
 	addr := cfg.SMTPHost + ":" + cfg.SMTPPort
 	auth := smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPHost)
 	if err := smtp.SendMail(addr, auth, cfg.SMTPFrom, []string{toEmail}, []byte(msg)); err != nil {
-		log.Printf("[email] failed to send welcome email to %s: %v", toEmail, err)
-		return
+		log.Printf("[email] failed to send '%s' to %s: %v", subject, toEmail, err)
+		return err
 	}
-	log.Printf("[email] welcome email sent to %s", toEmail)
+	log.Printf("[email] sent '%s' to %s", subject, toEmail)
+	return nil
+}
+
+// SendWelcomeEmail sends a no-reply welcome message from Lumora to a new user.
+func SendWelcomeEmail(cfg config.Config, toEmail, name string) {
+	if strings.TrimSpace(name) == "" {
+		name = "there"
+	}
+	_ = SendEmail(cfg, toEmail, "Welcome to Lumora 🦊",
+		welcomePlain(name), welcomeHTML(cfg, name))
+}
+
+// SendLoginEmail sends a "new sign-in" security alert on login.
+func SendLoginEmail(cfg config.Config, toEmail, name string) {
+	if strings.TrimSpace(name) == "" {
+		name = "there"
+	}
+	when := time.Now().Format("Mon, 02 Jan 2006 15:04 MST")
+	plain := fmt.Sprintf(`Hi %s,
+
+We noticed a new sign-in to your Lumora account on %s.
+
+If this was you, no action is needed. If you don't recognise this activity,
+please change your password right away.
+
+— Lumora
+
+This is an automated message. Please do not reply.`, name, when)
+
+	html := simpleHTML(cfg, "New sign-in to your account", []string{
+		fmt.Sprintf("Hi %s, we noticed a new sign-in to your Lumora account on <strong>%s</strong>.", name, when),
+		"If this was you, you can ignore this email. If you don't recognise it, please change your password right away.",
+	}, "Open Lumora", cfg.AppURL)
+
+	_ = SendEmail(cfg, toEmail, "New sign-in to your Lumora account", plain, html)
+}
+
+// SendPasswordResetEmail sends a single-use password reset link.
+func SendPasswordResetEmail(cfg config.Config, toEmail, name, resetURL string) {
+	if strings.TrimSpace(name) == "" {
+		name = "there"
+	}
+	plain := fmt.Sprintf(`Hi %s,
+
+We received a request to reset your Lumora password.
+
+Open this link to choose a new password (it expires in 1 hour):
+%s
+
+If you didn't request this, you can safely ignore this email — your password
+won't change.
+
+— Lumora
+
+This is an automated message. Please do not reply.`, name, resetURL)
+
+	html := simpleHTML(cfg, "Reset your password", []string{
+		fmt.Sprintf("Hi %s, we received a request to reset your Lumora password.", name),
+		"Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.",
+		"If you didn't request this, you can safely ignore this email — your password won't change.",
+	}, "Reset password", resetURL)
+
+	_ = SendEmail(cfg, toEmail, "Reset your Lumora password", plain, html)
+}
+
+// SendPaymentEmail sends a receipt after a successful payment. Returns an error
+// so callers can confirm delivery (and retry / mark-sent accordingly).
+func SendPaymentEmail(cfg config.Config, toEmail, name, itemLabel, amountLabel string) error {
+	if strings.TrimSpace(name) == "" {
+		name = "there"
+	}
+	when := time.Now().Format("Mon, 02 Jan 2006 15:04 MST")
+	plain := fmt.Sprintf(`Hi %s,
+
+Thank you! We've received your payment.
+
+  Item:   %s
+  Amount: %s
+  Date:   %s
+
+Your purchase is now active in the app. Enjoy!
+
+— Lumora
+
+This is an automated message. Please do not reply.`, name, itemLabel, amountLabel, when)
+
+	html := simpleHTML(cfg, "Payment received", []string{
+		fmt.Sprintf("Hi %s, thank you! We've received your payment.", name),
+		fmt.Sprintf("<strong>Item:</strong> %s<br/><strong>Amount:</strong> %s<br/><strong>Date:</strong> %s", itemLabel, amountLabel, when),
+		"Your purchase is now active in the app. Enjoy your learning!",
+	}, "Back to Lumora", cfg.AppURL)
+
+	return SendEmail(cfg, toEmail, "Your Lumora payment receipt", plain, html)
 }
 
 const boundary = "==lumora-mixed-boundary=="
@@ -133,7 +222,7 @@ func welcomeHTML(cfg config.Config, name string) string {
         <!-- Body -->
         <tr>
           <td style="padding:28px 28px 8px 28px;">
-            <h1 style="margin:0 0 8px 0;color:#1A1A2E;font-size:22px;">Hi %s, welcome aboard! 🎉</h1>
+            <h1 style="margin:0 0 8px 0;color:#1A1A2E;font-size:22px;">Hi %s, welcome aboard!</h1>
             <p style="margin:0;color:#4A4A6A;font-size:15px;line-height:22px;">
               I'm Lumora, your guide. Your account is ready — let's turn a few
               minutes a day into a whole new language.
@@ -181,4 +270,59 @@ func welcomeHTML(cfg config.Config, name string) string {
 		step("3", "Listen, speak &amp; read", "Train your ear and tongue with your character companions."),
 		cfg.AppURL,
 	)
+}
+
+// simpleHTML is a branded, single-column template used for transactional emails
+// (sign-in alerts, receipts). Each entry in `paragraphs` may contain safe HTML.
+func simpleHTML(cfg config.Config, heading string, paragraphs []string, ctaText, ctaURL string) string {
+	logo := `<div style="width:64px;height:64px;line-height:64px;margin:0 auto;border-radius:50%;background:#ffffff;font-size:34px;text-align:center;">🦊</div>`
+	if cfg.LogoURL != "" {
+		logo = fmt.Sprintf(`<img src="%s" width="64" height="64" alt="Lumora" style="display:block;margin:0 auto;border-radius:50%%;" />`, cfg.LogoURL)
+	}
+
+	var body strings.Builder
+	for _, p := range paragraphs {
+		body.WriteString(fmt.Sprintf(
+			`<p style="margin:0 0 14px 0;color:#4A4A6A;font-size:15px;line-height:22px;">%s</p>`, p))
+	}
+
+	cta := ""
+	if ctaText != "" && ctaURL != "" {
+		cta = fmt.Sprintf(`
+        <tr><td style="padding:8px 28px 8px 28px;" align="center">
+          <a href="%s" style="display:inline-block;background:#6C3FC5;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:9999px;">%s</a>
+        </td></tr>`, ctaURL, ctaText)
+	}
+
+	return fmt.Sprintf(`<!doctype html>
+<html>
+<body style="margin:0;padding:0;background:#eceaf3;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#eceaf3;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(15,15,36,0.08);">
+        <tr>
+          <td style="background:#6C3FC5;padding:28px 24px;text-align:center;">
+            %s
+            <div style="margin-top:10px;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">Lumora</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 28px 4px 28px;">
+            <h1 style="margin:0 0 12px 0;color:#1A1A2E;font-size:20px;">%s</h1>
+            %s
+          </td>
+        </tr>
+        %s
+        <tr>
+          <td style="padding:20px 28px 28px 28px;text-align:center;">
+            <p style="margin:0;color:#9090A0;font-size:12px;line-height:18px;">
+              This is an automated message from Lumora — please do not reply.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, logo, heading, body.String(), cta)
 }

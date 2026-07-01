@@ -116,21 +116,22 @@ func ensureNotification(userID uint, item campaignItem) bool {
 func DeliverWelcome(userID uint) {
 	ensureNotification(userID, campaignItem{
 		Key: "welcome", Kind: "welcome", Emoji: "🦊", Tint: "#6C3FC5",
-		Title: "Welcome to Lumora! 🎉",
+		Title: "Welcome to Lumora!",
 		Body:  "I'm Lumora, your guide. Finish your first lesson to start a streak — you've got this!",
 	})
 }
 
 // DeliverLoginWelcome greets a returning user by name. To avoid spamming on
-// frequent logins, at most one is created every few hours.
-func DeliverLoginWelcome(user models.User) {
+// frequent logins/session-resumes, at most one is created every few hours.
+// Returns true when it actually created one (so callers can also email).
+func DeliverLoginWelcome(user models.User) bool {
 	var recent int64
 	database.DB.Model(&models.Notification{}).
 		Where("user_id = ? AND kind = ? AND created_at > ?",
 			user.ID, "welcome_back", time.Now().Add(-3*time.Hour)).
 		Count(&recent)
 	if recent > 0 {
-		return
+		return false
 	}
 	name := displayName(user)
 	database.DB.Create(&models.Notification{
@@ -138,13 +139,14 @@ func DeliverLoginWelcome(user models.User) {
 		Title: "Welcome back, " + name + "!",
 		Body:  "Great to see you again. Keep your streak alive with a quick lesson today.",
 	})
+	return true
 }
 
 // DeliverUnitComplete congratulates a user for finishing a whole unit (once).
 func DeliverUnitComplete(userID uint, unit string) {
 	ensureNotification(userID, campaignItem{
 		Key: "unit_done_" + unit, Kind: "milestone", Emoji: "🏆", Tint: "#00C2A8",
-		Title: "Unit complete! 🎉",
+		Title: "Unit complete!",
 		Body:  "You finished " + unit + ". Brilliant work — the next unit is unlocked. Keep the momentum going!",
 	})
 }
@@ -172,7 +174,7 @@ func DeliverExamStarted(userID uint, level, langName string) {
 func DeliverExamPassed(userID uint, level string, score int, certLink string) {
 	database.DB.Create(&models.Notification{
 		UserID: userID, Kind: "exam", Emoji: "🎓", Tint: "#00C2A8",
-		Title: "You passed the " + level + " exam! 🎉",
+		Title: "You passed the " + level + " exam!",
 		Body: "Congratulations! You scored " + strconv.Itoa(score) +
 			"%. Your certificate is ready to view and download.",
 		Link: certLink,
@@ -215,7 +217,7 @@ func DeliverHeartsFull(userID uint) {
 func DeliverHeartsPurchased(userID uint) {
 	database.DB.Create(&models.Notification{
 		UserID: userID, Kind: "hearts", Emoji: "❤️", Tint: "#00C2A8",
-		Title: "Hearts refilled 🎉",
+		Title: "Hearts refilled",
 		Body:  "Thanks! Your hearts are full again. Happy learning!",
 		Link:  "/learn",
 	})
@@ -248,7 +250,7 @@ func DeliverStreakMilestone(userID, days int) {
 	}
 	ensureNotification(uint(userID), campaignItem{
 		Key: "streak_" + strconv.Itoa(days), Kind: "streak", Emoji: "🔥", Tint: "#FF5C5C",
-		Title: strconv.Itoa(days) + "-day streak! 🔥",
+		Title: strconv.Itoa(days) + "-day streak!",
 		Body:  "You've practised " + strconv.Itoa(days) + " days in a row. Don't break the chain!",
 	})
 }
