@@ -84,8 +84,8 @@ Values come from your local `backend/.env`.
 | Variable | What to paste | Where it comes from |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://...neon.tech/lumora?sslmode=require` | Neon, Step 1.1 |
-| `CORS_ORIGINS` | `https://<your-site>.netlify.app` | Placeholder now, fixed in Step 4.1. **No trailing slash** |
-| `APP_URL` | `https://<your-site>.netlify.app` | Same |
+| `CORS_ORIGINS` | `https://lumora-learn.netlify.app` | Placeholder now, fixed in Step 4.1. **No trailing slash** |
+| `APP_URL` | `https://lumora-learn.netlify.app` | Same |
 | `SMTP_HOST` | `smtp.gmail.com` | your `.env` |
 | `SMTP_USER` | your Gmail address | your `.env` |
 | `SMTP_PASS` | your 16-char App Password | your `.env` |
@@ -132,7 +132,7 @@ Site configuration → **Environment variables**:
 | Variable | Value |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | `https://lumora-api-kqsn.onrender.com` |
-| `NEXT_PUBLIC_SITE_URL` | `https://<your-site>.netlify.app` |
+| `NEXT_PUBLIC_SITE_URL` | `https://lumora-learn.netlify.app` |
 
 This ordering is not optional. `NEXT_PUBLIC_*` values are **inlined into the JS
 bundle at build time**, not read at runtime. Build without them and the app ships
@@ -150,8 +150,8 @@ you want something friendlier than `random-name-123.netlify.app`.
 
 Render → `lumora-api` → Environment:
 
-- `CORS_ORIGINS` = `https://<your-real-site>.netlify.app`
-- `APP_URL` = `https://<your-real-site>.netlify.app`
+- `CORS_ORIGINS` = `https://lumora-learn.netlify.app`
+- `APP_URL` = `https://lumora-learn.netlify.app`
 
 Saving redeploys automatically. Exact origin, **no trailing slash** — `APP_URL`
 is concatenated with paths (`APP_URL + "/payment/callback"`), so a stray slash

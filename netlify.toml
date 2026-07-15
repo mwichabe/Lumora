@@ -19,4 +19,4 @@
 # Netlify UI (Site configuration → Environment variables) BEFORE the first build,
 # and a redeploy is required whenever they change:
 #   NEXT_PUBLIC_API_URL   = https://lumora-api-kqsn.onrender.com
-#   NEXT_PUBLIC_SITE_URL  = https://<your-site>.netlify.app
+#   NEXT_PUBLIC_SITE_URL  = https://lumora-learn.netlify.app
