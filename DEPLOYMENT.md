@@ -18,22 +18,26 @@ Render — only the database lives elsewhere, reached over `DATABASE_URL`.
 
 ---
 
-## Step 0 — Push to GitHub
+## Step 0 — Push to GitHub ✅ done
 
-Both platforms deploy from a repo, so nothing works until this is pushed.
+The repo is at `github.com/mwichabe/Lumora` and `render.yaml` is committed on
+`main`, so Render can already see the blueprint. Re-run this after any change:
 
 ```bash
 cd /home/mwichabe/projects/lumora
-git add .
-git commit -m "Deploy: Postgres support, DB-backed avatars, Render + Netlify config"
-git push origin main
+git add . && git commit -m "..." && git push origin main
 ```
 
-Confirm no secrets went with it — this must print nothing:
+Confirm no secrets ever go with it — this must print nothing:
 
 ```bash
 git ls-files | grep -E "\.env$|\.env\.local$|\.db$"
 ```
+
+**Verified against a fresh clone of your GitHub repo:** `render.yaml` is present,
+no `.env` leaked, the blueprint's `buildCommand` compiles, and `startCommand`
+boots on Render's `PORT=10000` and answers `healthCheckPath` with
+`{"status":"ok"}`. The blueprint works as written.
 
 ---
 
@@ -90,8 +94,13 @@ Values come from your local `backend/.env`.
 | `PAYSTACK_PUBLIC_KEY` | `pk_test_…` → **`pk_live_…`** | your `.env` has **test** keys |
 
 Set automatically — **don't touch**: `JWT_SECRET` (generated; changing it logs
-out every user), `GO_VERSION`, `SMTP_PORT`, `SMTP_FROM_NAME`, `EXAM_PRICE_KES`,
-`KES_PER_USD`, `HEART_REGEN_MINUTES`. **Never set `PORT`** — Render injects it.
+out every user), `SMTP_PORT`, `SMTP_FROM_NAME`, `EXAM_PRICE_KES`, `KES_PER_USD`,
+`HEART_REGEN_MINUTES`. **Never set `PORT`** — Render injects it.
+
+There is no Go version setting. Render's native Go runtime always builds with
+the latest stable Go and can't be pinned (only a Docker deploy can); `go.mod`
+requires >= 1.25.0, which latest stable satisfies. `GO_VERSION` is not a real
+Render setting — it would be silently ignored.
 
 Not used any more: `DB_PATH` and `UPLOADS_DIR` are local-dev only. In production
 `DATABASE_URL` takes over and nothing is written to the filesystem.

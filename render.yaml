@@ -20,8 +20,11 @@ services:
 
     envVars:
       # PORT is injected by Render — config.Load() reads it, so don't set it.
-      - key: GO_VERSION
-        value: "1.25.0" # must match the `go` directive in go.mod
+      #
+      # There is no Go version pin here on purpose: Render's native Go runtime
+      # always builds with the latest stable Go and cannot be pinned (only a
+      # Docker deploy can). go.mod requires >= 1.25.0, which latest stable
+      # satisfies. GO_VERSION is not a supported setting — it would be ignored.
 
       # ---- Database ----
       # Neon Postgres connection string (Dashboard → paste by hand).
