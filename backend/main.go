@@ -17,7 +17,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	database.Connect(cfg.DBPath)
+	database.Connect(cfg.DatabaseURL, cfg.DBPath)
 
 	app := fiber.New(fiber.Config{
 		AppName: "Lumora API",
@@ -31,8 +31,8 @@ func main() {
 		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	}))
 
-	// Serve uploaded profile photos.
-	app.Static("/uploads", cfg.UploadsDir)
+	// Profile photos live in the database and are served by GET /api/avatars/:id,
+	// so there is no upload directory to expose here.
 
 	routes.Register(app, cfg)
 

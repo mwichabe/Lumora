@@ -37,14 +37,16 @@ func loadDotEnv(path string) {
 
 // Config holds runtime configuration sourced from environment variables.
 type Config struct {
-	Port        string
-	JWTSecret   string
-	DBPath      string
-	CORSOrigins string
+	Port      string
+	JWTSecret string
 
-	// UploadsDir is where avatar files are written and served from. In
-	// production this must live on a persistent volume, alongside DBPath.
-	UploadsDir string
+	// DatabaseURL is a Postgres connection string. When set it wins and the app
+	// runs on Postgres (production). When empty the app falls back to a local
+	// SQLite file at DBPath, so local dev needs no database server.
+	DatabaseURL string
+	DBPath      string
+
+	CORSOrigins string
 
 	// Email (welcome message). If SMTPHost is empty, emails are skipped.
 	SMTPHost     string
@@ -71,9 +73,9 @@ func Load() Config {
 	return Config{
 		Port:        getEnv("PORT", "8080"),
 		JWTSecret:   getEnv("JWT_SECRET", "lumora-dev-secret-change-me"),
+		DatabaseURL: getEnv("DATABASE_URL", ""),
 		DBPath:      getEnv("DB_PATH", "lumora.db"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:3000"),
-		UploadsDir:  getEnv("UPLOADS_DIR", "uploads"),
 
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnv("SMTP_PORT", "587"),

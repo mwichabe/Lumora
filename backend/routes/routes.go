@@ -17,6 +17,8 @@ func Register(app *fiber.App, cfg config.Config) {
 	})
 
 	auth := &controllers.AuthController{Cfg: cfg}
+	// Public: rendered by a plain <img>, which can't send a bearer token.
+	api.Get("/avatars/:id", auth.GetAvatar)
 	api.Post("/auth/register", auth.Register)
 	api.Post("/auth/login", auth.Login)
 	api.Post("/auth/forgot-password", auth.ForgotPassword)

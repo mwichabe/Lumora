@@ -1,14 +1,25 @@
 package controllers
 
 import (
+	"bytes"
 	"fmt"
-	"os"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"path/filepath"
 	"strings"
 	"time"
 
+	// Registered for their side effect: image.Decode needs a decoder for every
+	// format allowedImageExt accepts. (GIFs decode to their first frame.)
+	_ "image/gif"
+	_ "image/png"
+
+	_ "golang.org/x/image/webp"
+
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/image/draw"
 
 	"lumora/backend/config"
 	"lumora/backend/database"
@@ -173,8 +184,14 @@ var allowedImageExt = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
 }
 
-// UploadAvatar accepts a profile photo (multipart "file"), stores it on disk
-// and points the user's AvatarURL at it. No third-party service required.
+// avatarSize is the square edge, in pixels, that uploads are downscaled to.
+// Avatars never render larger than ~96px in the UI, so 256 covers retina with
+// room to spare while keeping each row around 15-25 KB.
+const avatarSize = 256
+
+// UploadAvatar accepts a profile photo (multipart "file"), downscales it and
+// stores the bytes in the database rather than on disk — a host with an
+// ephemeral filesystem would drop an uploaded file on the next deploy.
 func (a *AuthController) UploadAvatar(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 
@@ -185,35 +202,76 @@ func (a *AuthController) UploadAvatar(c *fiber.Ctx) error {
 	if fh.Size > 5<<20 { // 5 MB
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "image must be under 5MB"})
 	}
-	ext := strings.ToLower(filepath.Ext(fh.Filename))
-	if !allowedImageExt[ext] {
+	if !allowedImageExt[strings.ToLower(filepath.Ext(fh.Filename))] {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "unsupported image type"})
 	}
 
-	dir := filepath.Join(a.Cfg.UploadsDir, "avatars")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not store image"})
+	f, err := fh.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not read image"})
 	}
-	name := fmt.Sprintf("user_%d_%d%s", user.ID, time.Now().Unix(), ext)
-	if err := c.SaveFile(fh, filepath.Join(dir, name)); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not save image"})
+	defer f.Close()
+
+	// Decoding here doubles as validation: a file that only *claims* to be an
+	// image by its extension fails at this point rather than being stored.
+	src, _, err := image.Decode(f)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "could not read that image"})
 	}
 
-	user.AvatarURL = "/uploads/avatars/" + name
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, squareThumb(src, avatarSize), &jpeg.Options{Quality: 85}); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not process image"})
+	}
+
+	user.AvatarData = buf.Bytes()
+	user.AvatarMime = "image/jpeg"
+	// The ?v= stamp busts the immutable cache on GetAvatar when the photo changes.
+	user.AvatarURL = fmt.Sprintf("/api/avatars/%d?v=%d", user.ID, time.Now().Unix())
 	database.DB.Save(user)
 	return c.JSON(fiber.Map{"user": user})
 }
 
-// RemoveAvatar clears the user's uploaded photo (reverting to the colour
-// initial) and best-effort deletes the file from disk.
+// squareThumb center-crops src to a square and scales it to size×size. The
+// canvas is pre-filled white and composited with Over so that transparent PNGs
+// don't come out with black corners once encoded as JPEG.
+func squareThumb(src image.Image, size int) image.Image {
+	b := src.Bounds()
+	side := b.Dx()
+	if b.Dy() < side {
+		side = b.Dy()
+	}
+	crop := image.Rect(0, 0, side, side).
+		Add(image.Pt(b.Min.X+(b.Dx()-side)/2, b.Min.Y+(b.Dy()-side)/2))
+
+	dst := image.NewRGBA(image.Rect(0, 0, size, size))
+	draw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, crop, draw.Over, nil)
+	return dst
+}
+
+// GetAvatar serves a user's profile photo. It is deliberately unauthenticated:
+// the frontend renders it in a plain <img src=...>, which cannot attach a
+// bearer token. Avatars aren't secret, and only the image bytes are exposed.
+func (a *AuthController) GetAvatar(c *fiber.Ctx) error {
+	var u models.User
+	err := database.DB.Select("avatar_data", "avatar_mime").First(&u, c.Params("id")).Error
+	if err != nil || len(u.AvatarData) == 0 {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	c.Set("Content-Type", u.AvatarMime)
+	// Safe to cache hard: AvatarURL carries a ?v= stamp that changes on upload.
+	c.Set("Cache-Control", "public, max-age=31536000, immutable")
+	return c.Send(u.AvatarData)
+}
+
+// RemoveAvatar clears the user's uploaded photo, reverting to the colour initial.
 func (a *AuthController) RemoveAvatar(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	if user.AvatarURL != "" {
-		// AvatarURL is a public path ("/uploads/avatars/x.png"); map it back
-		// onto the configured directory to get the file on disk.
-		rel := strings.TrimPrefix(user.AvatarURL, "/uploads/")
-		_ = os.Remove(filepath.Join(a.Cfg.UploadsDir, rel))
 		user.AvatarURL = ""
+		user.AvatarData = nil
+		user.AvatarMime = ""
 		database.DB.Save(user)
 	}
 	return c.JSON(fiber.Map{"user": user})

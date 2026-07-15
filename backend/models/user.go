@@ -10,7 +10,14 @@ type User struct {
 	PasswordHash string    `gorm:"not null" json:"-"`
 	Name         string    `json:"name"`
 	AvatarColor  string    `json:"avatarColor"` // hex used for the placeholder avatar ring
-	AvatarURL    string    `json:"avatarUrl"`   // uploaded profile photo (served from /uploads)
+	AvatarURL    string    `json:"avatarUrl"`   // points at /api/avatars/:id when a photo is set
+
+	// The profile photo lives in the database rather than on disk: hosts with an
+	// ephemeral filesystem (Render's free tier) would otherwise drop it on every
+	// deploy. Uploads are downscaled before being stored — see UploadAvatar.
+	// (GORM maps []byte per driver: bytea on Postgres, BLOB on SQLite.)
+	AvatarData []byte `json:"-"`
+	AvatarMime string `json:"-"`
 
 	// Learning setup (chosen during onboarding)
 	TargetLanguage string `json:"targetLanguage"` // e.g. "es"

@@ -1,15 +1,16 @@
-# Render Blueprint for the Lumora API (Go + Fiber + SQLite).
+# Render Blueprint for the Lumora API (Go + Fiber + Postgres).
 # Deploy: Render Dashboard → New → Blueprint → pick this repo.
 #
-# NOTE ON THE PLAN: SQLite and uploaded avatars live on the persistent disk
-# below. Render only allows disks on paid instances, so `plan: free` is not an
-# option here — a free instance has an ephemeral filesystem and every deploy
-# (and every idle-spindown) would wipe accounts, progress and certificates.
+# This runs on Render's FREE tier, which has no persistent disk. Nothing is
+# written to the filesystem: the database is external (Neon Postgres, set via
+# DATABASE_URL) and profile photos are stored as rows in that database. The
+# free instance also spins down after ~15 minutes idle, so the first request
+# afterwards takes ~50s to wake.
 services:
   - type: web
     name: lumora-api
     runtime: go
-    plan: starter
+    plan: free
     region: frankfurt # closest region to East Africa
     rootDir: backend
     buildCommand: go build -o lumora .
@@ -17,22 +18,17 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
 
-    # Survives deploys and restarts. DB_PATH and UPLOADS_DIR both point here.
-    disk:
-      name: lumora-data
-      mountPath: /var/data
-      sizeGB: 1
-
     envVars:
       # PORT is injected by Render — config.Load() reads it, so don't set it.
       - key: GO_VERSION
-        value: "1.22"
+        value: "1.25.0" # must match the `go` directive in go.mod
 
-      # ---- Persistence (must stay under the disk mountPath) ----
-      - key: DB_PATH
-        value: /var/data/lumora.db
-      - key: UPLOADS_DIR
-        value: /var/data/uploads
+      # ---- Database ----
+      # Neon Postgres connection string (Dashboard → paste by hand).
+      # Deliberately NOT a Render Postgres: free Render databases are deleted
+      # 30 days after creation. Must include ?sslmode=require.
+      - key: DATABASE_URL
+        sync: false
 
       # ---- Secrets ----
       # Generated once by Render and kept stable across deploys. Rotating it
@@ -40,8 +36,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
 
-      # ---- URLs: set these in the dashboard once Netlify gives you a domain ----
-      # Exact frontend origin, no trailing slash, e.g. https://lumora.netlify.app
+      # ---- URLs: the Netlify client URL. Exact origin, NO trailing slash. ----
+      # CORS_ORIGINS gates browser API calls; APP_URL builds the links inside
+      # password-reset emails and the Paystack callback.
       - key: CORS_ORIGINS
         sync: false
       - key: APP_URL
