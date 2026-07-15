@@ -1,0 +1,22 @@
+# Netlify config for the Lumora web client (Next.js 14, App Router).
+# The repo is a monorepo, so `base` points Netlify at the frontend/ directory;
+# `command` and `publish` are resolved relative to it.
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Runs the app on Netlify's Next.js runtime: SSR pages and route handlers become
+# functions, static assets go to the CDN. Netlify auto-detects Next.js, but
+# pinning the plugin here keeps builds reproducible.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# NEXT_PUBLIC_* vars are inlined at build time, so they must be set in the
+# Netlify UI (Site configuration → Environment variables) BEFORE the first build,
+# and a redeploy is required whenever they change:
+#   NEXT_PUBLIC_API_URL   = https://lumora-api.onrender.com
+#   NEXT_PUBLIC_SITE_URL  = https://<your-site>.netlify.app

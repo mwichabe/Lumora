@@ -1,0 +1,75 @@
+# Render Blueprint for the Lumora API (Go + Fiber + SQLite).
+# Deploy: Render Dashboard → New → Blueprint → pick this repo.
+#
+# NOTE ON THE PLAN: SQLite and uploaded avatars live on the persistent disk
+# below. Render only allows disks on paid instances, so `plan: free` is not an
+# option here — a free instance has an ephemeral filesystem and every deploy
+# (and every idle-spindown) would wipe accounts, progress and certificates.
+services:
+  - type: web
+    name: lumora-api
+    runtime: go
+    plan: starter
+    region: frankfurt # closest region to East Africa
+    rootDir: backend
+    buildCommand: go build -o lumora .
+    startCommand: ./lumora
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    # Survives deploys and restarts. DB_PATH and UPLOADS_DIR both point here.
+    disk:
+      name: lumora-data
+      mountPath: /var/data
+      sizeGB: 1
+
+    envVars:
+      # PORT is injected by Render — config.Load() reads it, so don't set it.
+      - key: GO_VERSION
+        value: "1.22"
+
+      # ---- Persistence (must stay under the disk mountPath) ----
+      - key: DB_PATH
+        value: /var/data/lumora.db
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+
+      # ---- Secrets ----
+      # Generated once by Render and kept stable across deploys. Rotating it
+      # invalidates every issued JWT, logging all users out.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # ---- URLs: set these in the dashboard once Netlify gives you a domain ----
+      # Exact frontend origin, no trailing slash, e.g. https://lumora.netlify.app
+      - key: CORS_ORIGINS
+        sync: false
+      - key: APP_URL
+        sync: false
+
+      # ---- Email (SMTP). Leave SMTP_HOST unset to disable email entirely. ----
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: Lumora
+
+      # ---- Paystack. Empty secret = payments disabled, exams stay free. ----
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: EXAM_PRICE_KES
+        value: "500"
+      - key: KES_PER_USD
+        value: "130"
+
+      - key: HEART_REGEN_MINUTES
+        value: "30"

@@ -32,7 +32,7 @@ func main() {
 	}))
 
 	// Serve uploaded profile photos.
-	app.Static("/uploads", "./uploads")
+	app.Static("/uploads", cfg.UploadsDir)
 
 	routes.Register(app, cfg)
 

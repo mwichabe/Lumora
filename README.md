@@ -107,7 +107,7 @@ in `tailwind.config.ts` from the Lumora design spec.
 
 ---
 
-## ⚠️ Security note
+## Security note
 
 The original Figma design spec document contained a live **Figma personal access
 token**. It was **not** included anywhere in this codebase. If you haven't already,

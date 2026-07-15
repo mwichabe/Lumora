@@ -190,7 +190,7 @@ func (a *AuthController) UploadAvatar(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "unsupported image type"})
 	}
 
-	dir := "uploads/avatars"
+	dir := filepath.Join(a.Cfg.UploadsDir, "avatars")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not store image"})
 	}
@@ -209,7 +209,10 @@ func (a *AuthController) UploadAvatar(c *fiber.Ctx) error {
 func (a *AuthController) RemoveAvatar(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	if user.AvatarURL != "" {
-		_ = os.Remove(strings.TrimPrefix(user.AvatarURL, "/"))
+		// AvatarURL is a public path ("/uploads/avatars/x.png"); map it back
+		// onto the configured directory to get the file on disk.
+		rel := strings.TrimPrefix(user.AvatarURL, "/uploads/")
+		_ = os.Remove(filepath.Join(a.Cfg.UploadsDir, rel))
 		user.AvatarURL = ""
 		database.DB.Save(user)
 	}

@@ -42,6 +42,10 @@ type Config struct {
 	DBPath      string
 	CORSOrigins string
 
+	// UploadsDir is where avatar files are written and served from. In
+	// production this must live on a persistent volume, alongside DBPath.
+	UploadsDir string
+
 	// Email (welcome message). If SMTPHost is empty, emails are skipped.
 	SMTPHost     string
 	SMTPPort     string
@@ -69,6 +73,7 @@ func Load() Config {
 		JWTSecret:   getEnv("JWT_SECRET", "lumora-dev-secret-change-me"),
 		DBPath:      getEnv("DB_PATH", "lumora.db"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:3000"),
+		UploadsDir:  getEnv("UPLOADS_DIR", "uploads"),
 
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnv("SMTP_PORT", "587"),
