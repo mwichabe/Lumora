@@ -18,5 +18,5 @@
 # NEXT_PUBLIC_* vars are inlined at build time, so they must be set in the
 # Netlify UI (Site configuration → Environment variables) BEFORE the first build,
 # and a redeploy is required whenever they change:
-#   NEXT_PUBLIC_API_URL   = https://lumora-api.onrender.com
+#   NEXT_PUBLIC_API_URL   = https://lumora-api-kqsn.onrender.com
 #   NEXT_PUBLIC_SITE_URL  = https://<your-site>.netlify.app

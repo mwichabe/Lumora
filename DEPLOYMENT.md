@@ -108,7 +108,7 @@ Not used any more: `DB_PATH` and `UPLOADS_DIR` are local-dev only. In production
 ### Step 2.3 — Verify
 
 ```bash
-curl https://lumora-api.onrender.com/api/health
+curl https://lumora-api-kqsn.onrender.com/api/health
 # {"service":"lumora","status":"ok"}
 ```
 
@@ -131,7 +131,7 @@ Site configuration → **Environment variables**:
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://lumora-api.onrender.com` |
+| `NEXT_PUBLIC_API_URL` | `https://lumora-api-kqsn.onrender.com` |
 | `NEXT_PUBLIC_SITE_URL` | `https://<your-site>.netlify.app` |
 
 This ordering is not optional. `NEXT_PUBLIC_*` values are **inlined into the JS
@@ -162,7 +162,7 @@ produces broken `//payment/callback` links inside real emails.
 Paystack → **Settings → API Keys & Webhooks** → Webhook URL:
 
 ```
-https://lumora-api.onrender.com/api/paystack/webhook
+https://lumora-api-kqsn.onrender.com/api/paystack/webhook
 ```
 
 Without it, a user who closes the tab mid-payment is charged but never unlocked.
@@ -176,7 +176,7 @@ Deploys → **Trigger deploy** → **Clear cache and deploy site**, so the corre
 
 ## Step 5 — Smoke test
 
-- [ ] `curl https://lumora-api.onrender.com/api/health` → `{"status":"ok"}`
+- [ ] `curl https://lumora-api-kqsn.onrender.com/api/health` → `{"status":"ok"}`
 - [ ] Netlify site loads, no CORS errors in the console
 - [ ] Sign up → welcome email → account persists
 - [ ] Upload a profile photo → **still there after a Render redeploy** (this is
