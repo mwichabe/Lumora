@@ -2,6 +2,7 @@ package database
 
 import (
 	"log"
+	"os"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
@@ -19,6 +20,16 @@ var DB *gorm.DB
 // a Postgres connection string) we use Postgres; when it's empty we fall back to
 // a local SQLite file at path, so `go run .` still works with no setup.
 func Connect(databaseURL, path string) {
+	// On a managed host the SQLite fallback is a trap: the filesystem is
+	// ephemeral, so the app would boot, look perfectly healthy, and silently
+	// discard every account on the next deploy. Refuse to start instead.
+	if databaseURL == "" && os.Getenv("RENDER") == "true" {
+		log.Fatal("DATABASE_URL is not set. Refusing to start on the SQLite " +
+			"fallback: Render's filesystem is ephemeral and all data would be " +
+			"lost on the next deploy. Set DATABASE_URL to your Postgres " +
+			"connection string (Neon), including ?sslmode=require.")
+	}
+
 	var (
 		db  *gorm.DB
 		err error
