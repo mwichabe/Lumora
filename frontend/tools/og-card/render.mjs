@@ -1,0 +1,73 @@
+// Renders the Open Graph share card and the PWA icons into PNGs.
+// See README.md. Run from this directory: `node render.mjs`.
+import puppeteer from "puppeteer-core";
+import { existsSync, writeFileSync } from "fs";
+
+// Nunito is the brand face and isn't usually installed system-wide, so fetch
+// the exact weights the app uses and let card.html reference them locally.
+const FONTS = {
+  "nunito-400.ttf": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDLshRTM.ttf",
+  "nunito-700.ttf": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDFwmRTM.ttf",
+  "nunito-800.ttf": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDDsmRTM.ttf",
+};
+for (const [file, url] of Object.entries(FONTS)) {
+  if (existsSync(file)) continue;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`could not fetch ${file}: ${res.status}`);
+  writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  console.log("  fetched", file);
+}
+
+const b = await puppeteer.launch({
+  executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
+  headless: "new",
+  args: ["--no-sandbox", "--disable-gpu"],
+});
+
+// --- the share card, at the canonical 1200x630 ---
+const p = await b.newPage();
+await p.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
+await p.goto(`file://${process.cwd()}/card.html`, { waitUntil: "networkidle0" });
+await new Promise(r => setTimeout(r, 1000));
+// An explicit clip, not just the viewport: Chrome's page capture ran taller
+// than the viewport and left a white band along the bottom of the card.
+await p.screenshot({ path: "og.png", clip: { x: 0, y: 0, width: 1200, height: 630 } });
+console.log("  wrote og.png");
+await p.close();
+
+// --- PWA icons, from the app's own icon artwork ---
+const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="120" fill="#6C3FC5"/>
+  <path d="M150 118 L118 262 L214 206 Z" fill="#7B4AD6" stroke="#3E2378" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M362 118 L394 262 L298 206 Z" fill="#7B4AD6" stroke="#3E2378" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M162 158 L142 244 L200 210 Z" fill="#F5A623"/>
+  <path d="M350 158 L370 244 L312 210 Z" fill="#F5A623"/>
+  <path d="M256 176 C332 176 372 236 372 306 C372 380 322 428 256 428 C190 428 140 380 140 306 C140 236 180 176 256 176 Z" fill="#7B4AD6" stroke="#3E2378" stroke-width="10"/>
+  <path d="M256 300 C302 300 334 340 334 374 C334 406 300 428 256 428 C212 428 178 406 178 374 C178 340 210 300 256 300 Z" fill="#FBE7CC"/>
+  <circle cx="210" cy="300" r="24" fill="#00C2A8"/><circle cx="302" cy="300" r="24" fill="#00C2A8"/>
+  <circle cx="210" cy="300" r="9" fill="#0F0F24"/><circle cx="302" cy="300" r="9" fill="#0F0F24"/>
+  <path d="M256 344 C270 344 280 354 280 364 C280 378 268 388 256 388 C244 388 232 378 232 364 C232 354 242 344 256 344 Z" fill="#0F0F24"/>
+</svg>`;
+
+// A maskable icon must survive an aggressive circular crop, so the artwork is
+// inset into the safe zone (80% of the canvas) on a full-bleed background.
+const maskableSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#6C3FC5"/>
+  <g transform="translate(51.2 51.2) scale(0.8)">${iconSvg.replace(/<\/?svg[^>]*>/g, "").replace(/<rect[^>]*\/>/, "")}</g>
+</svg>`;
+
+const shot = async (svg, size, file) => {
+  const pg = await b.newPage();
+  await pg.setViewport({ width: size, height: size, deviceScaleFactor: 1 });
+  await pg.setContent(`<style>*{margin:0;padding:0}html,body{width:${size}px;height:${size}px;overflow:hidden}svg{width:${size}px;height:${size}px;display:block}</style>${svg}`);
+  await new Promise(r => setTimeout(r, 300));
+  await pg.screenshot({ path: file, omitBackground: true, clip: { x: 0, y: 0, width: size, height: size } });
+  await pg.close();
+  console.log("  wrote", file);
+};
+
+await shot(iconSvg, 192, "icon-192.png");
+await shot(iconSvg, 512, "icon-512.png");
+await shot(maskableSvg, 512, "icon-maskable-512.png");
+await shot(iconSvg, 180, "apple-touch-icon.png");
+await b.close();

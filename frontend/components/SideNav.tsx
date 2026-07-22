@@ -10,6 +10,7 @@ import {
   User,
   Bell,
   MessageCircle,
+  Lightbulb,
 } from "lucide-react";
 import { FoxMascot } from "./FoxMascot";
 import { Avatar } from "./Avatar";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/practice", label: "Practice", icon: Mic },
   { href: "/leaderboard", label: "Leagues", icon: Trophy },
   { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/profile", label: "Profile", icon: User },
 ];

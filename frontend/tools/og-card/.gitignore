@@ -1,0 +1,8 @@
+# Downloaded by render.mjs on demand — no need to commit ~375 KB of font.
+*.ttf
+# Generated output; the copies that ship live in ../../public.
+og.png
+icon-*.png
+apple-touch-icon.png
+node_modules/
+package*.json

@@ -19,6 +19,16 @@ func Register(app *fiber.App, cfg config.Config) {
 	auth := &controllers.AuthController{Cfg: cfg}
 	// Public: rendered by a plain <img>, which can't send a bearer token.
 	api.Get("/avatars/:id", auth.GetAvatar)
+
+	// Shared images and voice memos, for the same reason: <img> and <audio>
+	// can't attach an Authorization header. Only the bytes are exposed, keyed by
+	// an opaque row id. These must be registered here, ahead of the protected
+	// group — that group has an empty prefix, so its auth middleware applies to
+	// every /api route declared after it and would 401 these.
+	ideaMedia := &controllers.IdeaController{}
+	api.Get("/ideas/attachments/:id", ideaMedia.Attachment)
+	chatMedia := &controllers.ChatController{}
+	api.Get("/chat/attachments/:id", chatMedia.ChatAttachment)
 	api.Post("/auth/register", auth.Register)
 	api.Post("/auth/login", auth.Login)
 	api.Post("/auth/forgot-password", auth.ForgotPassword)
@@ -96,6 +106,40 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/chat/unread", chat.Unread)
 	protected.Get("/chat/with/:id", chat.Messages)
 	protected.Post("/chat/with/:id", chat.Send)
+	protected.Post("/chat/with/:id/image", chat.SendImage)
+	protected.Patch("/chat/messages/:messageId", chat.EditMessage)
+	protected.Delete("/chat/messages/:messageId", chat.DeleteMessage)
+	// Retry path: messages are translated automatically in the background on
+	// send, so this is for when that failed or predates the feature.
+	protected.Post("/chat/messages/:messageId/translate", chat.TranslateChatMessage)
+
+	// The ideas workspace. Deliberately its own section rather than a mode of
+	// the DM chat: idea discussion mixed into personal messages becomes noise.
+	ideas := &controllers.IdeaController{}
+	protected.Get("/ideas", ideas.List)
+	protected.Post("/ideas", ideas.Create)
+	protected.Get("/ideas/similar", ideas.Similar)
+	protected.Get("/ideas/:id", ideas.Get)
+	protected.Patch("/ideas/:id", ideas.Update)
+	protected.Delete("/ideas/:id", ideas.Delete)
+	protected.Post("/ideas/:id/vote", ideas.Vote)
+	protected.Post("/ideas/:id/star", ideas.Star)
+	protected.Post("/ideas/:id/archive", ideas.Archive)
+	protected.Post("/ideas/:id/restore", ideas.Restore)
+	protected.Post("/ideas/:id/merge", ideas.Merge)
+	protected.Get("/ideas/:id/summary", ideas.Summary)
+	protected.Post("/ideas/:id/tasks", ideas.CreateTask)
+	protected.Patch("/ideas/tasks/:taskId", ideas.UpdateTask)
+
+	// The thread on an idea.
+	protected.Get("/ideas/:id/messages", ideas.Messages)
+	protected.Post("/ideas/:id/messages", ideas.Post)
+	protected.Patch("/ideas/messages/:messageId", ideas.EditMessage)
+	protected.Delete("/ideas/messages/:messageId", ideas.DeleteMessage)
+	protected.Post("/ideas/messages/:messageId/react", ideas.React)
+	protected.Post("/ideas/messages/:messageId/translate", ideas.TranslateIdeaMessage)
+	protected.Post("/ideas/:id/brainstorm", ideas.StartBrainstorm)
+	protected.Delete("/ideas/:id/brainstorm", ideas.StopBrainstorm)
 
 	protected.Get("/payments/status", payments.Status)
 	protected.Post("/payments/initialize", payments.Initialize)
@@ -110,6 +154,17 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/certificates/:id", exam.GetCertificate)
 	protected.Delete("/certificates/:id", exam.DeleteCertificate)
 
+	// All-time global ranking (the hall of fame).
 	leaderboard := &controllers.LeaderboardController{}
 	protected.Get("/leaderboard", leaderboard.League)
+
+	// The weekly league: pod standings, end-of-week results, and the two
+	// opt-outs (casual mode, reporting).
+	league := &controllers.LeagueController{}
+	protected.Get("/league", league.Standings)
+	protected.Get("/league/result", league.Result)
+	protected.Post("/league/result/seen", league.ResultSeen)
+	protected.Get("/league/history", league.History)
+	protected.Post("/league/casual", league.Casual)
+	protected.Post("/league/report/:id", league.Report)
 }

@@ -21,26 +21,48 @@ export const metadata: Metadata = {
     "A next-generation language learning app where every lesson is an adventure.",
   applicationName: "Lumora",
   manifest: "/manifest.webmanifest",
-  icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
-  },
+  // No `icons` field: app/icon.svg is picked up by Next's file convention,
+  // which then suppresses this metadata field entirely (verified — an `apple`
+  // entry here emits no link tag at all). The Apple touch icon is served from
+  // public/apple-touch-icon.png instead, which iOS requests from the site root
+  // by convention whether or not a <link> advertises it. Android and the
+  // install prompt get their icons from app/manifest.ts.
   appleWebApp: { capable: true, title: "Lumora", statusBarStyle: "default" },
+
+  // The share card. This was pointing at /logo.svg, which renders nowhere:
+  // Facebook, X, LinkedIn, Slack, WhatsApp and iMessage all ignore SVG, so
+  // every shared link appeared with no image at all. It's a 1200x630 PNG now —
+  // the size every scraper expects — showing Lumora the fennec fox.
   openGraph: {
     type: "website",
     siteName: "Lumora",
+    url: siteUrl,
     title: "Lumora — Learn a language. Fall in love with it.",
     description:
       "A next-generation language learning app where every lesson is an adventure.",
-    images: ["/logo.svg"],
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "Lumora the fennec fox beside the words: Learn a language. Fall in love with it.",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
-    title: "Lumora",
+    // summary_large_image, not summary: the latter crops to a small square
+    // thumbnail and throws away the artwork.
+    card: "summary_large_image",
+    title: "Lumora — Learn a language. Fall in love with it.",
     description:
       "A next-generation language learning app where every lesson is an adventure.",
-    images: ["/logo.svg"],
+    images: [
+      {
+        url: "/og.png",
+        alt: "Lumora the fennec fox beside the words: Learn a language. Fall in love with it.",
+      },
+    ],
   },
   robots: { index: true, follow: true },
 };

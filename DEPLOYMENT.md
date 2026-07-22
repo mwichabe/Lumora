@@ -59,10 +59,39 @@ This whole string is the `DATABASE_URL` you paste into Render in Step 2.3.
 
 ### Step 1.2 — There are no tables to create
 
-Don't run any SQL. On first boot the API auto-migrates all 24 tables and seeds
+Don't run any SQL. On first boot the API auto-migrates all 28 tables and seeds
 the starter content (182 skills, 187 lessons, 1186 exercises, 9 characters).
 Verified locally against Postgres 16: migrate + seed takes ~14s, and restarts
 skip the seed (guarded by row counts, so content is never duplicated).
+
+#### Migrating an existing Neon database (the weekly league)
+
+The league tables were added after the first deploy. There is still nothing to
+run by hand — GORM's `AutoMigrate` in `database.Connect` creates them and adds
+the new `users` columns on the next boot, so **deploying the backend is the
+migration**. What it does, for the record:
+
+| Change | Table |
+| --- | --- |
+| new | `league_seasons`, `league_memberships`, `league_dailies`, `league_reports` |
+| new columns | `users.league_tier`, `league_best`, `league_mmr`, `integrity`, `league_casual`, `tournament_stage`, `trophies` |
+
+All new columns are additive and nullable-with-zero-default, so the deploy is
+backwards compatible: an old API binary keeps working against the new schema if
+you need to roll back.
+
+Existing accounts start at `league_tier = 0` with `integrity = 0`. They are
+backfilled lazily by `normaliseLeagueState` the first time each user touches the
+league — their old `League` name maps to the matching tier, integrity is set to
+100, and their hidden rating is seeded from lifetime XP so a long-standing
+account isn't dropped into a beginners' pod. No batch job, no downtime.
+
+Verify after the deploy:
+
+```bash
+# Should list the four new tables.
+psql "$DATABASE_URL" -c "\dt league_*"
+```
 
 ---
 

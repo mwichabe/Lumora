@@ -73,3 +73,9 @@ services:
 
       - key: HEART_REGEN_MINUTES
         value: "30"
+
+      # ---- Message translation. Empty key = detection only, no translation. ----
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TRANSLATE_MODEL
+        value: claude-opus-4-8

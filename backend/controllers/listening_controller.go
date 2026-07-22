@@ -92,5 +92,11 @@ func (l *ListeningController) Complete(c *fiber.Ctx) error {
 	promoteLevel(user)
 	database.DB.Save(user)
 
-	return c.JSON(fiber.Map{"xpEarned": xpGain, "user": user})
+	// Listening sessions sit at unit level, so they weight a little above a
+	// single lesson. There's no per-question accuracy here, so it scores clean.
+	points := AwardLeaguePoints(user, LeagueAward{
+		Source: "listening", RawXP: xpGain, Accuracy: 100, Difficulty: 1.3,
+	})
+
+	return c.JSON(fiber.Map{"xpEarned": xpGain, "leaguePoints": points, "user": user})
 }

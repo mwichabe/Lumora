@@ -11,6 +11,47 @@
 - [ ] Serve over **HTTPS** (required for camera + screen share in the proctored exam, and for secure cookies/webhooks).
 - [ ] Consider Postgres instead of SQLite for concurrent production load (swap the GORM driver).
 
+## Weekly league
+- The league runs on **ISO weeks in UTC** — a season starts Monday 00:00 UTC and
+  settles the moment the week ends. Deliberately not local time: a
+  timezone-relative reset hands an advantage to whoever resets last.
+- Settlement runs two ways: a background ticker every 10 minutes, and lazily
+  whenever anyone opens the league. **On Render's free tier the ticker is not
+  enough** — the instance sleeps after ~15 minutes idle, so a week with no
+  visitors settles on the first request afterwards. That is by design; the
+  season row is claimed with an atomic `UPDATE ... WHERE settled = false`, so
+  the two paths can't double-pay.
+- New tables (`league_seasons`, `league_memberships`, `league_dailies`,
+  `league_reports`) and the new `users` columns are created by `AutoMigrate` on
+  boot. See DEPLOYMENT.md § "Migrating an existing Neon database".
+- The engine's tunables live in one block at the top of
+  `backend/controllers/league_engine.go`: pod size, promotion slots per tier,
+  chest values, the daily taper thresholds and the anti-cheat limits.
+- `go test ./controllers/` covers scoring, pod assignment, settlement,
+  promotion/demotion, ties, idempotency, the tournament bracket and every
+  notification trigger.
+- **Notifications** (`backend/controllers/league_notify.go`) fire on transitions,
+  never on states, and each carries a cooldown — a pod trading places all evening
+  produces one nudge, not forty. All of them deep-link to `/leaderboard`. The
+  final-day nudge needs the season to be inside its last 24 hours; it's sent by
+  the scheduler *and* on any league page load, so a sleeping free instance still
+  delivers it.
+
+## Message translation
+- [ ] **ANTHROPIC_API_KEY**: set it to enable translating non-English chat and
+      idea messages into English. Without it the feature degrades cleanly —
+      language detection still runs and labels each message, translation is
+      simply skipped, and the retry endpoint returns a 503 explaining why.
+- Detection is offline (`backend/utils/langdetect.go`): script analysis plus a
+  stop-word vote, no network call, no cost. It gates every API call, so an
+  English-only conversation never spends anything.
+- Translation happens **once per message**, in a background goroutine at send
+  time, and the result is stored on the row — it is never re-run per view.
+- Cost control: the system prompt is identical on every request and marked
+  `cache_control: ephemeral`, so after the first call that prefix bills at
+  cache-read rates. Input is capped at 4,000 characters.
+- The model is `claude-opus-4-8`; override with `TRANSLATE_MODEL`.
+
 ## Deploying the backend to Render (`render.yaml`)
 - [ ] Dashboard → **New → Blueprint** → select this repo. The blueprint defines the
       `lumora-api` web service, its disk and its env vars.

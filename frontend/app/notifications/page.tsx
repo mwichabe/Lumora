@@ -21,6 +21,7 @@ const KIND_LABEL: Record<string, string> = {
   feature: "New feature",
   language: "Languages",
   streak: "Streak",
+  league: "League",
   chat: "Message",
   message: "Message",
 };

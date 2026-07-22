@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Nunito; font-weight: 400; src: url(nunito-400.ttf) format('truetype'); }
+  @font-face { font-family: Nunito; font-weight: 700; src: url(nunito-700.ttf) format('truetype'); }
+  @font-face { font-family: Nunito; font-weight: 800; src: url(nunito-800.ttf) format('truetype'); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  /* The gradient is painted on BOTH: body alone left a white band along the
+     bottom of the capture where the element stopped short. */
+  html {
+    background: radial-gradient(1100px 700px at 78% 42%, #7B4AD6 0%, #5E33B0 42%, #2E1A66 100%);
+  }
+  body {
+    font-family: Nunito, sans-serif;
+    background: radial-gradient(1100px 700px at 78% 42%, #7B4AD6 0%, #5E33B0 42%, #2E1A66 100%);
+    color: #fff;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Starfield — the same motif as the learning galaxy. */
+  .star { position: absolute; border-radius: 50%; background: #fff; }
+
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .content {
+    position: relative;
+    padding: 0 0 0 78px;
+    width: 660px;
+    z-index: 3;
+  }
+
+  .brandrow { display: flex; align-items: center; gap: 16px; }
+  .mark {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.22);
+  }
+  .wordmark { font-weight: 800; font-size: 40px; letter-spacing: -0.5px; }
+
+  h1 {
+    margin-top: 30px;
+    font-weight: 800;
+    font-size: 66px;
+    line-height: 1.06;
+    letter-spacing: -1.6px;
+  }
+  h1 .accent { color: #F5A623; }
+
+  p.sub {
+    margin-top: 22px;
+    font-weight: 400;
+    font-size: 27px;
+    line-height: 1.42;
+    color: rgba(255,255,255,0.82);
+    max-width: 560px;
+  }
+
+  .chips { margin-top: 34px; display: flex; gap: 12px; }
+  .chip {
+    font-weight: 700; font-size: 20px;
+    padding: 11px 20px; border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.26);
+    color: #fff;
+  }
+  .chip.teal  { background: #00C2A8; border-color: #00C2A8; color: #06322C; }
+  .chip.amber { background: #F5A623; border-color: #F5A623; color: #3D2600; }
+
+  .fox { position: absolute; right: 44px; top: 50%; transform: translateY(-50%); z-index: 2; }
+</style>
+</head>
+<body>
+  <!-- soft halo behind the fox -->
+  <div class="glow" style="right:-40px; top:104px; width:520px; height:420px;
+       background: radial-gradient(closest-side, rgba(245,166,35,0.34), rgba(245,166,35,0));"></div>
+
+  <div class="content">
+    <div class="brandrow">
+      <div class="mark">
+        <svg width="38" height="38" viewBox="100 100 312 340">
+          <path d="M150 118 L118 262 L214 206 Z" fill="#F5A623"/>
+          <path d="M362 118 L394 262 L298 206 Z" fill="#F5A623"/>
+          <path d="M256 176 C332 176 372 236 372 306 C372 380 322 428 256 428 C190 428 140 380 140 306 C140 236 180 176 256 176 Z" fill="#fff"/>
+          <circle cx="210" cy="300" r="22" fill="#00C2A8"/>
+          <circle cx="302" cy="300" r="22" fill="#00C2A8"/>
+          <path d="M256 344 C270 344 282 356 282 368 C282 382 270 392 256 392 C242 392 230 382 230 368 C230 356 242 344 256 344 Z" fill="#2E1A66"/>
+        </svg>
+      </div>
+      <div class="wordmark">Lumora</div>
+    </div>
+
+    <h1>Learn a language.<br><span class="accent">Fall in love</span> with it.</h1>
+    <p class="sub">Every lesson is an adventure — guided by Lumora the fennec fox.</p>
+
+    <div class="chips">
+      <div class="chip teal">Daily streaks</div>
+      <div class="chip amber">Weekly leagues</div>
+      <div class="chip">Real certificates</div>
+    </div>
+  </div>
+
+  <!-- Lumora the Fennec Fox, the app's own mascot artwork scaled up. -->
+  <div class="fox">
+    <svg width="430" height="430" viewBox="0 0 200 200">
+      <defs>
+        <radialGradient id="tailGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#FFD27D"/>
+          <stop offset="100%" stop-color="#F5A623" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7B4AD6"/>
+          <stop offset="100%" stop-color="#5E33B0"/>
+        </linearGradient>
+      </defs>
+
+      <ellipse cx="100" cy="178" rx="46" ry="9" fill="#0F0F24" opacity="0.22"/>
+
+      <circle cx="150" cy="120" r="40" fill="url(#tailGlow)"/>
+      <path d="M150 150 C176 140 178 104 156 96 C168 116 150 136 132 138 Z"
+            fill="#6C3FC5" stroke="#0F0F24" stroke-width="2.5"/>
+      <path d="M158 100 C168 112 158 128 146 132" fill="#F5A623" opacity="0.9"/>
+
+      <ellipse cx="100" cy="132" rx="40" ry="34" fill="url(#fur)" stroke="#0F0F24" stroke-width="2.5"/>
+      <ellipse cx="100" cy="142" rx="22" ry="18" fill="#FFF1DD"/>
+
+      <path d="M70 70 L58 28 L92 60 Z" fill="#6C3FC5" stroke="#0F0F24" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M130 70 L142 28 L108 60 Z" fill="#6C3FC5" stroke="#0F0F24" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M70 64 L63 38 L84 58 Z" fill="#F5A623"/>
+      <path d="M130 64 L137 38 L116 58 Z" fill="#F5A623"/>
+
+      <ellipse cx="100" cy="92" rx="38" ry="33" fill="url(#fur)" stroke="#0F0F24" stroke-width="2.5"/>
+      <path d="M100 78 C84 78 74 92 78 104 C84 116 116 116 122 104 C126 92 116 78 100 78 Z" fill="#FFF1DD"/>
+
+      <circle cx="86" cy="90" r="8" fill="#fff"/>
+      <circle cx="114" cy="90" r="8" fill="#fff"/>
+      <circle cx="87" cy="91" r="5" fill="#00C2A8"/>
+      <circle cx="115" cy="91" r="5" fill="#00C2A8"/>
+      <circle cx="89" cy="89" r="1.6" fill="#fff"/>
+      <circle cx="117" cy="89" r="1.6" fill="#fff"/>
+
+      <path d="M96 100 L104 100 L100 105 Z" fill="#0F0F24"/>
+      <path d="M100 105 C100 110 94 112 90 109" fill="none" stroke="#0F0F24" stroke-width="2" stroke-linecap="round"/>
+      <path d="M100 105 C100 110 106 112 110 109" fill="none" stroke="#0F0F24" stroke-width="2" stroke-linecap="round"/>
+
+      <circle cx="76" cy="100" r="4" fill="#F5A623" opacity="0.55"/>
+      <circle cx="124" cy="100" r="4" fill="#F5A623" opacity="0.55"/>
+    </svg>
+  </div>
+
+  <script>
+    // Deterministic starfield — a seeded PRNG so re-rendering the card gives
+    // byte-identical output instead of a new sky every build.
+    let seed = 20260722;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+    for (let i = 0; i < 70; i++) {
+      const s = document.createElement("div");
+      s.className = "star";
+      const r = 1 + rnd() * 2.4;
+      s.style.width = s.style.height = r + "px";
+      s.style.left = rnd() * 1200 + "px";
+      s.style.top = rnd() * 630 + "px";
+      s.style.opacity = 0.18 + rnd() * 0.55;
+      document.body.appendChild(s);
+    }
+  </script>
+</body>
+</html>

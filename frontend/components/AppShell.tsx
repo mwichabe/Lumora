@@ -16,7 +16,9 @@ import { FoxMascot } from "./FoxMascot";
  *    locked to a phone-width strip.
  *
  * Pass `wide` for screens that benefit from a roomier multi-column layout
- * (e.g. the home dashboard and profile).
+ * (e.g. the home dashboard and profile), or `wide="full"` for one that needs
+ * the whole viewport — the three-panel ideas workspace can't be squeezed into
+ * a fixed centre column and still show all three.
  */
 export function AppShell({
   children,
@@ -25,7 +27,7 @@ export function AppShell({
 }: {
   children: ReactNode;
   tabs?: boolean;
-  wide?: boolean;
+  wide?: boolean | "full";
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -58,8 +60,20 @@ export function AppShell({
 
       <div className="relative flex min-h-[100dvh] w-full flex-1 flex-col lg:min-w-0">
         <main
+          // lg:w-auto matters on the "full" variant: w-full means 100% of the
+          // parent, and the horizontal margin is then added on top — so the
+          // panel overflowed the viewport by exactly the margin and clipped its
+          // right-hand column. Letting the flex item stretch instead sizes it
+          // to the space that's actually left.
           className={`mx-auto flex w-full flex-1 flex-col bg-cream lg:my-6 lg:overflow-hidden lg:rounded-3xl lg:shadow-card-lg ${
-            wide ? "lg:max-w-5xl" : "lg:max-w-3xl"
+            wide === "full"
+              // Underscores are Tailwind's escape for spaces in an arbitrary
+              // value; calc() needs real whitespace around the minus or the
+              // browser discards the whole declaration.
+              ? "lg:mx-4 lg:w-[calc(100%_-_2rem)] lg:max-w-none"
+              : wide
+                ? "lg:max-w-5xl"
+                : "lg:max-w-3xl"
           }`}
         >
           {children}

@@ -95,7 +95,7 @@ func (cc *ChatController) Threads(c *fiber.Ctx) error {
 		}
 		threads = append(threads, threadDTO{
 			User:        toChatUser(u),
-			LastMessage: prefix + snippet(m.Body),
+			LastMessage: prefix + previewOf(m),
 			LastAt:      m.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			Unread:      unread[other],
 		})
@@ -131,6 +131,11 @@ func (cc *ChatController) Messages(c *fiber.Ctx) error {
 		user.ID, otherID, otherID, user.ID,
 	).Order("created_at asc").Find(&msgs)
 
+	out := make([]chatMessageDTO, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, toChatMessage(m, user.ID))
+	}
+
 	// Mark messages from the other person as read.
 	database.DB.Model(&models.Message{}).
 		Where("sender_id = ? AND recipient_id = ? AND read = ?", otherID, user.ID, false).
@@ -140,7 +145,7 @@ func (cc *ChatController) Messages(c *fiber.Ctx) error {
 		Where("user_id = ? AND key = ?", user.ID, "chat_"+strconv.Itoa(otherID)).
 		Update("read", true)
 
-	return c.JSON(fiber.Map{"messages": msgs, "user": toChatUser(other)})
+	return c.JSON(fiber.Map{"messages": out, "user": toChatUser(other)})
 }
 
 type sendInput struct {
@@ -171,25 +176,18 @@ func (cc *ChatController) Send(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
 	}
 
-	msg := models.Message{SenderID: user.ID, RecipientID: uint(otherID), Body: body}
+	msg := models.Message{
+		SenderID: user.ID, RecipientID: uint(otherID),
+		Kind: models.MsgText, Body: body,
+	}
 	database.DB.Create(&msg)
 
-	// One notification per conversation: update if it already exists.
-	key := "chat_" + strconv.FormatUint(uint64(user.ID), 10)
-	title := "New message from " + displayName(*user)
-	var existing models.Notification
-	if database.DB.Where("user_id = ? AND key = ?", otherID, key).First(&existing).Error == nil {
-		existing.Title = title
-		existing.Body = snippet(body)
-		existing.Read = false
-		database.DB.Save(&existing)
-	} else {
-		database.DB.Create(&models.Notification{
-			UserID: uint(otherID), Key: key, Kind: "chat",
-			Emoji: "💬", Tint: "#6C3FC5", Title: title, Body: snippet(body),
-			Link: "/chat/" + strconv.FormatUint(uint64(user.ID), 10),
-		})
-	}
+	// Label the language now (free, offline) and translate in the background
+	// if it isn't English — the sender shouldn't wait on a model round-trip
+	// to see their own message posted.
+	msg.DetectedLang = detectAndQueue("messages", msg.ID, msg.Body)
 
-	return c.JSON(fiber.Map{"message": msg})
+	upsertChatNotification(user, uint(otherID), snippet(body))
+
+	return c.JSON(fiber.Map{"message": toChatMessage(msg, user.ID)})
 }

@@ -5,6 +5,9 @@ import type {
   UserQuest,
   CharacterWithFriendship,
   LeaderRow,
+  LeagueStandings,
+  LeagueResult,
+  LeagueHistoryEntry,
   HomeData,
   ListeningSession,
   ReadingSession,
@@ -21,6 +24,17 @@ import type {
   ChatUser,
   ChatMessage,
   ChatThread,
+  Idea,
+  IdeaBoard,
+  IdeaDetail,
+  IdeaMessage,
+  IdeaStatus,
+  IdeaTask,
+  IdeaThread,
+  SimilarIdea,
+  ThreadSummary,
+  BrainstormSession,
+  MessageTranslation,
 } from "./types";
 
 export const API_URL =
@@ -114,6 +128,64 @@ async function request<T>(
   }
   if (!res.ok) {
     let msg = `request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) msg = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(msg, res.status);
+  }
+  return (await res.json()) as T;
+}
+
+/**
+ * Guarantees an idea message's collection fields are arrays.
+ *
+ * The API is supposed to emit `[]` rather than `null` for these, and does — but
+ * a nil slice in Go marshals to `null`, so a single missed initialisation on
+ * the server (or an older backend still running against a newer client) turns
+ * `message.replies.length` into a crash that takes the whole thread down.
+ * Normalising once at the boundary means no render site has to guard.
+ */
+function normaliseMessage(m: IdeaMessage): IdeaMessage {
+  return {
+    ...m,
+    reactions: m.reactions ?? [],
+    replies: (m.replies ?? []).map(normaliseMessage),
+  };
+}
+
+/**
+ * Multipart sibling of `request`, for attachments.
+ *
+ * Deliberately does NOT set Content-Type: the browser has to write it itself so
+ * it can append the multipart boundary. Setting it by hand produces a request
+ * the server can't parse.
+ */
+async function upload<T>(
+  path: string,
+  fields: { file: File } & Record<string, string | File | undefined>
+): Promise<T> {
+  const fd = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || value === "") continue;
+    fd.append(key, value as string | File);
+  }
+
+  const token = getToken();
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    throw new ApiError("unauthorized", 401);
+  }
+  if (!res.ok) {
+    let msg = `upload failed (${res.status})`;
     try {
       const body = await res.json();
       if (body?.error) msg = body.error;
@@ -409,6 +481,223 @@ export const api = {
     request<{ league: string; rows: LeaderRow[]; userRank: number }>(
       "/api/leaderboard"
     ),
+
+  // --- the weekly league ---
+  league: () => request<LeagueStandings>("/api/league"),
+
+  /** The most recent settled season, if its ceremony hasn't been played yet. */
+  leagueResult: () =>
+    request<{ result: LeagueResult | null }>("/api/league/result"),
+
+  markLeagueResultSeen: (seasonId: string) =>
+    request<{ ok: boolean }>(
+      `/api/league/result/seen?season=${encodeURIComponent(seasonId)}`,
+      { method: "POST" }
+    ),
+
+  leagueHistory: () =>
+    request<{ history: LeagueHistoryEntry[] }>("/api/league/history"),
+
+  setLeagueCasual: (enabled: boolean) =>
+    request<{ ok: boolean; casual: boolean }>("/api/league/casual", {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
+
+  reportLeagueMember: (id: number, reason: string) =>
+    request<{ ok: boolean; alreadyReported: boolean }>(
+      `/api/league/report/${id}`,
+      { method: "POST", body: JSON.stringify({ reason }) }
+    ),
+
+  // --- direct messages: edit, delete, photos ---
+  sendChatImage: (id: number | string, file: File, caption: string) =>
+    upload<{ message: ChatMessage }>(`/api/chat/with/${id}/image`, {
+      file,
+      body: caption,
+    }),
+
+  editChatMessage: (messageId: number, body: string) =>
+    request<{ message: ChatMessage }>(`/api/chat/messages/${messageId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ body }),
+    }),
+
+  /** Retry translating a message the background pass didn't cover. */
+  translateChatMessage: (messageId: number) =>
+    request<{ translation: MessageTranslation | null }>(
+      `/api/chat/messages/${messageId}/translate`,
+      { method: "POST" }
+    ),
+
+  translateIdeaMessage: (messageId: number) =>
+    request<{ translation: MessageTranslation | null }>(
+      `/api/ideas/messages/${messageId}/translate`,
+      { method: "POST" }
+    ),
+
+  deleteChatMessage: (messageId: number) =>
+    request<{ ok: boolean; message: ChatMessage }>(
+      `/api/chat/messages/${messageId}`,
+      { method: "DELETE" }
+    ),
+
+  // --- the ideas workspace ---
+  ideas: (params: {
+    status?: string;
+    tag?: string;
+    sort?: string;
+    q?: string;
+  } = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v) as [string, string][]
+    ).toString();
+    return request<IdeaBoard>(`/api/ideas${qs ? `?${qs}` : ""}`);
+  },
+
+  createIdea: (input: { title: string; description?: string; tags?: string[] }) =>
+    request<{ idea: Idea }>("/api/ideas", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  idea: (id: number) => request<IdeaDetail>(`/api/ideas/${id}`),
+
+  updateIdea: (
+    id: number,
+    input: {
+      title?: string;
+      description?: string;
+      status?: IdeaStatus;
+      tags?: string[];
+    }
+  ) =>
+    request<{ idea: Idea }>(`/api/ideas/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  deleteIdea: (id: number) =>
+    request<{ ok: boolean }>(`/api/ideas/${id}`, { method: "DELETE" }),
+
+  voteIdea: (id: number, value: number) =>
+    request<{ idea: Idea }>(`/api/ideas/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ value }),
+    }),
+
+  starIdea: (id: number) =>
+    request<{ starred: boolean }>(`/api/ideas/${id}/star`, { method: "POST" }),
+
+  archiveIdea: (id: number, reason: string) =>
+    request<{ idea: Idea }>(`/api/ideas/${id}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  restoreIdea: (id: number) =>
+    request<{ idea: Idea }>(`/api/ideas/${id}/restore`, { method: "POST" }),
+
+  mergeIdea: (id: number, targetId: number) =>
+    request<{ idea: Idea; target: Idea }>(`/api/ideas/${id}/merge`, {
+      method: "POST",
+      body: JSON.stringify({ targetId }),
+    }),
+
+  /** Live duplicate check while composing — deliberately conservative. */
+  similarIdeas: (q: string) =>
+    request<{ similar: SimilarIdea[] }>(
+      `/api/ideas/similar?q=${encodeURIComponent(q)}`
+    ),
+
+  ideaSummary: (id: number) => request<ThreadSummary>(`/api/ideas/${id}/summary`),
+
+  createIdeaTask: (id: number, input: { title?: string; sprint?: string }) =>
+    request<{ task: IdeaTask; idea: Idea }>(`/api/ideas/${id}/tasks`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  updateIdeaTask: (taskId: number, input: { status?: string; sprint?: string }) =>
+    request<{ task: IdeaTask }>(`/api/ideas/tasks/${taskId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  // --- the thread on an idea ---
+  ideaMessages: async (id: number) => {
+    const thread = await request<IdeaThread>(`/api/ideas/${id}/messages`);
+    return { ...thread, messages: (thread.messages || []).map(normaliseMessage) };
+  },
+
+  postIdeaMessage: async (
+    id: number,
+    input: { body: string; parentId?: number | null; kind?: string }
+  ) => {
+    const r = await request<{ message: IdeaMessage }>(
+      `/api/ideas/${id}/messages`,
+      { method: "POST", body: JSON.stringify(input) }
+    );
+    return { message: normaliseMessage(r.message) };
+  },
+
+  postIdeaAttachment: async (
+    id: number,
+    file: File,
+    opts: {
+      body?: string;
+      parentId?: number | null;
+      kind: "image" | "voice";
+      duration?: number;
+    }
+  ) => {
+    const r = await upload<{ message: IdeaMessage }>(
+      `/api/ideas/${id}/messages`,
+      {
+        file,
+        body: opts.body ?? "",
+        kind: opts.kind,
+        parentId: opts.parentId ? String(opts.parentId) : "",
+        duration: opts.duration ? String(opts.duration) : "",
+      }
+    );
+    return { message: normaliseMessage(r.message) };
+  },
+
+  editIdeaMessage: async (messageId: number, body: string) => {
+    const r = await request<{ message: IdeaMessage }>(
+      `/api/ideas/messages/${messageId}`,
+      { method: "PATCH", body: JSON.stringify({ body }) }
+    );
+    return { message: normaliseMessage(r.message) };
+  },
+
+  deleteIdeaMessage: async (messageId: number) => {
+    const r = await request<{ ok: boolean; message: IdeaMessage }>(
+      `/api/ideas/messages/${messageId}`,
+      { method: "DELETE" }
+    );
+    return { ...r, message: normaliseMessage(r.message) };
+  },
+
+  reactToIdeaMessage: async (messageId: number, emoji: string) => {
+    const r = await request<{ message: IdeaMessage }>(
+      `/api/ideas/messages/${messageId}/react`,
+      { method: "POST", body: JSON.stringify({ emoji }) }
+    );
+    return { message: normaliseMessage(r.message) };
+  },
+
+  startBrainstorm: (id: number, minutes: number, topic: string) =>
+    request<{ brainstorm: BrainstormSession }>(`/api/ideas/${id}/brainstorm`, {
+      method: "POST",
+      body: JSON.stringify({ minutes, topic }),
+    }),
+
+  stopBrainstorm: (id: number) =>
+    request<{ brainstorm: null }>(`/api/ideas/${id}/brainstorm`, {
+      method: "DELETE",
+    }),
 };
 
 export { ApiError };

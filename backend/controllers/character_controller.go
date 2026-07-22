@@ -56,16 +56,16 @@ type leaderRow struct {
 	Rank      int    `json:"rank"`
 }
 
-// League returns a global ranking of all learners by total XP, each tagged with
-// the language they're studying. The current user is always included.
+// League returns a global all-time ranking of every learner by total XP, each
+// tagged with the language they're studying. The current user is always
+// included.
+//
+// This is the hall of fame, not the competition: the weekly race lives at
+// /api/league (see league_controller.go), where standing is earned in a pod of
+// thirty rather than accumulated forever.
 func (lc *LeaderboardController) League(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
-
-	// Keep the user's league badge in sync with their XP.
-	if l := leagueForXP(user.XP); user.League != l {
-		user.League = l
-		database.DB.Save(user)
-	}
+	normaliseLeagueState(user)
 
 	var users []models.User
 	database.DB.Order("xp desc, id asc").Limit(100).Find(&users)

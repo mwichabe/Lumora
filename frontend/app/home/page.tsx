@@ -17,6 +17,7 @@ import { FoxMascot } from "@/components/FoxMascot";
 import { XPBar, StreakFlame, GemCounter } from "@/components/widgets";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ChatBell } from "@/components/ChatBell";
+import { IdeasBell } from "@/components/IdeasBell";
 import { SkillIcon } from "@/components/SkillIcon";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
@@ -74,21 +75,43 @@ function HomeContent() {
     <div className="flex flex-col">
       {/* Header */}
       <header className="bg-purple px-5 pb-5 pt-12 text-white lg:px-8 lg:pt-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border-2 border-white/60">
+        {/* Identity and actions share the top line; the stat chips sit under
+            them on a phone. Five items in one row overflows a 360px screen —
+            and the streak already has its own card below, so repeating it in
+            the corner earns none of the space it costs. */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="shrink-0 rounded-full border-2 border-white/60">
               <Avatar name={u.name} color={u.avatarColor} url={u.avatarUrl} size={40} />
             </span>
-            <p className="text-heading-sm font-bold">
-              {greeting()}, {u.name || "friend"}!
-            </p>
+            {/* Stacked, not "{greeting}, {name}!" on one line: the longest
+                greeting plus a name never fits a phone, and truncating that
+                string cuts off the name — the one part that's actually theirs. */}
+            <span className="min-w-0">
+              <span className="block truncate text-label-md text-white/75">
+                {greeting()}
+              </span>
+              <span className="block truncate text-heading-sm font-bold leading-tight">
+                {u.name || "friend"}
+              </span>
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <GemCounter gems={u.gems} />
-            <StreakFlame streak={u.streak} light />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="hidden sm:flex">
+              <GemCounter gems={u.gems} />
+            </span>
+            <span className="hidden sm:flex">
+              <StreakFlame streak={u.streak} light />
+            </span>
+            <IdeasBell />
             <ChatBell />
             <NotificationBell />
           </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 sm:hidden">
+          <GemCounter gems={u.gems} />
+          <StreakFlame streak={u.streak} light />
         </div>
 
         {u.streak > 0 && (

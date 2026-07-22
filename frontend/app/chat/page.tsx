@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquarePlus, X, MessagesSquare } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Avatar } from "@/components/Avatar";
+import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
 import type { ChatThread, ChatUser } from "@/lib/types";
 
@@ -60,15 +61,7 @@ function ChatList() {
           ))}
         </div>
       ) : threads.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
-            <MessagesSquare className="text-gray-300" size={26} />
-          </div>
-          <p className="mt-1 text-body-md font-bold text-ink">No conversations yet</p>
-          <p className="max-w-xs text-body-sm text-slatey">
-            Start chatting with fellow learners — tap “New”.
-          </p>
-        </div>
+        <EmptyState onStart={() => setPicking(true)} />
       ) : (
         <ul className="divide-y divide-gray-100">
           {threads.map((t) => (
@@ -110,6 +103,83 @@ function ChatList() {
       )}
 
       {picking && <ContactPicker onClose={() => setPicking(false)} />}
+    </div>
+  );
+}
+
+/**
+ * The empty state does real work: it shows *who* is actually here, as a row of
+ * overlapping avatars, so "start a conversation" is a concrete choice rather
+ * than an abstract instruction. Tapping any face opens that chat directly.
+ *
+ * It degrades sensibly — if nobody else has signed up yet, it says so plainly
+ * instead of showing an empty flourish and a button that leads nowhere.
+ */
+function EmptyState({ onStart }: { onStart: () => void }) {
+  const router = useRouter();
+  const [contacts, setContacts] = useState<ChatUser[] | null>(null);
+
+  useEffect(() => {
+    api
+      .chatContacts()
+      .then((d) => setContacts(d.contacts))
+      .catch(() => setContacts([]));
+  }, []);
+
+  const shown = (contacts || []).slice(0, 5);
+  const extra = Math.max(0, (contacts?.length || 0) - shown.length);
+
+  return (
+    <div className="flex flex-col items-center px-6 py-16 text-center">
+      {shown.length > 0 ? (
+        <div className="flex items-center">
+          {shown.map((c, i) => (
+            <button
+              key={c.id}
+              onClick={() => router.push(`/chat/${c.id}`)}
+              title={`Chat with ${c.name}`}
+              style={{ marginLeft: i === 0 ? 0 : -14, zIndex: shown.length - i }}
+              className="relative rounded-full ring-4 ring-cream transition hover:z-10 hover:-translate-y-1"
+            >
+              <Avatar
+                name={c.name}
+                color={c.avatarColor}
+                url={c.avatarUrl}
+                size={56}
+              />
+            </button>
+          ))}
+          {extra > 0 && (
+            <span
+              style={{ marginLeft: -14 }}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-light text-label-lg font-extrabold text-purple ring-4 ring-cream"
+            >
+              +{extra}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
+          <MessagesSquare className="text-gray-300" size={28} />
+        </div>
+      )}
+
+      <h2 className="mt-5 text-heading-md font-extrabold text-ink">
+        {shown.length > 0 ? "No conversations yet" : "Nobody else is here yet"}
+      </h2>
+      <p className="mt-1 max-w-xs text-body-sm text-slatey">
+        {shown.length > 0
+          ? `${shown.length + extra} ${
+              shown.length + extra === 1 ? "learner is" : "learners are"
+            } learning alongside you. Tap a face above, or start a new conversation.`
+          : "As soon as other learners join, they'll show up here and you can say hello."}
+      </p>
+
+      {shown.length > 0 && (
+        <Button className="mt-6" onClick={onStart}>
+          <MessageSquarePlus size={17} className="mr-2" /> Start a chat
+        </Button>
+      )}
     </div>
   );
 }

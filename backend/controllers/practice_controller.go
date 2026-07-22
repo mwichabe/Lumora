@@ -222,5 +222,12 @@ func (p *PracticeController) Complete(c *fiber.Ctx) error {
 	promoteLevel(user)
 	database.DB.Save(user)
 
-	return c.JSON(fiber.Map{"xpEarned": xpGain, "user": user})
+	// Drills pay full XP but only 0.6x toward the league, and stop counting past
+	// the daily cap — spamming quick rounds is a fine way to learn and a poor way
+	// to climb.
+	points := AwardLeaguePoints(user, LeagueAward{
+		Source: "practice", RawXP: xpGain, Accuracy: 100, Difficulty: 1.0,
+	})
+
+	return c.JSON(fiber.Map{"xpEarned": xpGain, "leaguePoints": points, "user": user})
 }

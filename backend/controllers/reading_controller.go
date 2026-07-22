@@ -79,5 +79,9 @@ func (r *ReadingController) Complete(c *fiber.Ctx) error {
 	promoteLevel(user)
 	database.DB.Save(user)
 
-	return c.JSON(fiber.Map{"xpEarned": xpGain, "user": user})
+	points := AwardLeaguePoints(user, LeagueAward{
+		Source: "reading", RawXP: xpGain, Accuracy: 100, Difficulty: 1.3,
+	})
+
+	return c.JSON(fiber.Map{"xpEarned": xpGain, "leaguePoints": points, "user": user})
 }

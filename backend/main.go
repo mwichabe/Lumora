@@ -12,6 +12,7 @@ import (
 	"lumora/backend/controllers"
 	"lumora/backend/database"
 	"lumora/backend/routes"
+	"lumora/backend/utils"
 )
 
 func main() {
@@ -34,10 +35,18 @@ func main() {
 	// Profile photos live in the database and are served by GET /api/avatars/:id,
 	// so there is no upload directory to expose here.
 
+	// Message translation. Offline language detection always runs; the model
+	// call only happens when an API key is configured.
+	controllers.InitTranslation(utils.NewTranslator(cfg))
+
 	routes.Register(app, cfg)
 
 	// Background loop that casually pushes tips / announcements to users.
 	controllers.StartNotificationScheduler()
+
+	// Closes out finished league weeks. Seasons also settle lazily when anyone
+	// opens the league, so a sleeping free instance still resolves correctly.
+	controllers.StartLeagueScheduler()
 
 	log.Printf("Lumora API listening on :%s", cfg.Port)
 	if err := app.Listen(":" + cfg.Port); err != nil {

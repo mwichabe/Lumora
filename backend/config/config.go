@@ -64,6 +64,12 @@ type Config struct {
 	PaystackPublic string
 	ExamPriceKES   int // price of the exam + certificate unlock, in whole KES
 	KESPerUSD      int // approx KES per 1 USD, used to show a USD equivalent
+
+	// Message translation via the Claude API. Language detection is offline
+	// and always on; only the translation itself needs a key. Leave the key
+	// empty to disable translation — messages still get a language label.
+	AnthropicAPIKey string
+	TranslateModel  string // defaults to claude-opus-4-8
 }
 
 // Load reads configuration from the environment, applying sensible defaults so
@@ -90,6 +96,9 @@ func Load() Config {
 		PaystackPublic: getEnv("PAYSTACK_PUBLIC_KEY", ""),
 		ExamPriceKES:   getEnvInt("EXAM_PRICE_KES", 500),
 		KESPerUSD:      getEnvInt("KES_PER_USD", 130),
+
+		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
+		TranslateModel:  getEnv("TRANSLATE_MODEL", "claude-opus-4-8"),
 	}
 }
 
