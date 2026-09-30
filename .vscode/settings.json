@@ -1,0 +1,14 @@
+{
+  "java.import.exclusions": [
+    "**/mobile/android/**",
+    "**/mobile/build/**",
+    "**/mobile/ios/**"
+  ],
+  "files.watcherExclude": {
+    "**/mobile/build/**": true,
+    "**/mobile/.dart_tool/**": true,
+    "**/mobile/android/.gradle/**": true
+  },
+  "gradle.autoDetect": "off",
+  "gradle.nestedProjects": false
+}

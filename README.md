@@ -23,15 +23,20 @@ lumora/
 │   ├── database/             SQLite connect, AutoMigrate, seed data
 │   └── utils/                JWT helpers
 │
-└── frontend/                 Next.js 14 App Router (the View layer)
-    ├── app/                  Screens: splash, onboarding, home, learn (galaxy map),
-    │                         lesson player, lesson complete, practice, leaderboard, profile
-    ├── components/           Button, FoxMascot, widgets, AppShell, BottomTabBar
-    └── lib/                  Typed API client, auth context, shared types
+├── frontend/                 Next.js 14 App Router (the View layer)
+│   ├── app/                  Screens: splash, onboarding, home, learn (galaxy map),
+│   │                         lesson player, lesson complete, practice, leaderboard, profile
+│   ├── components/           Button, FoxMascot, widgets, AppShell, BottomTabBar
+│   └── lib/                  Typed API client, auth context, shared types
+│
+└── mobile/                   Flutter app (Android + iOS) — a second View over
+                               the same Go API, feature-for-feature with the
+                               web app. See mobile/README.md.
 ```
 
 The Go service owns the **Models** (data) and **Controllers** (business logic);
-the Next.js app is the **View**. They communicate over a small JSON REST API.
+the Next.js app and the Flutter app are both **Views**, talking to the same
+JSON REST API described below.
 
 ---
 
@@ -71,6 +76,19 @@ npm run dev                        # starts the web app on http://localhost:3000
 
 Open **http://localhost:3000**, create an account, choose Spanish, set a daily goal,
 and start the first lesson.
+
+## 3. Run the mobile app (Flutter, Android + iOS)
+
+```bash
+cd mobile
+flutter pub get
+flutter run --dart-define=API_URL=http://10.0.2.2:8080   # Android emulator
+# or --dart-define=API_URL=http://localhost:8080          # iOS simulator / desktop / web
+```
+
+Feature-for-feature with the web app — same backend, same design spec. See
+`mobile/README.md` for details, including the few places mobile platform
+constraints required an adapted (not reduced) approach, like exam proctoring.
 
 ---
 
