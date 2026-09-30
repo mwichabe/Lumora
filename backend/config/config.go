@@ -48,7 +48,11 @@ type Config struct {
 
 	CORSOrigins string
 
-	// Email (welcome message). If SMTPHost is empty, emails are skipped.
+	// Email. Resend (HTTPS API) is used whenever ResendAPIKey is set — required
+	// in production, where the host blocks outbound SMTP. Otherwise mail falls
+	// back to SMTP, and if SMTPHost is empty too, emails are skipped.
+	ResendAPIKey string
+	ResendFrom   string // e.g. "Lumora <no-reply@your-domain.com>"; the domain must be verified in Resend
 	SMTPHost     string
 	SMTPPort     string
 	SMTPUser     string
@@ -83,6 +87,8 @@ func Load() Config {
 		DBPath:      getEnv("DB_PATH", "lumora.db"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:3000"),
 
+		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+		ResendFrom:   getEnv("RESEND_FROM", "Lumora <onboarding@resend.dev>"),
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnv("SMTP_PORT", "587"),
 		SMTPUser:     getEnv("SMTP_USER", ""),

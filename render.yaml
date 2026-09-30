@@ -47,7 +47,16 @@ services:
       - key: APP_URL
         sync: false
 
-      # ---- Email (SMTP). Leave SMTP_HOST unset to disable email entirely. ----
+      # ---- Email (Resend, HTTPS API) ----
+      # Render's free tier blocks outbound SMTP ports, so production mail MUST
+      # go through Resend. RESEND_FROM must use a domain verified in Resend,
+      # e.g. "Lumora <no-reply@your-domain.com>".
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+
+      # ---- Email (SMTP fallback). Ignored whenever RESEND_API_KEY is set. ----
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

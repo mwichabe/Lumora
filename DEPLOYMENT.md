@@ -115,12 +115,20 @@ Values come from your local `backend/.env`.
 | `DATABASE_URL` | `postgresql://...neon.tech/lumora?sslmode=require` | Neon, Step 1.1 |
 | `CORS_ORIGINS` | `https://lumora-learn.netlify.app` | Placeholder now, fixed in Step 4.1. **No trailing slash** |
 | `APP_URL` | `https://lumora-learn.netlify.app` | Same |
-| `SMTP_HOST` | `smtp.gmail.com` | your `.env` |
-| `SMTP_USER` | your Gmail address | your `.env` |
-| `SMTP_PASS` | your 16-char App Password | your `.env` |
-| `SMTP_FROM` | same as `SMTP_USER` | Gmail requires the match |
+| `RESEND_API_KEY` | `re_…` | [resend.com/api-keys](https://resend.com/api-keys) |
+| `RESEND_FROM` | `Lumora <no-reply@your-domain.com>` | A domain verified at [resend.com/domains](https://resend.com/domains) |
 | `PAYSTACK_SECRET_KEY` | `sk_test_…` → **`sk_live_…`** | your `.env` has **test** keys |
 | `PAYSTACK_PUBLIC_KEY` | `pk_test_…` → **`pk_live_…`** | your `.env` has **test** keys |
+
+**Email goes through Resend, not SMTP.** Render's free tier blocks outbound SMTP
+ports, so Gmail SMTP works on your laptop and then silently fails in production.
+The `SMTP_*` vars are only a local-dev fallback and are ignored once
+`RESEND_API_KEY` is set — you can leave them blank on Render.
+
+Until a domain is verified in Resend, the only sender it accepts is
+`onboarding@resend.dev`, and that sender delivers **only to the Resend account
+owner's own address**. Every other recipient is rejected with a 403, so real
+users get no reset email. Verify a domain before launch.
 
 Set automatically — **don't touch**: `JWT_SECRET` (generated; changing it logs
 out every user), `SMTP_PORT`, `SMTP_FROM_NAME`, `EXAM_PRICE_KES`, `KES_PER_USD`,

@@ -74,9 +74,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const Text('Check your email', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LumoraColors.ink)),
         const SizedBox(height: 8),
         Text(
-          'If an account exists for ${_email.text.trim()}, we\'ve sent a link to reset your password.',
+          'If an account exists for ${_email.text.trim()}, we\'ve sent a link to reset your password. It expires in 1 hour.',
           textAlign: TextAlign.center,
           style: const TextStyle(color: LumoraColors.slatey, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(color: LumoraColors.amberLight, borderRadius: BorderRadius.circular(12)),
+          child: const Text(
+            "Can't find it? Check your spam or promotions folder.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: LumoraColors.slatey),
+          ),
         ),
         const SizedBox(height: 24),
         LumoraButton(label: 'Back to sign in', full: true, onPressed: () => context.go('/welcome')),

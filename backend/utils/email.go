@@ -11,13 +11,22 @@ import (
 	"lumora/backend/config"
 )
 
-// SendEmail is the core sender: builds a MIME multipart message and sends it via
-// Gmail SMTP (STARTTLS on port 587) using the App Password from config. Safe to
-// call in a goroutine — failures are logged, never fatal, and if SMTP isn't
-// configured it simply no-ops.
+// SendEmail is the core sender. It delivers through the Resend HTTP API when
+// RESEND_API_KEY is set, and otherwise builds a MIME multipart message and
+// sends it via Gmail SMTP (STARTTLS on port 587) using the App Password from
+// config. Safe to call in a goroutine — failures are logged, never fatal, and
+// if neither transport is configured it simply no-ops.
 func SendEmail(cfg config.Config, toEmail, subject, plain, html string) error {
+	if cfg.ResendAPIKey != "" {
+		if err := sendViaResend(cfg, toEmail, subject, plain, html); err != nil {
+			log.Printf("[email] failed to send '%s' to %s: %v", subject, toEmail, err)
+			return err
+		}
+		log.Printf("[email] sent '%s' to %s", subject, toEmail)
+		return nil
+	}
 	if cfg.SMTPHost == "" || cfg.SMTPUser == "" {
-		log.Printf("[email] SMTP not configured — skipping '%s' to %s", subject, toEmail)
+		log.Printf("[email] no email transport configured — skipping '%s' to %s", subject, toEmail)
 		return nil
 	}
 	msg := buildMIME(cfg, toEmail, subject, plain, html)
@@ -70,27 +79,8 @@ func SendPasswordResetEmail(cfg config.Config, toEmail, name, resetURL string) {
 	if strings.TrimSpace(name) == "" {
 		name = "there"
 	}
-	plain := fmt.Sprintf(`Hi %s,
-
-We received a request to reset your Lumora password.
-
-Open this link to choose a new password (it expires in 1 hour):
-%s
-
-If you didn't request this, you can safely ignore this email — your password
-won't change.
-
-— Lumora
-
-This is an automated message. Please do not reply.`, name, resetURL)
-
-	html := simpleHTML(cfg, "Reset your password", []string{
-		fmt.Sprintf("Hi %s, we received a request to reset your Lumora password.", name),
-		"Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.",
-		"If you didn't request this, you can safely ignore this email — your password won't change.",
-	}, "Reset password", resetURL)
-
-	_ = SendEmail(cfg, toEmail, "Reset your Lumora password", plain, html)
+	_ = SendEmail(cfg, toEmail, "Reset your Lumora password",
+		passwordResetPlain(name, resetURL), passwordResetHTML(cfg, name, resetURL))
 }
 
 // SendPaymentEmail sends a receipt after a successful payment. Returns an error

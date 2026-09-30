@@ -48,6 +48,9 @@ export default function ForgotPasswordPage() {
                 If an account exists for <strong>{email.trim()}</strong>, we&apos;ve
                 sent a link to reset your password. It expires in 1 hour.
               </p>
+              <p className="mt-3 rounded-xl bg-amber-light px-3 py-2 text-body-sm text-slatey">
+                Can&apos;t find it? Check your spam or promotions folder.
+              </p>
               <Link href="/onboarding/welcome" className="mt-6 block">
                 <Button full>Back to sign in</Button>
               </Link>
