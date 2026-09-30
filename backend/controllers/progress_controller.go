@@ -114,9 +114,10 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 	prevStreak := user.Streak
 	touchStreak(user)
 
-	// CEFR promotion every 100 XP (demo-friendly thresholds).
+	// The level only moves when this lesson finished off a whole CEFR stage of
+	// the course — XP alone never changes it (see level.go).
 	prevCEFR := user.CEFRLevel
-	promoteLevel(user)
+	leveledUp := syncLevel(user)
 
 	database.DB.Save(user)
 
@@ -134,8 +135,8 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 	updateQuestsOnLesson(user.ID, in.Accuracy)
 
 	// Milestone notifications: level-up, streak, and finishing a whole unit.
-	if user.CEFRLevel != prevCEFR {
-		DeliverLevelUp(user.ID, user.CEFRLevel, user.LevelName)
+	if leveledUp {
+		DeliverLevelUp(user.ID, user.TargetLanguage, prevCEFR, user.CEFRLevel, user.LevelName)
 	}
 	if user.Streak > prevStreak {
 		DeliverStreakMilestone(int(user.ID), user.Streak)
@@ -144,14 +145,12 @@ func (p *ProgressController) CompleteLesson(c *fiber.Ctx) error {
 		DeliverUnitComplete(user.ID, unit)
 	}
 
-	leveledUp := first // surface a celebration the first time a lesson is cleared
-
 	return c.JSON(fiber.Map{
 		"xpEarned":     xpGain,
 		"leaguePoints": leaguePoints,
 		"accuracy":     in.Accuracy,
 		"user":         user,
-		"firstClear":   leveledUp,
+		"firstClear":   first, // surface a celebration the first time a lesson is cleared
 	})
 }
 
@@ -197,24 +196,6 @@ func rollOverDay(user *models.User) {
 	// Hearts no longer refill daily — they regenerate over time (see
 	// hearts_controller) or can be purchased.
 	database.DB.Save(user)
-}
-
-func promoteLevel(user *models.User) {
-	order := []string{"A1", "A2", "B1", "B2", "C1", "C2"}
-	idx := 0
-	for i, l := range order {
-		if l == user.CEFRLevel {
-			idx = i
-		}
-	}
-	target := user.XP / 100
-	if target > len(order)-1 {
-		target = len(order) - 1
-	}
-	if target > idx {
-		user.CEFRLevel = order[target]
-		user.LevelName = levelNames[user.CEFRLevel]
-	}
 }
 
 // unitCompletedByLesson returns the unit name if every lesson in every skill of

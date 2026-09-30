@@ -113,7 +113,9 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
               ),
             ),
           ),
-          if (state.error)
+          // Only fall back to the error / spinner when there's nothing to show:
+          // a reload keeps the current course on screen until the new one lands.
+          if (state.error && state.skills.isEmpty)
             SliverFillRemaining(
               child: Center(
                 child: Padding(
@@ -126,7 +128,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
                 ),
               ),
             )
-          else if (state.loading)
+          else if (state.loading && state.skills.isEmpty)
             const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
           else if (state.skills.isEmpty)
             const SliverFillRemaining(

@@ -76,7 +76,6 @@ func (r *ReadingController) Complete(c *fiber.Ctx) error {
 
 	touchStreak(user)
 
-	promoteLevel(user)
 	database.DB.Save(user)
 
 	points := AwardLeaguePoints(user, LeagueAward{

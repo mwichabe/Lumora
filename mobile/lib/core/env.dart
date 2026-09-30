@@ -11,6 +11,13 @@ class Env {
     'API_URL',
     defaultValue: 'https://lumora-api-kqsn.onrender.com',
   );
+
+  /// The web app. Proctored exams run there, so the mobile app links out to it:
+  ///   flutter run --dart-define=WEB_URL=http://localhost:3000
+  static const webUrl = String.fromEnvironment(
+    'WEB_URL',
+    defaultValue: 'https://lumora-learn.netlify.app',
+  );
 }
 
 /// Resolves a backend-relative media path (avatar/chat/idea attachment URLs)

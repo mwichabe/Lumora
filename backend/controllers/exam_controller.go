@@ -162,6 +162,11 @@ func (ec *ExamController) Submit(c *fiber.Ctx) error {
 			database.DB.Save(&cert)
 		}
 		resp["certificate"] = cert
+		// A passed exam is proof of the level, so it counts towards it.
+		if lang == user.TargetLanguage {
+			syncLevel(user)
+			database.DB.Model(user).Updates(map[string]interface{}{"cefr_level": user.CEFRLevel, "level_name": user.LevelName})
+		}
 		DeliverExamPassed(user.ID, level, overall, fmt.Sprintf("/certificates/%d", cert.ID))
 	} else {
 		DeliverExamFailed(user.ID, level, overall, passMark)

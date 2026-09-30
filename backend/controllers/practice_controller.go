@@ -219,7 +219,6 @@ func (p *PracticeController) Complete(c *fiber.Ctx) error {
 
 	touchStreak(user)
 
-	promoteLevel(user)
 	database.DB.Save(user)
 
 	// Drills pay full XP but only 0.6x toward the league, and stop counting past

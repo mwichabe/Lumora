@@ -145,11 +145,14 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Post("/payments/initialize", payments.Initialize)
 	protected.Get("/payments/verify", payments.Verify)
 
+	// Exams are sat on the web only (see middleware.WebOnly). Paying for an
+	// attempt and viewing certificates stay open to every client.
 	exam := &controllers.ExamController{}
+	webOnly := middleware.WebOnly(cfg.CORSOrigins, cfg.AppURL)
 	protected.Get("/exam/meta", exam.Meta)
-	protected.Get("/exam/paper", exam.Paper)
-	protected.Post("/exam/start", exam.Start)
-	protected.Post("/exam/submit", exam.Submit)
+	protected.Get("/exam/paper", webOnly, exam.Paper)
+	protected.Post("/exam/start", webOnly, exam.Start)
+	protected.Post("/exam/submit", webOnly, exam.Submit)
 	protected.Get("/certificates", exam.ListCertificates)
 	protected.Get("/certificates/:id", exam.GetCertificate)
 	protected.Delete("/certificates/:id", exam.DeleteCertificate)

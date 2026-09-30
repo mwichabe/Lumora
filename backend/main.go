@@ -20,6 +20,9 @@ func main() {
 
 	database.Connect(cfg.DatabaseURL, cfg.DBPath)
 
+	// Undo levels and level-up notifications issued by the old XP-based rule.
+	controllers.RepairLevels()
+
 	app := fiber.New(fiber.Config{
 		AppName: "Lumora API",
 	})

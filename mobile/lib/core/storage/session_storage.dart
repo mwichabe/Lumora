@@ -22,11 +22,23 @@ class SessionStorage {
 
   Future<SharedPreferences> get _p async => _prefs ??= await SharedPreferences.getInstance();
 
-  Future<String?> getToken() => _secure.read(key: _tokenKey);
+  // The token is attached to every request, and a Keystore/Keychain read is a
+  // slow platform-channel round trip (decryption on Android). Read it once and
+  // serve it from memory afterwards; the Future is cached rather than the
+  // value so requests fired together at startup share a single read.
+  Future<String?>? _token;
 
-  Future<void> setToken(String token) => _secure.write(key: _tokenKey, value: token);
+  Future<String?> getToken() => _token ??= _secure.read(key: _tokenKey);
 
-  Future<void> clearToken() => _secure.delete(key: _tokenKey);
+  Future<void> setToken(String token) {
+    _token = Future.value(token);
+    return _secure.write(key: _tokenKey, value: token);
+  }
+
+  Future<void> clearToken() {
+    _token = Future.value(null);
+    return _secure.delete(key: _tokenKey);
+  }
 
   Future<User?> getStoredUser() async {
     final prefs = await _p;

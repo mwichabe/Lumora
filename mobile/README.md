@@ -22,23 +22,26 @@ Everything in the web app has a mobile counterpart:
   has no WebSocket, so the web app polls too)
 - Ideas workspace (board, voting, tasks, threaded discussion, reactions,
   silent brainstorm sessions)
-- Proctored proficiency exam (A1–C2 + Final Mastery), Paystack payment gate,
-  certificates (list, detail, share), public certificate verification
+- Exam hub (A1–C2 + Final Mastery): pay for an attempt in-app, then sit the
+  exam on the web; certificates (list, detail, share), public certificate
+  verification
 - Profile (avatar upload, fluency ring, stats, companions), account settings
   (password change, delete account), help/FAQ
 
 ## Intentional platform adaptations
 
-- **Exam proctoring**: the web app requires both screen-share and camera via
-  browser APIs that don't exist on mobile. The app requires the **camera**
-  (shown as a PiP preview during the exam) and uses app-lifecycle detection
-  (backgrounding the app) as the mobile equivalent of the web's "tab switch
-  ends the exam" rule.
-- **Payments**: Paystack checkout opens in the system browser
-  (`url_launcher`), same as the web app's redirect. Returning to the app
-  automatically isn't guaranteed without platform-specific deep-link setup, so
-  the exam/hearts screens include an explicit "I've paid — continue" action
-  that re-checks payment status.
+- **Exams are web-only**: sitting an exam requires screen-share + camera
+  proctoring through browser APIs that don't exist on mobile, so the app
+  doesn't offer it. The exam screen lists the levels, takes payment, and links
+  out to the web app (`WEB_URL`), where the paid attempt is waiting on the same
+  account. The API enforces this too: `/api/exam/paper`, `/start` and `/submit`
+  reject requests that don't come from the web app's origin.
+- **Payments**: Paystack checkout runs inside the app in a WebView
+  (`features/payments/checkout_screen.dart`). The app intercepts Paystack's
+  redirect to `/payment/callback`, verifies the reference with the API and
+  closes the checkout itself — no browser hop, no manual "I've paid" step. On
+  platforms without a WebView (desktop, web) it falls back to the system
+  browser with a manual confirm.
 - **Chat/notifications**: REST polling, matching the backend (no WebSocket
   exists server-side).
 - **Speech**: `flutter_tts` for character voices, `speech_to_text` for

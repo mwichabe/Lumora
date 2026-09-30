@@ -113,7 +113,7 @@ class _OutOfHeartsSheetState extends State<_OutOfHeartsSheet> {
                 if (widget.status.paymentsEnabled)
                   LumoraButton(
                     label: _buying
-                        ? 'Redirecting…'
+                        ? 'Opening checkout…'
                         : 'Refill ${widget.status.max} hearts — KES ${widget.status.refillPriceKes}'
                             '${widget.status.refillPriceUsd > 0 ? " (≈ \$${widget.status.refillPriceUsd.toStringAsFixed(2)})" : ""}',
                     full: true,

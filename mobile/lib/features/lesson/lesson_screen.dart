@@ -10,6 +10,7 @@ import '../../core/theme/shadows.dart';
 import '../../core/voices.dart';
 import '../../models/lesson.dart';
 import '../../providers/hearts_provider.dart';
+import '../payments/checkout_screen.dart';
 import '../../widgets/fox_mascot.dart';
 import '../../widgets/lumora_button.dart';
 import '../../widgets/mistakes_review.dart';
@@ -69,7 +70,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         secondsToNext: hearts.secondsToNext,
         note: 'You ran out of hearts, so this lesson has ended. Refill to try again now, or wait for a heart and restart it.',
         closeLabel: 'Back to lessons',
-        onBuy: () => ref.read(heartsProvider.notifier).buy(),
+        onBuy: _refillHearts,
         onClose: () {
           Voices.instance.stopSpeaking();
           Navigator.pop(context);
@@ -77,6 +78,21 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         },
       );
     });
+  }
+
+  /// Pays for a refill in-app. The lesson has already ended by the time the
+  /// sheet is up, so a successful refill sends the learner back to the course
+  /// to restart it with full hearts.
+  Future<void> _refillHearts() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final paid = await payWithPaystack(context, product: 'hearts');
+    // Re-read either way: a payment that settles late is applied by the server.
+    await ref.read(heartsProvider.notifier).reload();
+    if (!mounted || !paid) return;
+    Voices.instance.stopSpeaking();
+    Navigator.pop(context); // the out-of-hearts sheet
+    context.go('/learn');
+    messenger.showSnackBar(const SnackBar(content: Text('Hearts refilled ❤️ — jump back in!')));
   }
 
   String _normalise(String s) => s.trim().toLowerCase().replaceAll(RegExp(r'[.,!¡¿?]'), '');

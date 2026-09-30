@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/network/api_client.dart';
 import '../models/user.dart';
@@ -65,13 +64,6 @@ class HeartsController extends Notifier<HeartsState> {
     } catch (_) {
       return null;
     }
-  }
-
-  Future<void> buy() async {
-    try {
-      final (url, _) = await ApiClient.instance.buyHearts();
-      if (url != null) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {}
   }
 }
 

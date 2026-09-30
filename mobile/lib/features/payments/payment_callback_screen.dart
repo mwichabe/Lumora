@@ -11,9 +11,9 @@ import '../../widgets/lumora_button.dart';
 enum _State { checking, success, failed }
 
 /// Reached if a Paystack redirect deep-links back into the app with
-/// ?reference=… (frontend/app/payment/callback). On mobile the more common
-/// path back is manual (see the exam/hearts "I've paid — continue" buttons),
-/// but this screen still verifies and reacts correctly when the redirect does
+/// ?reference=… (frontend/app/payment/callback). Payments normally finish
+/// inside the in-app checkout (checkout_screen.dart) and never get here, but
+/// this screen still verifies and reacts correctly when the redirect does
 /// land here.
 class PaymentCallbackScreen extends ConsumerStatefulWidget {
   final String? reference;
@@ -75,10 +75,10 @@ class _PaymentCallbackScreenState extends ConsumerState<PaymentCallbackScreen> {
                   const SizedBox(height: 16),
                   Text(isHearts ? 'Hearts refilled! ❤️' : "You're all set! 🎉", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 4),
-                  Text(isHearts ? 'Your hearts are full again — jump back into your lesson.' : 'Your exam attempt is ready. Good luck!',
+                  Text(isHearts ? 'Your hearts are full again — jump back into your lesson.' : 'Your exam attempt is ready — take it on the web.',
                       textAlign: TextAlign.center, style: const TextStyle(color: LumoraColors.slatey)),
                   const SizedBox(height: 20),
-                  LumoraButton(label: isHearts ? 'Continue learning' : 'Start the exam', full: true, onPressed: () => context.go(isHearts ? '/learn' : '/exam')),
+                  LumoraButton(label: isHearts ? 'Continue learning' : 'How to take it', full: true, onPressed: () => context.go(isHearts ? '/learn' : '/exam')),
                   const SizedBox(height: 8),
                   LumoraButton(label: 'Back to home', full: true, variant: LumoraButtonVariant.outline, onPressed: () => context.go('/home')),
                 ],

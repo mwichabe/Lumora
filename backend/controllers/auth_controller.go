@@ -148,6 +148,7 @@ func (a *AuthController) Setup(c *fiber.Ctx) error {
 	if in.TargetLanguage != "" {
 		user.TargetLanguage = in.TargetLanguage
 		EnsureEnrollment(user.ID, in.TargetLanguage)
+		syncLevel(user) // the level is per language
 	}
 	if in.DailyGoalXP > 0 {
 		user.DailyGoalXP = in.DailyGoalXP
@@ -337,13 +338,8 @@ func (a *AuthController) ForgotPassword(c *fiber.Ctx) error {
 // victim's account point at a site they control. Requests with no Origin (the
 // mobile app) fall back to APP_URL.
 func (a *AuthController) webAppURL(c *fiber.Ctx) string {
-	origin := strings.TrimRight(c.Get(fiber.HeaderOrigin), "/")
-	if origin != "" {
-		for _, allowed := range strings.Split(a.Cfg.CORSOrigins, ",") {
-			if strings.EqualFold(origin, strings.TrimRight(strings.TrimSpace(allowed), "/")) {
-				return origin
-			}
-		}
+	if origin := middleware.AllowedOrigin(c, a.Cfg.CORSOrigins); origin != "" {
+		return origin
 	}
 	return a.Cfg.AppURL
 }

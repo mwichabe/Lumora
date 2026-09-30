@@ -89,7 +89,6 @@ func (l *ListeningController) Complete(c *fiber.Ctx) error {
 
 	touchStreak(user)
 
-	promoteLevel(user)
 	database.DB.Save(user)
 
 	// Listening sessions sit at unit level, so they weight a little above a

@@ -151,12 +151,18 @@ func DeliverUnitComplete(userID uint, unit string) {
 	})
 }
 
-// DeliverLevelUp celebrates reaching a new CEFR level (once per level).
-func DeliverLevelUp(userID uint, cefr, levelName string) {
+// DeliverLevelUp tells a learner they've moved up a CEFR level in a language
+// (once per language and level). It states exactly what earned it: every
+// lesson of the previous level completed.
+func DeliverLevelUp(userID uint, lang, from, to, levelName string) {
+	langName := examLangDisplay[lang]
+	if langName == "" {
+		langName = "your course"
+	}
 	ensureNotification(userID, campaignItem{
-		Key: "levelup_" + cefr, Kind: "milestone", Emoji: "⭐", Tint: "#F5A623",
-		Title: "Level up! You reached " + cefr,
-		Body:  "You've advanced to " + levelName + " (" + cefr + "). Your hard work is paying off!",
+		Key: levelUpKey(lang, to), Kind: "milestone", Emoji: "⭐", Tint: "#F5A623",
+		Title: "You've moved up to " + to + "!",
+		Body:  "You completed every " + from + " lesson in " + langName + ", so you're now working at " + to + " (" + levelName + ").",
 	})
 }
 

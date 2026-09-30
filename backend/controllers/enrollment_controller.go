@@ -79,6 +79,7 @@ func (ec *EnrollmentController) Enroll(c *fiber.Ctx) error {
 
 	EnsureEnrollment(user.ID, in.Language)
 	user.TargetLanguage = in.Language
+	syncLevel(user) // the level is per language
 	database.DB.Save(user)
 
 	return c.JSON(fiber.Map{
@@ -104,6 +105,7 @@ func (ec *EnrollmentController) SetActive(c *fiber.Ctx) error {
 	}
 
 	user.TargetLanguage = in.Language
+	syncLevel(user) // the level is per language
 	database.DB.Save(user)
 
 	return c.JSON(fiber.Map{
