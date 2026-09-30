@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"html"
 	"log"
 	"net/smtp"
 	"strings"
@@ -49,29 +50,16 @@ func SendWelcomeEmail(cfg config.Config, toEmail, name string) {
 		welcomePlain(name), welcomeHTML(cfg, name))
 }
 
-// SendLoginEmail sends a "new sign-in" security alert on login.
+// SendLoginEmail welcomes a user back on sign-in. It doubles as the security
+// alert: it says when the sign-in happened and how to lock the account if it
+// wasn't them.
 func SendLoginEmail(cfg config.Config, toEmail, name string) {
 	if strings.TrimSpace(name) == "" {
 		name = "there"
 	}
 	when := time.Now().Format("Mon, 02 Jan 2006 15:04 MST")
-	plain := fmt.Sprintf(`Hi %s,
-
-We noticed a new sign-in to your Lumora account on %s.
-
-If this was you, no action is needed. If you don't recognise this activity,
-please change your password right away.
-
-— Lumora
-
-This is an automated message. Please do not reply.`, name, when)
-
-	html := simpleHTML(cfg, "New sign-in to your account", []string{
-		fmt.Sprintf("Hi %s, we noticed a new sign-in to your Lumora account on <strong>%s</strong>.", name, when),
-		"If this was you, you can ignore this email. If you don't recognise it, please change your password right away.",
-	}, "Open Lumora", cfg.AppURL)
-
-	_ = SendEmail(cfg, toEmail, "New sign-in to your Lumora account", plain, html)
+	_ = SendEmail(cfg, toEmail, "Welcome back to Lumora 👋",
+		loginPlain(cfg, name, when), loginHTML(cfg, toEmail, name, when))
 }
 
 // SendPasswordResetEmail sends a single-use password reset link.
@@ -104,13 +92,8 @@ Your purchase is now active in the app. Enjoy!
 
 This is an automated message. Please do not reply.`, name, itemLabel, amountLabel, when)
 
-	html := simpleHTML(cfg, "Payment received", []string{
-		fmt.Sprintf("Hi %s, thank you! We've received your payment.", name),
-		fmt.Sprintf("<strong>Item:</strong> %s<br/><strong>Amount:</strong> %s<br/><strong>Date:</strong> %s", itemLabel, amountLabel, when),
-		"Your purchase is now active in the app. Enjoy your learning!",
-	}, "Back to Lumora", cfg.AppURL)
-
-	return SendEmail(cfg, toEmail, "Your Lumora payment receipt", plain, html)
+	return SendEmail(cfg, toEmail, "Your Lumora payment receipt", plain,
+		paymentHTML(cfg, name, itemLabel, amountLabel, when))
 }
 
 const boundary = "==lumora-mixed-boundary=="
@@ -174,145 +157,91 @@ This is an automated message. Please do not reply.`, name)
 }
 
 func welcomeHTML(cfg config.Config, name string) string {
-	// Logo: a hosted image if provided, otherwise an on-brand fox badge.
-	logo := `<div style="width:72px;height:72px;line-height:72px;margin:0 auto;border-radius:50%;background:#ffffff;font-size:40px;text-align:center;">🦊</div>`
-	if cfg.LogoURL != "" {
-		logo = fmt.Sprintf(`<img src="%s" width="72" height="72" alt="Lumora" style="display:block;margin:0 auto;border-radius:50%%;" />`, cfg.LogoURL)
-	}
-
 	step := func(n, title, body string) string {
-		return fmt.Sprintf(`
-      <tr>
-        <td style="padding:8px 0;vertical-align:top;width:36px;">
-          <div style="width:28px;height:28px;line-height:28px;border-radius:50%%;background:#EDE7F6;color:#6C3FC5;font-weight:800;text-align:center;font-size:14px;">%s</div>
-        </td>
-        <td style="padding:8px 0;vertical-align:top;">
-          <div style="font-weight:700;color:#1A1A2E;font-size:15px;">%s</div>
-          <div style="color:#4A4A6A;font-size:14px;">%s</div>
-        </td>
-      </tr>`, n, title, body)
+		return `<tr>
+                  <td width="40" valign="top" style="padding:9px 0;">
+                    <div style="width:28px;height:28px;line-height:28px;border-radius:50%;background:#6C3FC5;color:#ffffff;font-weight:800;text-align:center;font-size:14px;">` + n + `</div>
+                  </td>
+                  <td valign="top" style="padding:9px 0;">
+                    <div style="color:#1A1A2E;font-size:15px;line-height:20px;font-weight:800;">` + title + `</div>
+                    <div style="margin-top:2px;color:#4A4A6A;font-size:13px;line-height:20px;">` + body + `</div>
+                  </td>
+                </tr>`
 	}
+	steps := `<div style="color:#9090A0;font-size:12px;line-height:18px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;">How to start</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;">` +
+		step("1", "Pick your language &amp; goal", "Choose what to learn and how much time you have.") +
+		step("2", "Learn, then practise", "Meet the new words first, then lock them in with quick lessons.") +
+		step("3", "Listen, speak &amp; read", "Train your ear and tongue with your character companions.") +
+		`</table>`
 
-	return fmt.Sprintf(`<!doctype html>
-<html>
-<body style="margin:0;padding:0;background:#eceaf3;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#eceaf3;padding:24px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(15,15,36,0.08);">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:#6C3FC5;padding:32px 24px;text-align:center;">
-            %s
-            <div style="margin-top:12px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Lumora</div>
-            <div style="color:#EDE7F6;font-size:13px;margin-top:2px;">Learn a language. Fall in love with it.</div>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:28px 28px 8px 28px;">
-            <h1 style="margin:0 0 8px 0;color:#1A1A2E;font-size:22px;">Hi %s, welcome aboard!</h1>
-            <p style="margin:0;color:#4A4A6A;font-size:15px;line-height:22px;">
-              I'm Lumora, your guide. Your account is ready — let's turn a few
-              minutes a day into a whole new language.
-            </p>
-          </td>
-        </tr>
-
-        <!-- Steps -->
-        <tr>
-          <td style="padding:8px 28px 0 28px;">
-            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9090A0;margin-bottom:4px;">How to start</div>
-            <table role="presentation" width="100%%" cellpadding="0" cellspacing="0">
-              %s%s%s
-            </table>
-          </td>
-        </tr>
-
-        <!-- CTA -->
-        <tr>
-          <td style="padding:24px 28px 8px 28px;" align="center">
-            <a href="%s" style="display:inline-block;background:#6C3FC5;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:9999px;">
-              Start learning
-            </a>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:20px 28px 28px 28px;text-align:center;">
-            <p style="margin:0;color:#9090A0;font-size:12px;line-height:18px;">
-              You're receiving this because you created a Lumora account.<br/>
-              This is an automated message — please do not reply.
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-		logo, name,
-		step("1", "Pick your language &amp; goal", "Choose what to learn and how much time you have."),
-		step("2", "Learn, then practise", "Meet the new words first, then lock them in with quick lessons."),
-		step("3", "Listen, speak &amp; read", "Train your ear and tongue with your character companions."),
-		cfg.AppURL,
-	)
+	return emailShell(cfg, emailDoc{
+		Title:     "Welcome to Lumora",
+		Preheader: "Your account is ready — your first lesson is waiting.",
+		Pill:      "🎉&nbsp; Welcome aboard",
+		Heading:   "Hi " + html.EscapeString(name) + ", welcome to Lumora!",
+		Rows: emailParagraph(`I'm Lumora, your guide. Your account is ready — let's turn a few
+              minutes a day into a whole new language.`, "center") +
+			emailPanel(steps) +
+			emailButton("Start learning", cfg.AppURL) +
+			emailNote("🔥", "Start your streak today",
+				"A few minutes every day beats an hour once a week. Finish one lesson today and your streak begins.") +
+			emailSignoff("See you in your first lesson,"),
+		Footnote: "You're receiving this because you created a Lumora account.",
+	})
 }
 
-// simpleHTML is a branded, single-column template used for transactional emails
-// (sign-in alerts, receipts). Each entry in `paragraphs` may contain safe HTML.
-func simpleHTML(cfg config.Config, heading string, paragraphs []string, ctaText, ctaURL string) string {
-	logo := `<div style="width:64px;height:64px;line-height:64px;margin:0 auto;border-radius:50%;background:#ffffff;font-size:34px;text-align:center;">🦊</div>`
-	if cfg.LogoURL != "" {
-		logo = fmt.Sprintf(`<img src="%s" width="64" height="64" alt="Lumora" style="display:block;margin:0 auto;border-radius:50%%;" />`, cfg.LogoURL)
-	}
+func loginPlain(cfg config.Config, name, when string) string {
+	return fmt.Sprintf(`Welcome back, %s!
 
-	var body strings.Builder
-	for _, p := range paragraphs {
-		body.WriteString(fmt.Sprintf(
-			`<p style="margin:0 0 14px 0;color:#4A4A6A;font-size:15px;line-height:22px;">%s</p>`, p))
-	}
+You just signed in to your Lumora account on %s. Your lessons are right
+where you left them:
+%s
 
-	cta := ""
-	if ctaText != "" && ctaURL != "" {
-		cta = fmt.Sprintf(`
-        <tr><td style="padding:8px 28px 8px 28px;" align="center">
-          <a href="%s" style="display:inline-block;background:#6C3FC5;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:9999px;">%s</a>
-        </td></tr>`, ctaURL, ctaText)
-	}
+Wasn't you? Reset your password right away:
+%s/forgot-password
 
-	return fmt.Sprintf(`<!doctype html>
-<html>
-<body style="margin:0;padding:0;background:#eceaf3;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#eceaf3;padding:24px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(15,15,36,0.08);">
-        <tr>
-          <td style="background:#6C3FC5;padding:28px 24px;text-align:center;">
-            %s
-            <div style="margin-top:10px;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">Lumora</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px 28px 4px 28px;">
-            <h1 style="margin:0 0 12px 0;color:#1A1A2E;font-size:20px;">%s</h1>
-            %s
-          </td>
-        </tr>
-        %s
-        <tr>
-          <td style="padding:20px 28px 28px 28px;text-align:center;">
-            <p style="margin:0;color:#9090A0;font-size:12px;line-height:18px;">
-              This is an automated message from Lumora — please do not reply.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`, logo, heading, body.String(), cta)
+— Lumora the fox
+
+This is an automated message. Please do not reply.`, name, when, cfg.AppURL, cfg.AppURL)
+}
+
+func loginHTML(cfg config.Config, toEmail, name, when string) string {
+	resetLink := `<a href="` + html.EscapeString(cfg.AppURL+"/forgot-password") + `" target="_blank" style="color:#0B4F47;font-weight:800;">reset your password</a>`
+
+	return emailShell(cfg, emailDoc{
+		Title:     "Welcome back to Lumora",
+		Preheader: "You just signed in. Your lessons are right where you left them.",
+		Pill:      "👋&nbsp; Welcome back",
+		Heading:   "Good to see you, " + html.EscapeString(name) + "!",
+		Rows: emailParagraph(`You just signed in to your Lumora account. Your lessons are right
+              where you left them — a quick one today keeps your streak alive.`, "center") +
+			emailButton("Continue learning", cfg.AppURL) +
+			emailPanel(emailDetails(
+				"Signed in", html.EscapeString(when),
+				"Account", html.EscapeString(toEmail),
+			)) +
+			emailNote("🛡️", "Wasn't you?",
+				"If you don't recognise this sign-in, "+resetLink+" right away to lock everyone else out.") +
+			emailSignoff("Happy learning,"),
+		Footnote: "You're receiving this because someone signed in to your Lumora account.",
+	})
+}
+
+func paymentHTML(cfg config.Config, name, itemLabel, amountLabel, when string) string {
+	return emailShell(cfg, emailDoc{
+		Title:     "Your Lumora payment receipt",
+		Preheader: "We've received your payment — your purchase is active.",
+		Pill:      "✅&nbsp; Payment received",
+		Heading:   "Thank you, " + html.EscapeString(name) + "!",
+		Rows: emailParagraph(`We've received your payment and your purchase is now active in the app.`, "center") +
+			emailPanel(emailDetails(
+				"Item", html.EscapeString(itemLabel),
+				"Amount", html.EscapeString(amountLabel),
+				"Date", html.EscapeString(when),
+			)) +
+			emailButton("Back to Lumora", cfg.AppURL) +
+			emailSignoff("Enjoy your learning,"),
+		Footnote: "You're receiving this because a payment was made on your Lumora account.",
+	})
 }

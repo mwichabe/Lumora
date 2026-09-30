@@ -106,10 +106,12 @@ func (a *AuthController) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
 	}
 
-	// Greet the returning user, and email a sign-in alert (throttled to ~3h).
-	if DeliverLoginWelcome(user) {
-		go utils.SendLoginEmail(a.Cfg, user.Email, user.Name)
-	}
+	// Greet the returning user in-app (throttled to ~3h) and email a welcome
+	// back. The email is NOT tied to that throttle: just opening the app with a
+	// saved session already uses it up (see Me), so gating on it meant someone
+	// who actually typed their password almost never got the email.
+	DeliverLoginWelcome(user)
+	go utils.SendLoginEmail(a.Cfg, user.Email, user.Name)
 
 	return a.tokenResponse(c, user)
 }
@@ -321,10 +323,29 @@ func (a *AuthController) ForgotPassword(c *fiber.Ctx) error {
 			UserID: user.ID, Token: token,
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
-		resetURL := a.Cfg.AppURL + "/reset-password?token=" + token
+		resetURL := a.webAppURL(c) + "/reset-password?token=" + token
 		go utils.SendPasswordResetEmail(a.Cfg, user.Email, user.Name, resetURL)
 	}
 	return c.JSON(fiber.Map{"ok": true})
+}
+
+// webAppURL is the base URL for links sent by email. A browser request carries
+// the Origin of the site the user is actually on, so the link leads back there
+// (the deployed site in production, localhost in dev) instead of depending on
+// APP_URL being set correctly on the host. The Origin is only trusted when it
+// is on the CORS allow-list — otherwise anyone could have reset links for a
+// victim's account point at a site they control. Requests with no Origin (the
+// mobile app) fall back to APP_URL.
+func (a *AuthController) webAppURL(c *fiber.Ctx) string {
+	origin := strings.TrimRight(c.Get(fiber.HeaderOrigin), "/")
+	if origin != "" {
+		for _, allowed := range strings.Split(a.Cfg.CORSOrigins, ",") {
+			if strings.EqualFold(origin, strings.TrimRight(strings.TrimSpace(allowed), "/")) {
+				return origin
+			}
+		}
+	}
+	return a.Cfg.AppURL
 }
 
 type resetInput struct {

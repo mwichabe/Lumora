@@ -104,3 +104,36 @@ func TestEmailLogoURL(t *testing.T) {
 		}
 	}
 }
+
+// Every template interpolates the user's display name, which is free text.
+func TestEmailTemplatesEscapeUserText(t *testing.T) {
+	cfg := config.Config{AppURL: "https://lumora-learn.netlify.app"}
+	evil := `<script>alert(1)</script>`
+	templates := map[string]string{
+		"welcome": welcomeHTML(cfg, evil),
+		"login":   loginHTML(cfg, "learner@example.com", evil, "Wed, 30 Sep 2026 10:05 UTC"),
+		"payment": paymentHTML(cfg, evil, evil, "KES 550", "Wed, 30 Sep 2026 10:05 UTC"),
+	}
+	for name, out := range templates {
+		if strings.Contains(out, "<script>") {
+			t.Errorf("%s: user text must be HTML-escaped", name)
+		}
+		if strings.Contains(out, "{{") {
+			t.Errorf("%s: template has an unfilled placeholder", name)
+		}
+	}
+}
+
+func TestLoginEmailLinksToTheApp(t *testing.T) {
+	cfg := config.Config{AppURL: "https://lumora-learn.netlify.app"}
+	out := loginHTML(cfg, "learner@example.com", "Collins", "Wed, 30 Sep 2026 10:05 UTC")
+	for _, want := range []string{
+		`href="https://lumora-learn.netlify.app"`,
+		`href="https://lumora-learn.netlify.app/forgot-password"`,
+		"learner@example.com",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("sign-in email is missing %q", want)
+		}
+	}
+}

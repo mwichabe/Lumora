@@ -80,12 +80,13 @@ type Config struct {
 // the server runs out of the box for local development.
 func Load() Config {
 	loadDotEnv(".env")
+	corsOrigins := getEnv("CORS_ORIGINS", "http://localhost:3000")
 	return Config{
 		Port:        getEnv("PORT", "8080"),
 		JWTSecret:   getEnv("JWT_SECRET", "lumora-dev-secret-change-me"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		DBPath:      getEnv("DB_PATH", "lumora.db"),
-		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:3000"),
+		CORSOrigins: corsOrigins,
 
 		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
 		ResendFrom:   getEnv("RESEND_FROM", "Lumora <onboarding@resend.dev>"),
@@ -95,7 +96,7 @@ func Load() Config {
 		SMTPPass:     getEnv("SMTP_PASS", ""),
 		SMTPFrom:     getEnv("SMTP_FROM", "no-reply@lumora.app"),
 		SMTPFromName: getEnv("SMTP_FROM_NAME", "Lumora"),
-		AppURL:       getEnv("APP_URL", "http://localhost:3000"),
+		AppURL:       strings.TrimRight(getEnv("APP_URL", firstOrigin(corsOrigins)), "/"),
 		LogoURL:      getEnv("LOGO_URL", ""),
 
 		PaystackSecret: getEnv("PAYSTACK_SECRET_KEY", ""),
@@ -106,6 +107,15 @@ func Load() Config {
 		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
 		TranslateModel:  getEnv("TRANSLATE_MODEL", "claude-opus-4-8"),
 	}
+}
+
+// firstOrigin returns the first entry of a comma-separated origin list. It is
+// the default for APP_URL: the web app's origin has to be in CORS_ORIGINS for
+// the site to work at all, so a deploy that forgets APP_URL still emails links
+// to the real site rather than to localhost.
+func firstOrigin(origins string) string {
+	first, _, _ := strings.Cut(origins, ",")
+	return strings.TrimSpace(first)
 }
 
 func getEnv(key, fallback string) string {
