@@ -136,8 +136,20 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
             )
           else if (_roadmap)
             SliverPadding(
-              padding: const EdgeInsets.all(20),
-              sliver: SliverToBoxAdapter(child: _RoadmapView(skills: state.skills)),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              // A lazy list: only the units near the viewport are built, which
+              // matters for the long courses.
+              sliver: SliverList.builder(
+                itemCount: units.length + 1,
+                itemBuilder: (context, i) {
+                  if (i == units.length) return const _RoadmapFinish();
+                  var before = 0;
+                  for (var j = 0; j < i; j++) {
+                    before += units[j].skills.length;
+                  }
+                  return _RoadmapUnit(unit: units[i], startIndex: before);
+                },
+              ),
             )
           else
             SliverPadding(
@@ -508,7 +520,7 @@ class _DoExamCard extends StatelessWidget {
         onTap: () => context.push('/exam'),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.float),
+          decoration: BoxDecoration(color: LumoraColors.purple, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.float),
           child: Row(children: [
             Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(LumoraRadii.md)),
                 child: const Icon(Icons.school_rounded, color: Colors.white)),
@@ -525,53 +537,189 @@ class _DoExamCard extends StatelessWidget {
   }
 }
 
-/// A simplified "galaxy map": skills laid out on a winding path over a
-/// starfield backdrop (frontend/components/RoadmapView.tsx).
-class _RoadmapView extends StatelessWidget {
-  final List<Skill> skills;
-  const _RoadmapView({required this.skills});
+/// One unit of the course "journey" (frontend/components/RoadmapView.tsx): a
+/// heading, then the unit's skills as nodes zig-zagging down a dashed path,
+/// coloured by status — completed, current or locked.
+///
+/// Every node is centred and then nudged left or right, and its label is
+/// width-limited and wraps, so nothing can run off the edge of a phone however
+/// long a skill's title is.
+class _RoadmapUnit extends StatelessWidget {
+  final _Unit unit;
+
+  /// How many nodes come before this unit, so the zig-zag carries on across
+  /// unit boundaries instead of restarting on the same side.
+  final int startIndex;
+  const _RoadmapUnit({required this.unit, required this.startIndex});
+
+  static const _labelWidth = 140.0;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-      decoration: BoxDecoration(color: LumoraColors.space, borderRadius: BorderRadius.circular(LumoraRadii.xl2)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         children: [
-          for (var i = 0; i < skills.length; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Align(
-                alignment: i.isEven ? Alignment.centerLeft : Alignment.centerRight,
-                child: Padding(
-                  padding: EdgeInsets.only(left: i.isEven ? 16 : 0, right: i.isEven ? 0 : 16),
-                  child: GestureDetector(
-                    onTap: skills[i].unlocked && skills[i].lessons.isNotEmpty
-                        ? () => context.push('/lesson/${skills[i].lessons.first.id}')
-                        : null,
-                    child: Column(children: [
-                      Container(
-                        width: 64, height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: skills[i].unlocked ? _hex(skills[i].color) : Colors.white12,
-                          boxShadow: skills[i].unlocked ? LumoraShadows.skill : null,
-                        ),
-                        child: Center(
-                          child: skills[i].unlocked
-                              ? SkillIcon(name: skills[i].icon, size: 28, color: Colors.white)
-                              : const Icon(Icons.lock_rounded, color: Colors.white38),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(skills[i].title, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-                    ]),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(children: [
+              const Expanded(child: Divider(color: LumoraColors.gray100, thickness: 1)),
+              const SizedBox(width: 12),
+              Flexible(
+                flex: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.full), boxShadow: LumoraShadows.card),
+                  child: Text(
+                    unit.name.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: LumoraColors.purple, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.6),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              const Expanded(child: Divider(color: LumoraColors.gray100, thickness: 1)),
+            ]),
+          ),
+          LayoutBuilder(builder: (context, constraints) {
+            // How far a node may swing from the centre line while its label
+            // still fits inside the available width.
+            final swing = ((constraints.maxWidth - _labelWidth) / 2).clamp(0.0, 56.0);
+            return Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                const Positioned(top: 24, bottom: 24, child: _DashedLine()),
+                Column(
+                  children: [
+                    for (var i = 0; i < unit.skills.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: i == unit.skills.length - 1 ? 0 : 24),
+                        child: Transform.translate(
+                          offset: Offset((startIndex + i).isEven ? -swing : swing, 0),
+                          child: _RoadmapNode(skill: unit.skills[i]),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );
   }
+}
+
+class _RoadmapNode extends StatelessWidget {
+  final Skill skill;
+  const _RoadmapNode({required this.skill});
+
+  @override
+  Widget build(BuildContext context) {
+    final locked = !skill.unlocked;
+    final current = !locked && !skill.completed;
+    return SizedBox(
+      width: _RoadmapUnit._labelWidth,
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: !locked && skill.lessons.isNotEmpty ? () => context.push('/lesson/${skill.lessons.first.id}') : null,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: locked ? const Color(0xFFE5E5EC) : _hex(skill.color),
+                    boxShadow: locked ? null : LumoraShadows.skill,
+                    // The skill to do next gets an amber ring.
+                    border: current ? Border.all(color: LumoraColors.amber.withValues(alpha: 0.7), width: 4) : null,
+                  ),
+                  child: Center(
+                    child: locked
+                        ? const Icon(Icons.lock_rounded, color: LumoraColors.gray500, size: 26)
+                        : SkillIcon(name: skill.icon, size: 28, color: Colors.white),
+                  ),
+                ),
+                if (skill.completed)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: LumoraColors.teal,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: LumoraColors.cream, width: 2),
+                      ),
+                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            skill.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: LumoraColors.ink, fontSize: 12, fontWeight: FontWeight.w800, height: 1.25),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            locked ? 'Finish the previous skill' : '${skill.completedCount}/${skill.lessonCount} lessons',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: locked ? LumoraColors.amber : LumoraColors.slatey, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The end of the path.
+class _RoadmapFinish extends StatelessWidget {
+  const _RoadmapFinish();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: 8),
+      child: Column(children: [
+        Text('🏁', style: TextStyle(fontSize: 30)),
+        Text('Fluency', style: TextStyle(color: LumoraColors.slatey, fontSize: 12, fontWeight: FontWeight.w800)),
+      ]),
+    );
+  }
+}
+
+/// The dashed centre line the nodes hang off.
+class _DashedLine extends StatelessWidget {
+  const _DashedLine();
+
+  @override
+  Widget build(BuildContext context) => const CustomPaint(size: Size(2, double.infinity), painter: _DashedLinePainter());
+}
+
+class _DashedLinePainter extends CustomPainter {
+  const _DashedLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = LumoraColors.gray300
+      ..strokeWidth = 2;
+    for (double y = 0; y < size.height; y += 10) {
+      canvas.drawLine(Offset(size.width / 2, y), Offset(size.width / 2, (y + 5).clamp(0, size.height)), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,0 +1,40 @@
+package controllers
+
+import "testing"
+
+func TestMandarinExamBankIsComplete(t *testing.T) {
+	for _, level := range []string{"A1", "A2", "B1", "B2", "C1", "C2", "FINAL"} {
+		p, ok := mandarinPapers[level]
+		if !ok {
+			t.Errorf("no Mandarin paper for %s", level)
+			continue
+		}
+		if len(p.Listening.Lines) == 0 || len(p.Listening.Questions) < 4 {
+			t.Errorf("%s listening is too thin", level)
+		}
+		if len(p.Reading.Paragraphs) == 0 || len(p.Reading.Questions) < 4 {
+			t.Errorf("%s reading is too thin", level)
+		}
+		if p.Writing.MinWords <= 0 || p.Speaking.Phrase == "" {
+			t.Errorf("%s is missing writing or speaking", level)
+		}
+		for _, q := range append(p.Listening.Questions, p.Reading.Questions...) {
+			found := false
+			for _, o := range q.Options {
+				found = found || o == q.CorrectAnswer
+			}
+			if !found {
+				t.Errorf("%s: answer %q is not one of its options", level, q.CorrectAnswer)
+			}
+		}
+	}
+	// Writing targets are character counts and must rise with the level.
+	prev := 0
+	for _, level := range []string{"A1", "A2", "B1", "B2", "C1", "C2", "FINAL"} {
+		if n := mandarinPapers[level].Writing.MinWords; n <= prev {
+			t.Errorf("%s writing target %d doesn't rise above %d", level, n, prev)
+		} else {
+			prev = n
+		}
+	}
+}

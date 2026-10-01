@@ -75,7 +75,7 @@ class _ProfileHelpScreenState extends State<ProfileHelpScreen> {
               onTap: () => launchUrl(Uri.parse('mailto:support@lumora.app?subject=Lumora%20Support')),
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
                 child: Row(children: [
                   Container(width: 48, height: 48, decoration: BoxDecoration(color: LumoraColors.purpleLight, borderRadius: BorderRadius.circular(LumoraRadii.md)), child: const Icon(Icons.mail_outline, color: LumoraColors.purple)),
                   const SizedBox(width: 12),

@@ -47,7 +47,7 @@ class _CertificateDetailScreenState extends State<CertificateDetailScreen> {
             : [
                 IconButton(
                   icon: const Icon(Icons.share_outlined),
-                  onPressed: () => Share.share('Verify my Lumora ${c.level} certificate: ${Env.apiUrl}/api/verify/${c.serial}'),
+                  onPressed: () => Share.share('Verify my Lumora ${levelDisplay(c.level, c.language)} certificate: ${Env.apiUrl}/api/verify/${c.serial}'),
                 ),
               ],
       ),
@@ -75,7 +75,7 @@ class _CertificateDetailScreenState extends State<CertificateDetailScreen> {
                         const SizedBox(height: 4),
                         Text('has achieved', style: TextStyle(color: LumoraColors.slatey.withValues(alpha: 0.8), fontStyle: FontStyle.italic)),
                         const SizedBox(height: 8),
-                        Text('${c.level} — ${languageName(c.language)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LumoraColors.purple)),
+                        Text('${levelDisplay(c.level, c.language)} — ${languageName(c.language)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LumoraColors.purple)),
                         const SizedBox(height: 16),
                         Text('Overall score: ${c.score}%', style: const TextStyle(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 16),

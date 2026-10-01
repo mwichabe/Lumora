@@ -4,8 +4,9 @@ A gamified, premium language-learning web app — built as a working MVP with a
 **Next.js 14** front end and a **Go (Fiber) MVC** back end.
 
 Lumora the Fennec Fox guides learners through a galaxy-map skill tree, XP, streaks,
-hearts, gems, leagues, daily quests, and a Fluency Score (0–1000). The fully seeded
-sample course is **Spanish** (starting with *Greetings* and *Ordering at a Café*).
+hearts, gems, leagues, daily quests, and a Fluency Score (0–1000). Seeded courses:
+**Spanish** and **German** (A1 → C2), **Mandarin Chinese** (HSK 1 → HSK 6, mapped onto
+A1 → C2, with Pinyin and tones first), and a short beginner **French** course.
 
 ---
 
@@ -136,8 +137,9 @@ in a document it should be considered compromised.
 
 ## Notes & scope
 
-- Spanish is the fully-seeded course; other languages appear in onboarding but route
-  into the same starter content for this MVP.
+- Each course is seeded independently on startup, only if it's missing, so adding a
+  language to `database/seed*.go` reaches an existing database on the next deploy.
+  Languages marked "coming soon" in onboarding have no course yet.
 - Audio uses the browser's built-in Speech Synthesis (no external TTS service).
 - The mascot and character art are rendered as inline SVG / emoji — no binary image
   assets are required to run the app.

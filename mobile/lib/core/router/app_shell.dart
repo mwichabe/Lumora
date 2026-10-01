@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/learn_provider.dart';
 import '../../widgets/more_sheet.dart';
 import '../theme/colors.dart';
 
@@ -8,7 +10,7 @@ import '../theme/colors.dart';
 /// frontend/components/BottomTabBar.tsx. Wraps the app's four primary
 /// destinations via StatefulShellRoute so each tab keeps its own navigation
 /// stack and scroll position.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   final StatefulNavigationShell shell;
   const AppShell({super.key, required this.shell});
 
@@ -20,7 +22,11 @@ class AppShell extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Start fetching the course as soon as the signed-in app is on screen, not
+    // when the Learn tab is first opened — by then it's already there.
+    ref.listen(learnProvider, (_, _) {});
+
     return Scaffold(
       body: shell,
       bottomNavigationBar: SafeArea(

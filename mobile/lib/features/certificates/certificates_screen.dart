@@ -37,7 +37,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     final confirm = await showLumoraConfirmDialog(
       context,
       title: 'Delete certificate?',
-      message: 'This removes your ${c.level} ${languageName(c.language)} certificate. This cannot be undone.',
+      message: 'This removes your ${levelDisplay(c.level, c.language)} ${languageName(c.language)} certificate. This cannot be undone.',
       confirmLabel: 'Delete',
       danger: true,
     );
@@ -105,7 +105,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                           onLongPress: () => _delete(c),
                           child: Container(
                             padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -115,7 +115,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                                   child: const Icon(Icons.workspace_premium_rounded, color: LumoraColors.purple),
                                 ),
                                 const Spacer(),
-                                Text(c.level, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                                Text(levelDisplay(c.level, c.language), maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: c.language == 'zh' ? 16 : 20, fontWeight: FontWeight.w800)),
                                 Text(languageName(c.language), style: const TextStyle(color: LumoraColors.slatey, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text('${c.score}% score', style: const TextStyle(color: LumoraColors.teal, fontSize: 11, fontWeight: FontWeight.w700)),

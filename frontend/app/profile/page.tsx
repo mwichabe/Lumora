@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Award,
   Camera,
+  Trash2,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Avatar } from "@/components/Avatar";
@@ -24,7 +25,7 @@ import { CropModal } from "@/components/CropModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { languageMeta, languageName } from "@/lib/languages";
+import { languageMeta, languageName, levelDisplay } from "@/lib/languages";
 import { CharacterWithFriendship, Certificate, User } from "@/lib/types";
 
 export default function ProfilePage() {
@@ -34,6 +35,9 @@ export default function ProfilePage() {
   const [languages, setLanguages] = useState<string[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [switching, setSwitching] = useState(false);
+  // The language waiting on the "Remove …?" confirmation, and any error from it.
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [languageError, setLanguageError] = useState("");
   const [confirmOut, setConfirmOut] = useState(false);
   const [selectedChar, setSelectedChar] =
     useState<CharacterWithFriendship | null>(null);
@@ -67,6 +71,23 @@ export default function ProfilePage() {
       setLanguages(r.languages);
     } catch {
       /* ignore */
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  async function removeLanguage(code: string) {
+    setRemoving(null);
+    setSwitching(true);
+    setLanguageError("");
+    try {
+      const r = await api.removeLanguage(code);
+      // If it was the active course the server has moved them to another one;
+      // updating the user re-renders every screen for that course.
+      setUser(r.user);
+      setLanguages(r.languages);
+    } catch (e: any) {
+      setLanguageError(e?.message || "Couldn't remove that language. Please try again.");
     } finally {
       setSwitching(false);
     }
@@ -154,33 +175,60 @@ export default function ProfilePage() {
             {languages.map((code, i) => {
               const m = languageMeta(code);
               const active = code === user.targetLanguage;
+              // The app always needs one course, so the last one can't go.
+              const removable = languages.length > 1;
               return (
-                <button
+                <div
                   key={code}
-                  onClick={() => switchTo(code)}
-                  disabled={switching}
-                  className={`flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-gray-50 ${
-                    i > 0 ? "border-t border-gray-100" : ""
-                  } ${active ? "bg-purple-light/40" : ""}`}
+                  className={`flex items-center ${i > 0 ? "border-t border-gray-100" : ""} ${
+                    active ? "bg-purple-light/40" : ""
+                  }`}
                 >
-                  <span className="text-2xl">{m?.flag || "🌐"}</span>
-                  <div className="flex-1">
-                    <p className="font-extrabold text-ink">{m?.name || code}</p>
-                    <p className="text-body-sm text-slatey">
-                      {active ? "Active course" : "Tap to switch"}
-                    </p>
-                  </div>
-                  {active ? (
-                    <span className="flex items-center gap-1 rounded-full bg-purple px-2.5 py-0.5 text-label-md font-bold text-white">
-                      <Check size={14} /> Active
-                    </span>
-                  ) : (
-                    <ChevronRight size={18} className="text-gray-300" />
+                  <button
+                    onClick={() => switchTo(code)}
+                    disabled={switching}
+                    className="flex min-w-0 flex-1 items-center gap-3 py-4 pl-5 pr-2 text-left transition hover:bg-gray-50"
+                  >
+                    <span className="text-2xl">{m?.flag || "🌐"}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-extrabold text-ink">{m?.name || code}</p>
+                      <p className="text-body-sm text-slatey">
+                        {active ? "Active course" : "Tap to switch"}
+                      </p>
+                    </div>
+                    {active ? (
+                      <span className="flex items-center gap-1 rounded-full bg-purple px-2.5 py-0.5 text-label-md font-bold text-white">
+                        <Check size={14} /> Active
+                      </span>
+                    ) : (
+                      <ChevronRight size={18} className="text-gray-300" />
+                    )}
+                  </button>
+                  {removable && (
+                    <button
+                      onClick={() => setRemoving(code)}
+                      disabled={switching}
+                      aria-label={`Remove ${m?.name || code}`}
+                      title={`Remove ${m?.name || code}`}
+                      className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-coral-light hover:text-coral disabled:opacity-50"
+                    >
+                      <Trash2 size={17} />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
+          {languageError && (
+            <p className="mt-2 rounded-xl bg-coral-light px-4 py-2 text-body-sm font-semibold text-coral">
+              {languageError}
+            </p>
+          )}
+          {languages.length === 1 && (
+            <p className="mt-2 px-1 text-body-sm text-slatey">
+              Add another language to be able to remove this one.
+            </p>
+          )}
         </div>
 
         {/* Certificates */}
@@ -227,7 +275,7 @@ export default function ProfilePage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-extrabold text-ink">
-                      {languageName(cert.language)} · {cert.level}
+                      {languageName(cert.language)} · {levelDisplay(cert.level, cert.language)}
                     </p>
                     <p className="text-body-sm text-slatey">
                       Score {cert.score}% ·{" "}
@@ -307,6 +355,20 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={removing !== null}
+          title={`Remove ${languageName(removing || "")}?`}
+          message={
+            removing === user.targetLanguage
+              ? `It will be taken off your courses and you'll switch to another language. Your progress is kept — add ${languageName(removing || "")} again any time to pick up where you left off.`
+              : `It will be taken off your courses. Your progress is kept — add it again any time to pick up where you left off.`
+          }
+          confirmLabel="Remove"
+          danger
+          onConfirm={() => removing && removeLanguage(removing)}
+          onCancel={() => setRemoving(null)}
+        />
 
         <ConfirmDialog
           open={confirmOut}

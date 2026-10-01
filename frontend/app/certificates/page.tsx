@@ -16,7 +16,7 @@ import { AppShell } from "@/components/AppShell";
 import { FoxMascot } from "@/components/FoxMascot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { api } from "@/lib/api";
-import { languageName, languageMeta } from "@/lib/languages";
+import { languageName, languageMeta, levelDisplay } from "@/lib/languages";
 import type { Certificate } from "@/lib/types";
 
 const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -170,9 +170,10 @@ function CertificatesContent() {
         title="Delete certificate?"
         message={
           pendingDelete
-            ? `This removes your ${languageName(pendingDelete.language)} ${
-                pendingDelete.level
-              } certificate. You'll be able to retake that level.`
+            ? `This removes your ${languageName(pendingDelete.language)} ${levelDisplay(
+                pendingDelete.level,
+                pendingDelete.language
+              )} certificate. You'll be able to retake that level.`
             : undefined
         }
         confirmLabel={deleting ? "Deleting…" : "Delete"}
@@ -244,7 +245,7 @@ function CertCard({
             <p className="truncate font-extrabold text-ink">
               {flag} {languageName(cert.language)}
             </p>
-            <p className="text-body-sm text-slatey">Level {cert.level}</p>
+            <p className="text-body-sm text-slatey">Level {levelDisplay(cert.level, cert.language)}</p>
           </div>
         </div>
 

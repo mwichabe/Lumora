@@ -53,6 +53,11 @@ func Seed(db *gorm.DB) {
 	if french == 0 {
 		seedFrench(db)
 	}
+	var mandarin int64
+	db.Model(&models.Skill{}).Where("language = ?", "zh").Count(&mandarin)
+	if mandarin == 0 {
+		seedMandarin(db)
+	}
 }
 
 // --- language-aware builders (used by non-Spanish courses) -------------------

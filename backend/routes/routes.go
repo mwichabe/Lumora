@@ -79,6 +79,7 @@ func Register(app *fiber.App, cfg config.Config) {
 	protected.Get("/enrollments", enroll.List)
 	protected.Post("/enrollments", enroll.Enroll)
 	protected.Post("/enrollments/active", enroll.SetActive)
+	protected.Delete("/enrollments/:language", enroll.Remove)
 
 	practice := &controllers.PracticeController{}
 	protected.Get("/practice", practice.Pool)

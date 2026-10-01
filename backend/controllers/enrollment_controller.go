@@ -114,3 +114,41 @@ func (ec *EnrollmentController) SetActive(c *fiber.Ctx) error {
 		"user":      user,
 	})
 }
+
+// Remove takes a language off the user's list of courses. Progress in it is
+// kept (lessons completed, mistakes, certificates), so adding the language
+// again later picks up where the learner left off.
+//
+// The last remaining course can't be removed — the app always needs an active
+// one. Removing the active course makes the most recently added remaining
+// language active instead.
+func (ec *EnrollmentController) Remove(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
+	lang := strings.ToLower(strings.TrimSpace(c.Params("language")))
+
+	var target models.Enrollment
+	if err := database.DB.Where("user_id = ? AND language = ?", user.ID, lang).First(&target).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "You're not learning that language."})
+	}
+
+	var others []models.Enrollment
+	database.DB.Where("user_id = ? AND language <> ?", user.ID, lang).Order("created_at desc").Find(&others)
+	if len(others) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "This is your only course. Add another language before removing this one.",
+		})
+	}
+
+	database.DB.Delete(&target)
+	if user.TargetLanguage == lang {
+		user.TargetLanguage = others[0].Language
+		syncLevel(user) // the level is per language
+		database.DB.Save(user)
+	}
+
+	return c.JSON(fiber.Map{
+		"languages": ec.list(user.ID, user.TargetLanguage),
+		"active":    user.TargetLanguage,
+		"user":      user,
+	})
+}

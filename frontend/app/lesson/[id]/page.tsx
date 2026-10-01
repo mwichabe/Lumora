@@ -18,6 +18,7 @@ import {
   stopSpeaking,
   recognizeSpeech,
   scorePronunciation,
+  countWords,
   speechRecognitionSupported,
 } from "@/lib/voices";
 import type { Lesson, Exercise } from "@/lib/types";
@@ -80,7 +81,7 @@ export default function LessonPage() {
   const needsTyping =
     !!ex && ["translate", "fill"].includes(ex.type) && !hasOptions;
 
-  const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+  const wordCount = countWords(answer);
 
   const canCheck = useMemo(() => {
     if (!ex || feedback) return false;

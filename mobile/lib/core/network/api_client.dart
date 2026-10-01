@@ -139,6 +139,10 @@ class ApiClient {
   Future<List<Skill>> skills() =>
       _req('GET', '/api/skills', map: (j) => asList(j['skills'], (e) => Skill.fromJson(asMap(e))));
 
+  /// A GET's decoded body as-is, for callers that keep a copy on disk and so
+  /// need the JSON itself rather than the parsed models (see learn_provider).
+  Future<Map<String, dynamic>> getJson(String path) => _req('GET', path, map: (j) => j);
+
   Future<Lesson> lesson(int id) =>
       _req('GET', '/api/lessons/$id', map: (j) => Lesson.fromJson(asMap(j['lesson'])));
 
@@ -202,6 +206,14 @@ class ApiClient {
         'POST',
         '/api/enrollments',
         data: {'language': language},
+        map: (j) =>
+            (asStringList(j['languages']), asString(j['active']), User.fromJson(asMap(j['user']))),
+      );
+
+  /// Takes a language off the user's courses (progress is kept server-side).
+  Future<(List<String> languages, String active, User user)> removeLanguage(String language) => _req(
+        'DELETE',
+        '/api/enrollments/${Uri.encodeComponent(language)}',
         map: (j) =>
             (asStringList(j['languages']), asString(j['active']), User.fromJson(asMap(j['user']))),
       );

@@ -64,8 +64,34 @@ class SessionStorage {
 
   Future<void> setLastRoute(String path) async => (await _p).setString(_routeKey, path);
 
+  // --- Offline copies of API responses ---------------------------------------
+  //
+  // A saved copy of a screen's last response lets it render instantly on the
+  // next launch while the fresh one is fetched. Nothing secret lives here (it's
+  // course content and progress), so plain prefs are fine.
+
+  static const _cachePrefix = 'lumora_cache_';
+
+  Future<Map<String, dynamic>?> readCache(String key) async {
+    final raw = (await _p).getString('$_cachePrefix$key');
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> writeCache(String key, Map<String, dynamic> value) async {
+    await (await _p).setString('$_cachePrefix$key', jsonEncode(value));
+  }
+
   Future<void> clearSession() async {
     await clearToken();
     await setStoredUser(null);
+    final prefs = await _p;
+    for (final key in prefs.getKeys().where((k) => k.startsWith(_cachePrefix)).toList()) {
+      await prefs.remove(key);
+    }
   }
 }

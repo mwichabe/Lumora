@@ -120,7 +120,7 @@ String _normalize(String s) {
     'ñ': 'n', 'ç': 'c',
   };
   accents.forEach((k, v) => out = out.replaceAll(k, v));
-  out = out.replaceAll(RegExp(r'[.,!¡¿?"]'), '').trim();
+  out = out.replaceAll(RegExp(r'[.,!¡¿?"，。！？、；：“”‘’（）《》…—]'), '').trim();
   return out;
 }
 
@@ -141,6 +141,27 @@ int _editDistance(String a, String b) {
   return dp[m][n];
 }
 
+final _han = RegExp(r'\p{Script=Han}', unicode: true);
+final _hanOrRun = RegExp(r'\p{Script=Han}|[^\p{Script=Han}]+', unicode: true);
+
+/// Splits text into the units we compare and count: words for space-separated
+/// languages, and individual characters for Chinese, which has no spaces —
+/// otherwise a whole Chinese sentence is a single "word". Mirrors voices.ts.
+List<String> _units(String s) {
+  final out = <String>[];
+  for (final chunk in s.split(RegExp(r'\s+')).where((w) => w.isNotEmpty)) {
+    if (!_han.hasMatch(chunk)) {
+      out.add(chunk);
+      continue;
+    }
+    out.addAll(_hanOrRun.allMatches(chunk).map((m) => m.group(0)!));
+  }
+  return out;
+}
+
+/// Words written, counting each Chinese character as one (for writing tasks).
+int countWords(String text) => _units(_normalize(text)).length;
+
 /// 0–100 pronunciation score combining word overlap and character similarity,
 /// ported 1:1 from frontend/lib/voices.ts `scorePronunciation`.
 int scorePronunciation(String target, String said) {
@@ -149,8 +170,8 @@ int scorePronunciation(String target, String said) {
   if (s.isEmpty) return 0;
   if (t == s) return 100;
 
-  final tWords = t.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-  final sWords = s.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toSet();
+  final tWords = _units(t);
+  final sWords = _units(s).toSet();
   final hit = tWords.where((w) => sWords.contains(w)).length;
   final wordScore = tWords.isNotEmpty ? hit / tWords.length : 0.0;
 

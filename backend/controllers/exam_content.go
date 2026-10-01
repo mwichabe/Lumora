@@ -90,13 +90,15 @@ func (ec *ExamController) Paper(c *fiber.Ctx) error {
 		Weights:         sectionWeights,
 	}
 
-	// German & Spanish have purpose-built, advanced paper banks.
+	// German, Spanish and Mandarin have purpose-built, advanced paper banks.
 	var bank map[string]paperContent
 	switch lang {
 	case "de":
 		bank = germanPapers
 	case "es":
 		bank = spanishPapers
+	case "zh":
+		bank = mandarinPapers
 	}
 	if bank != nil {
 		if pc, ok := bank[level]; ok {

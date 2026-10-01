@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/languages.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
@@ -157,7 +158,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   }
 
   Widget _trustStrip() {
-    const items = [('40+', 'languages'), ('5 min', 'a day'), ('Free', 'to start')];
+    final items = [('${kAvailableLanguages.length}', 'languages'), ('5 min', 'a day'), ('Free', 'to start')];
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

@@ -21,6 +21,24 @@ const _kSkillIcons = <String, IconData>{
   'Layers': Icons.layers_rounded,
   'Clock': Icons.access_time_rounded,
   'Link2': Icons.link_rounded,
+  // Mandarin course
+  'Music': Icons.music_note_rounded,
+  'Waves': Icons.waves_rounded,
+  'CheckCircle': Icons.check_circle_rounded,
+  'Globe': Icons.public_rounded,
+  'Scale': Icons.balance_rounded,
+  'Link': Icons.link_rounded,
+  'Shield': Icons.shield_rounded,
+  'HeartPulse': Icons.monitor_heart_rounded,
+  'Briefcase': Icons.work_rounded,
+  'Home': Icons.home_rounded,
+  'Smartphone': Icons.smartphone_rounded,
+  'Landmark': Icons.account_balance_rounded,
+  'FlaskConical': Icons.science_rounded,
+  'Brain': Icons.psychology_rounded,
+  'Cpu': Icons.memory_rounded,
+  'Leaf': Icons.eco_rounded,
+  'Mic': Icons.mic_rounded,
 };
 
 class SkillIcon extends StatelessWidget {

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
+import '../../core/theme/shadows.dart';
 import '../../core/voices.dart';
 import '../../models/lesson.dart';
 import '../../models/listening_reading.dart';
@@ -22,6 +23,17 @@ const _kModeTitle = {
 };
 
 final _rand = Random();
+
+/// Back to the Practice tab. Popping (rather than navigating) hands control
+/// back to the tab, which then reloads its counts — mistakes fixed or made in
+/// this drill show up straight away.
+void _backToPractice(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go('/practice');
+  }
+}
 List<T> _shuffle<T>(List<T> a) => [...a]..shuffle(_rand);
 List<T> _sample<T>(List<T> a, int n) => _shuffle(a).take(n).toList();
 
@@ -33,7 +45,13 @@ class _Drill {
   final List<String> options;
   final String? speaker;
   final int? mistakeId;
-  const _Drill({required this.kind, required this.prompt, required this.question, required this.correct, this.options = const [], this.speaker, this.mistakeId});
+
+  /// Play the question as audio instead of showing it. Set explicitly by the
+  /// listening drill — never guessed from the prompt, because a saved mistake
+  /// keeps its original prompt ("Listen and choose…", "Listening
+  /// Comprehension"), and guessing hid the question when it came up for review.
+  final bool listen;
+  const _Drill({required this.kind, required this.prompt, required this.question, required this.correct, this.options = const [], this.speaker, this.mistakeId, this.listen = false});
 }
 
 List<_Drill> _buildDrills(String mode, List<VocabItem> vocab, List<Mistake> mistakes) {
@@ -43,7 +61,7 @@ List<_Drill> _buildDrills(String mode, List<VocabItem> vocab, List<Mistake> mist
 
   _Drill quizDrill(VocabItem v, bool listen) => _Drill(
         kind: 'choose', prompt: listen ? 'Listen and choose the meaning' : 'What does this mean?',
-        question: v.word, correct: v.translation, options: options(v.translation, translations), speaker: v.speaker,
+        question: v.word, correct: v.translation, options: options(v.translation, translations), speaker: v.speaker, listen: listen,
       );
   _Drill speakDrill(VocabItem v) => _Drill(
         kind: 'speak', prompt: 'Say it out loud',
@@ -182,7 +200,7 @@ class _PracticeRunScreenState extends ConsumerState<PracticeRunScreen> {
               child: Row(children: [
                 IconButton(icon: const Icon(Icons.close, color: LumoraColors.gray500), onPressed: () {
                   Voices.instance.stopSpeaking();
-                  context.go('/practice');
+                  _backToPractice(context);
                 }),
                 Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
                 if (!_isSession && !_loading && _drills.isNotEmpty && !_done)
@@ -220,7 +238,7 @@ class _PracticeRunScreenState extends ConsumerState<PracticeRunScreen> {
       return MistakesReview(items: _misses, finishLabel: 'Finish practice', onDone: () => _finish(_correct, _resolved));
     }
     if (_done) {
-      return _CompleteView(correct: _correct, total: _drills.length, xp: _xp, onBack: () => context.go('/practice'));
+      return _CompleteView(correct: _correct, total: _drills.length, xp: _xp, onBack: () => _backToPractice(context));
     }
     if (_drills.isEmpty) {
       return _EmptyView(
@@ -235,37 +253,49 @@ class _PracticeRunScreenState extends ConsumerState<PracticeRunScreen> {
   }
 
   Widget _buildSessionRunner() {
-    if (widget.mode == 'listening') {
-      if (_listeningSessions.isEmpty) {
-        return _EmptyView(title: 'Nothing unlocked yet', subtitle: 'Complete more lessons to unlock listening conversations for practice.');
-      }
-      final s = _listeningSessions[_sessionIdx % _listeningSessions.length];
-      return _SessionQuizView(
-        title: s.title,
-        questions: [for (final q in s.questions) (question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer, prompt: 'Listening')],
-        onFinished: (correct, total) => _finishSession(correct, total, s.title),
-        onAnother: () => setState(() => _sessionIdx++),
+    final listening = widget.mode == 'listening';
+    final count = listening ? _listeningSessions.length : _readingSessions.length;
+    if (count == 0) {
+      return _EmptyView(
+        title: 'Nothing unlocked yet',
+        subtitle: 'Complete more lessons to unlock ${listening ? "listening conversations" : "reading passages"} for practice.',
       );
-    } else {
-      if (_readingSessions.isEmpty) {
-        return _EmptyView(title: 'Nothing unlocked yet', subtitle: 'Complete more lessons to unlock reading passages for practice.');
-      }
-      final s = _readingSessions[_sessionIdx % _readingSessions.length];
-      return _SessionQuizView(
+    }
+    final i = _sessionIdx % count;
+    if (listening) {
+      final s = _listeningSessions[i];
+      return _ComprehensionView(
+        key: ValueKey('listening-${s.id}-$_sessionIdx'),
+        listening: true,
         title: s.title,
-        questions: [for (final q in s.questions) (question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer, prompt: 'Reading')],
-        onFinished: (correct, total) => _finishSession(correct, total, s.title),
+        conversation: [for (final l in s.lines) (character: l.character, text: l.text)],
+        passage: const [],
+        questions: [for (final q in s.questions) (question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer)],
+        onScored: _finishSession,
         onAnother: () => setState(() => _sessionIdx++),
       );
     }
+    final s = _readingSessions[i];
+    return _ComprehensionView(
+      key: ValueKey('reading-${s.id}-$_sessionIdx'),
+      listening: false,
+      title: s.title,
+      conversation: const [],
+      passage: [for (final l in s.lines) l.text],
+      questions: [for (final q in s.questions) (question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer)],
+      onScored: _finishSession,
+      onAnother: () => setState(() => _sessionIdx++),
+    );
   }
 
-  Future<void> _finishSession(int correct, int total, String title) async {
+  /// Awards the session's XP; returns what was earned.
+  Future<int> _finishSession(int correct, int total) async {
     final earned = min(45, 8 + correct * 4);
     try {
       final (_, user) = await ApiClient.instance.completePractice(earned);
       ref.read(authProvider.notifier).setUser(user);
     } catch (_) {}
+    return earned;
   }
 }
 
@@ -329,9 +359,7 @@ class _ChooseDrillViewState extends State<_ChooseDrillView> {
   @override
   void initState() {
     super.initState();
-    if (widget.drill.prompt.toLowerCase().contains('listen')) {
-      Voices.instance.speakAs(widget.drill.speaker, widget.drill.question);
-    }
+    if (widget.drill.listen) Voices.instance.speakAs(widget.drill.speaker, widget.drill.question);
   }
 
   void _check() {
@@ -342,41 +370,74 @@ class _ChooseDrillViewState extends State<_ChooseDrillView> {
   @override
   Widget build(BuildContext context) {
     final d = widget.drill;
-    final isListen = d.prompt.toLowerCase().contains('listen');
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(d.prompt.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: LumoraColors.gray500)),
-        const SizedBox(height: 12),
-        if (isListen)
-          Center(
-            child: InkWell(
-              onTap: () => Voices.instance.speakAs(d.speaker, d.question),
-              child: Container(width: 72, height: 72, decoration: const BoxDecoration(color: LumoraColors.purple, shape: BoxShape.circle),
-                  child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 30)),
-            ),
-          )
-        else
-          Text(d.question, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 20),
-        for (final opt in d.options)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _OptionTile(label: opt, selected: _answer == opt, isCorrect: opt == d.correct, feedback: _correct != null,
-                onTap: _correct == null ? () => setState(() => _answer = opt) : null),
+        // Long questions and sentence-length answers scroll instead of being
+        // cut off; the Check / Continue bar stays pinned below.
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(d.prompt.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: LumoraColors.gray500)),
+              const SizedBox(height: 12),
+              if (d.listen)
+                Center(
+                  child: Column(children: [
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => Voices.instance.speakAs(d.speaker, d.question),
+                      child: Container(width: 72, height: 72, decoration: const BoxDecoration(color: LumoraColors.purple, shape: BoxShape.circle),
+                          child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 30)),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Tap to listen again', style: TextStyle(color: LumoraColors.slatey, fontSize: 12)),
+                  ]),
+                )
+              else
+                Text(d.question, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.3)),
+              const SizedBox(height: 20),
+              for (final opt in d.options)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _OptionTile(label: opt, selected: _answer == opt, isCorrect: opt == d.correct, feedback: _correct != null,
+                      onTap: _correct == null ? () => setState(() => _answer = opt) : null),
+                ),
+            ]),
           ),
-        const Spacer(),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: _correct != null
-              ? Column(children: [
-                  Text(_correct! ? 'Correct!' : 'Answer: ${d.correct}', style: TextStyle(fontWeight: FontWeight.w800, color: _correct! ? LumoraColors.teal : LumoraColors.coral)),
-                  const SizedBox(height: 12),
-                  LumoraButton(label: 'Continue', full: true, variant: _correct! ? LumoraButtonVariant.primary : LumoraButtonVariant.danger, onPressed: () => widget.onNext(_correct!)),
-                ])
+              ? _Feedback(
+                  correct: _correct!,
+                  answer: d.correct,
+                  onContinue: () => widget.onNext(_correct!),
+                )
               : LumoraButton(label: 'Check', full: true, onPressed: _answer == null ? null : _check),
         ),
       ],
+    );
+  }
+}
+
+/// The result bar under a checked answer.
+class _Feedback extends StatelessWidget {
+  final bool correct;
+  final String answer;
+  final VoidCallback onContinue;
+  const _Feedback({required this.correct, required this.answer, required this.onContinue});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: correct ? LumoraColors.tealLight : LumoraColors.coralLight, borderRadius: BorderRadius.circular(LumoraRadii.xl)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(correct ? 'Correct!' : 'Answer: $answer',
+            style: TextStyle(fontWeight: FontWeight.w800, color: correct ? LumoraColors.teal : LumoraColors.coral)),
+        const SizedBox(height: 10),
+        LumoraButton(label: 'Continue', full: true, variant: correct ? LumoraButtonVariant.primary : LumoraButtonVariant.danger, onPressed: onContinue),
+      ]),
     );
   }
 }
@@ -402,9 +463,12 @@ class _OptionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(LumoraRadii.md),
         onTap: onTap,
         child: Container(
-          height: 56, alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 16),
+          // At least 56 tall, but free to grow: answers can be whole sentences.
+          constraints: const BoxConstraints(minHeight: 56),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(border: Border.all(color: border, width: 2), borderRadius: BorderRadius.circular(LumoraRadii.md)),
-          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.3)),
         ),
       ),
     );
@@ -465,90 +529,240 @@ class _SpeakDrillViewState extends State<_SpeakDrillView> {
   }
 }
 
-class _SessionQuizView extends StatefulWidget {
+/// One reading passage or listening conversation, then its questions —
+/// all on one page like the web: read (or play) it, answer every question,
+/// submit. Missed questions are saved for Review Mistakes and recapped before
+/// the score.
+class _ComprehensionView extends StatefulWidget {
+  final bool listening;
   final String title;
-  final List<({String question, List<String> options, String correctAnswer, String prompt})> questions;
-  final void Function(int correct, int total) onFinished;
+  final List<({String? character, String text})> conversation;
+  final List<String> passage;
+  final List<({String question, List<String> options, String correctAnswer})> questions;
+  final Future<int> Function(int correct, int total) onScored;
   final VoidCallback onAnother;
-  const _SessionQuizView({required this.title, required this.questions, required this.onFinished, required this.onAnother});
+
+  const _ComprehensionView({
+    super.key,
+    required this.listening,
+    required this.title,
+    required this.conversation,
+    required this.passage,
+    required this.questions,
+    required this.onScored,
+    required this.onAnother,
+  });
 
   @override
-  State<_SessionQuizView> createState() => _SessionQuizViewState();
+  State<_ComprehensionView> createState() => _ComprehensionViewState();
 }
 
-class _SessionQuizViewState extends State<_SessionQuizView> {
-  int _qi = 0;
-  String? _answer;
-  bool? _correct;
-  int _correctCount = 0;
+class _ComprehensionViewState extends State<_ComprehensionView> {
+  final Map<int, String> _answers = {};
+  bool _playing = false;
+  bool _played = false;
+  int _speakingLine = -1;
+  bool _reviewing = false;
   bool _submitted = false;
+  int _score = 0;
+  int _xp = 0;
+  List<ReviewItem> _missed = [];
 
-  void _check() {
-    if (_answer == null) return;
-    final ok = _answer == widget.questions[_qi].correctAnswer;
-    setState(() {
-      _correct = ok;
-      if (ok) _correctCount++;
-    });
+  String get _modeTitle => widget.listening ? 'Listening Comprehension' : 'Reading Comprehension';
+
+  @override
+  void dispose() {
+    Voices.instance.stopSpeaking();
+    super.dispose();
   }
 
-  void _next() {
-    if (_qi + 1 < widget.questions.length) {
-      setState(() { _qi++; _answer = null; _correct = null; });
-    } else {
-      widget.onFinished(_correctCount, widget.questions.length);
-      setState(() => _submitted = true);
+  Future<void> _play() async {
+    if (_playing) {
+      await Voices.instance.stopSpeaking();
+      setState(() { _playing = false; _speakingLine = -1; });
+      return;
     }
+    setState(() { _playing = true; _played = true; });
+    await Voices.instance.speakSequence(
+      widget.conversation,
+      onLine: (i) { if (mounted) setState(() => _speakingLine = i); },
+      shouldContinue: () => mounted && _playing,
+    );
+    if (mounted) setState(() { _playing = false; _speakingLine = -1; });
+  }
+
+  Future<void> _submit() async {
+    Voices.instance.stopSpeaking();
+    final qs = widget.questions;
+    var correct = 0;
+    final missed = <ReviewItem>[];
+    for (var i = 0; i < qs.length; i++) {
+      final q = qs[i];
+      if (_answers[i] == q.correctAnswer) {
+        correct++;
+      } else {
+        missed.add(ReviewItem(prompt: _modeTitle, question: q.question, correctAnswer: q.correctAnswer));
+        // Feeds Practice → Review Mistakes, as on the web.
+        ApiClient.instance
+            .recordMistake(prompt: _modeTitle, question: q.question, correctAnswer: q.correctAnswer)
+            .catchError((_) {});
+      }
+    }
+    setState(() {
+      _playing = false;
+      _score = qs.isEmpty ? 0 : (correct / qs.length * 100).round();
+      _missed = missed;
+      _reviewing = missed.isNotEmpty; // study the misses before the score
+      _submitted = true;
+    });
+    final xp = await widget.onScored(correct, qs.length);
+    if (mounted) setState(() => _xp = xp);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.questions.isEmpty) {
+    final qs = widget.questions;
+    if (qs.isEmpty) {
       return const _EmptyView(title: 'Nothing to practise yet', subtitle: 'Try another mode.');
     }
-    if (_submitted) {
-      final score = ((_correctCount / widget.questions.length) * 100).round();
-      final color = score >= 80 ? LumoraColors.teal : score >= 50 ? LumoraColors.amber : LumoraColors.coral;
-      return Center(
+    if (_reviewing) {
+      return MistakesReview(items: _missed, finishLabel: 'See my score', onDone: () => setState(() => _reviewing = false));
+    }
+    if (_submitted) return _scoreView();
+
+    final allAnswered = _answers.length == qs.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            children: [
+              Text(widget.listening ? 'LISTEN AND ANSWER' : 'READ AND ANSWER',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: LumoraColors.gray500)),
+              const SizedBox(height: 4),
+              Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: LumoraColors.ink)),
+              const SizedBox(height: 14),
+              if (widget.listening) _conversationCard() else _passageCard(),
+              const SizedBox(height: 20),
+              for (var i = 0; i < qs.length; i++) ...[
+                Text('${i + 1}. ${qs[i].question}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: LumoraColors.ink, height: 1.35)),
+                const SizedBox(height: 8),
+                for (final opt in qs[i].options)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _OptionTile(
+                      label: opt,
+                      selected: _answers[i] == opt,
+                      isCorrect: false,
+                      feedback: false,
+                      onTap: () => setState(() => _answers[i] = opt),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: LumoraButton(
+            label: allAnswered ? 'Submit answers' : 'Answer all ${qs.length} questions',
+            full: true,
+            onPressed: allAnswered ? _submit : null,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _passageCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: LumoraColors.gray100),
+        borderRadius: BorderRadius.circular(LumoraRadii.xl),
+        boxShadow: LumoraShadows.card,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final (i, line) in widget.passage.indexed)
+          Padding(
+            padding: EdgeInsets.only(bottom: i == widget.passage.length - 1 ? 0 : 10),
+            child: Text(line, style: const TextStyle(fontSize: 16, height: 1.55, color: LumoraColors.ink)),
+          ),
+      ]),
+    );
+  }
+
+  Widget _conversationCard() {
+    final speakers = {for (final l in widget.conversation) l.character ?? ''}..remove('');
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: LumoraColors.gray100),
+        borderRadius: BorderRadius.circular(LumoraRadii.xl),
+        boxShadow: LumoraShadows.card,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (speakers.isNotEmpty)
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final name in speakers)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: LumoraColors.purpleLight, borderRadius: BorderRadius.circular(LumoraRadii.full)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.person_rounded, size: 14, color: LumoraColors.purple),
+                  const SizedBox(width: 4),
+                  Text(name, style: const TextStyle(color: LumoraColors.purple, fontWeight: FontWeight.w700, fontSize: 12)),
+                ]),
+              ),
+          ]),
+        const SizedBox(height: 12),
+        LumoraButton(
+          label: _playing ? 'Stop' : (_played ? 'Play again' : 'Play the conversation'),
+          full: true,
+          icon: Icon(_playing ? Icons.stop_rounded : Icons.volume_up_rounded, color: Colors.white, size: 20),
+          onPressed: _play,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _playing && _speakingLine >= 0
+              ? 'Line ${_speakingLine + 1} of ${widget.conversation.length}'
+              : 'Replay as many times as you need.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: LumoraColors.slatey, fontSize: 12),
+        ),
+      ]),
+    );
+  }
+
+  Widget _scoreView() {
+    final color = _score >= 80 ? LumoraColors.teal : _score >= 50 ? LumoraColors.amber : LumoraColors.coral;
+    return Center(
+      child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const FoxMascot(size: 130, glow: true, bounce: true),
           const SizedBox(height: 12),
-          Text(score >= 60 ? 'Nicely done!' : 'Keep going!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          Text('$score%', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: color)),
-          Text('on "${widget.title}"', style: const TextStyle(color: LumoraColors.slatey)),
+          Text(_score >= 60 ? 'Nicely done!' : 'Keep going!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('$_score%', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: color)),
+          Text('on "${widget.title}"', textAlign: TextAlign.center, style: const TextStyle(color: LumoraColors.slatey)),
+          if (_xp > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(color: LumoraColors.amber, borderRadius: BorderRadius.circular(LumoraRadii.full)),
+              child: Text('+$_xp XP', style: const TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
           const SizedBox(height: 20),
-          LumoraButton(label: 'Practice another', full: true, onPressed: () {
-            widget.onAnother();
-            setState(() { _qi = 0; _answer = null; _correct = null; _correctCount = 0; _submitted = false; });
-          }),
+          LumoraButton(label: 'Practice another', full: true, onPressed: widget.onAnother),
           const SizedBox(height: 8),
-          LumoraButton(label: 'Back to practice', full: true, variant: LumoraButtonVariant.outline, onPressed: () => context.go('/practice')),
+          LumoraButton(label: 'Back to practice', full: true, variant: LumoraButtonVariant.outline, onPressed: () => _backToPractice(context)),
         ]),
-      );
-    }
-
-    final q = widget.questions[_qi];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('${q.prompt.toUpperCase()} · ${_qi + 1}/${widget.questions.length}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: LumoraColors.gray500)),
-        const SizedBox(height: 12),
-        Text(q.question, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 20),
-        for (final opt in q.options)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _OptionTile(label: opt, selected: _answer == opt, isCorrect: opt == q.correctAnswer, feedback: _correct != null,
-                onTap: _correct == null ? () => setState(() => _answer = opt) : null),
-          ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: _correct != null
-              ? LumoraButton(label: 'Continue', full: true, variant: _correct! ? LumoraButtonVariant.primary : LumoraButtonVariant.danger, onPressed: _next)
-              : LumoraButton(label: 'Check', full: true, onPressed: _answer == null ? null : _check),
-        ),
-      ],
+      ),
     );
   }
 }

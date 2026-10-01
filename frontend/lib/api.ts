@@ -103,10 +103,61 @@ export function clearSession() {
 
 class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** True only when the session in use was rejected — i.e. the user must sign in again. */
+  sessionExpired: boolean;
+  constructor(message: string, status: number, sessionExpired = false) {
     super(message);
     this.status = status;
+    this.sessionExpired = sessionExpired;
   }
+}
+
+const NETWORK_ERROR =
+  "We can't reach Lumora right now. Check your internet connection and try again.";
+
+/** fetch, with a network failure turned into a readable ApiError. */
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(NETWORK_ERROR, 0);
+  }
+}
+
+/** What to tell the user when the server gave no message of its own. */
+function fallbackMessage(status: number): string {
+  if (status === 401) return "Please sign in to continue.";
+  if (status === 403) return "You don't have access to that.";
+  if (status === 404) return "We couldn't find what you were looking for.";
+  if (status === 429) return "Too many attempts. Please wait a moment and try again.";
+  if (status >= 500)
+    return "Lumora is having trouble right now — it may be waking up. Please try again in a moment.";
+  return "Something went wrong. Please try again.";
+}
+
+/**
+ * Turns a failed response into an ApiError carrying a message fit to show the
+ * user: the server's own message when it sent one, otherwise a plain-language
+ * fallback for the status.
+ *
+ * A 401 only ends the session when it's about the session in use right now.
+ * Sign-in with a wrong password is a 401 too, and so is a request that went out
+ * with an older token just before the user signed in again — neither of those
+ * means "your session expired", and treating them that way showed a bare
+ * "unauthorized" on the login form.
+ */
+async function toApiError(res: Response, sentToken: string | null): Promise<ApiError> {
+  let serverMessage = "";
+  try {
+    serverMessage = (await res.json())?.error || "";
+  } catch {
+    /* not JSON — e.g. the host's own error page while the API wakes up */
+  }
+  if (res.status === 401 && sentToken && sentToken === getToken()) {
+    clearSession();
+    return new ApiError("Your session has ended. Please sign in again.", 401, true);
+  }
+  return new ApiError(serverMessage || fallbackMessage(res.status), res.status);
 }
 
 async function request<T>(
@@ -120,22 +171,8 @@ async function request<T>(
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
-
-  if (res.status === 401) {
-    clearSession();
-    throw new ApiError("unauthorized", 401);
-  }
-  if (!res.ok) {
-    let msg = `request failed (${res.status})`;
-    try {
-      const body = await res.json();
-      if (body?.error) msg = body.error;
-    } catch {
-      /* ignore */
-    }
-    throw new ApiError(msg, res.status);
-  }
+  const res = await send(`${API_URL}${path}`, { ...options, headers });
+  if (!res.ok) throw await toApiError(res, token);
   return (await res.json()) as T;
 }
 
@@ -174,26 +211,12 @@ async function upload<T>(
   }
 
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await send(`${API_URL}${path}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: fd,
   });
-
-  if (res.status === 401) {
-    clearSession();
-    throw new ApiError("unauthorized", 401);
-  }
-  if (!res.ok) {
-    let msg = `upload failed (${res.status})`;
-    try {
-      const body = await res.json();
-      if (body?.error) msg = body.error;
-    } catch {
-      /* ignore */
-    }
-    throw new ApiError(msg, res.status);
-  }
+  if (!res.ok) throw await toApiError(res, token);
   return (await res.json()) as T;
 }
 
@@ -245,20 +268,12 @@ export const api = {
     const fd = new FormData();
     fd.append("file", file);
     const token = getToken();
-    const res = await fetch(`${API_URL}/api/auth/avatar`, {
+    const res = await send(`${API_URL}/api/auth/avatar`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: fd,
     });
-    if (!res.ok) {
-      let msg = "upload failed";
-      try {
-        msg = (await res.json())?.error || msg;
-      } catch {
-        /* ignore */
-      }
-      throw new ApiError(msg, res.status);
-    }
+    if (!res.ok) throw await toApiError(res, token);
     return res.json();
   },
 
@@ -331,6 +346,13 @@ export const api = {
     request<{ languages: string[]; active: string; user: User }>(
       "/api/enrollments/active",
       { method: "POST", body: JSON.stringify({ language }) }
+    ),
+
+  /** Takes a language off the user's courses (progress is kept server-side). */
+  removeLanguage: (language: string) =>
+    request<{ languages: string[]; active: string; user: User }>(
+      `/api/enrollments/${encodeURIComponent(language)}`,
+      { method: "DELETE" }
     ),
 
   practice: () =>

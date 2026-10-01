@@ -58,8 +58,20 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
     }
   }
 
+  /// Opens a drill and refreshes the counts when it closes, so the mistakes
+  /// it fixed or added show here straight away. (This tab stays alive in the
+  /// bottom nav, so initState alone would leave them stale.)
+  Future<void> _open(String mode) async {
+    await context.push('/practice/run?mode=$mode');
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Words and mistakes are per language: reload when the course changes.
+    ref.listen(authProvider.select((a) => a.user?.targetLanguage), (prev, next) {
+      if (prev != next) _load();
+    });
     final lang = ref.watch(authProvider).user?.targetLanguage ?? '';
     final hasVocab = (_vocabCount ?? 0) > 0;
 
@@ -101,10 +113,10 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                 borderRadius: BorderRadius.circular(LumoraRadii.xl),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(LumoraRadii.xl),
-                  onTap: () => context.push('/practice/run?mode=mix'),
+                  onTap: () => _open('mix'),
                   child: Container(
                     padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.cardLg),
+                    decoration: BoxDecoration(color: LumoraColors.purple, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.cardLg),
                     child: Row(children: [
                       Container(width: 52, height: 52, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(LumoraRadii.lg)),
                           child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26)),
@@ -137,10 +149,10 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                     borderRadius: BorderRadius.circular(LumoraRadii.xl),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(LumoraRadii.xl),
-                      onTap: m.disabled ? null : () => context.push('/practice/run?mode=${m.key}'),
+                      onTap: m.disabled ? null : () => _open(m.key),
                       child: Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
                         child: Row(children: [
                           Container(width: 48, height: 48, decoration: BoxDecoration(color: m.tint.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(LumoraRadii.lg)),
                               child: Icon(m.icon, color: m.tint, size: 24)),

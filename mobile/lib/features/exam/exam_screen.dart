@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/env.dart';
+import '../../core/languages.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
@@ -68,6 +69,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     } catch (_) {}
   }
 
+  String get _lang => ref.read(authProvider).user?.targetLanguage ?? 'es';
+
   bool _paid(String level) => _payStatus?.paid[level] ?? false;
 
   /// True when this level still needs a paid attempt before it can be sat.
@@ -78,7 +81,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     final paid = await payWithPaystack(context, level: level);
     // Re-read either way: a payment that settles late is applied by the server.
     await _refreshPayments();
-    if (paid) messenger.showSnackBar(SnackBar(content: Text('Payment received — your $level attempt is ready 🎉')));
+    if (paid) messenger.showSnackBar(SnackBar(content: Text('Payment received — your ${levelDisplay(level, _lang)} attempt is ready 🎉')));
   }
 
   Future<void> _openOnWeb() async {
@@ -156,14 +159,14 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _LevelCard(
-                code: l.$1, name: l.$2, done: _completed.contains(l.$1),
+                code: l.$1, name: _lang == 'zh' ? '${levelDisplay(l.$1, _lang).split(' · ').first} · ${l.$2}' : l.$2, done: _completed.contains(l.$1),
                 price: _payStatus?.prices[l.$1], usd: _payStatus?.pricesUsd[l.$1], paid: _paid(l.$1),
                 onTap: () => setState(() => _level = l.$1),
               ),
             ),
           const Divider(height: 32),
           _LevelCard(
-            code: _kFinalCode, name: 'Final Mastery — comprehensive A1→C2', done: _completed.contains(_kFinalCode),
+            code: _kFinalCode, name: _lang == 'zh' ? 'Final — HSK 7–9 advanced band' : 'Final Mastery — comprehensive A1→C2', done: _completed.contains(_kFinalCode),
             price: _payStatus?.prices[_kFinalCode], usd: _payStatus?.pricesUsd[_kFinalCode], paid: _paid(_kFinalCode),
             onTap: () => setState(() => _level = _kFinalCode),
           ),
@@ -222,7 +225,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(paid ? 'Your $level attempt is ready' : 'Take the $level exam on the web',
+        Text(paid ? 'Your ${levelDisplay(level, _lang)} attempt is ready' : 'Take the ${levelDisplay(level, _lang)} exam on the web',
             textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
@@ -329,7 +332,7 @@ class _LevelCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
           child: Row(children: [
             Container(width: 44, height: 44, decoration: BoxDecoration(color: LumoraColors.purpleLight, borderRadius: BorderRadius.circular(LumoraRadii.md)),
                 child: Center(child: Text(code, style: const TextStyle(fontWeight: FontWeight.w800, color: LumoraColors.purple, fontSize: 12)))),

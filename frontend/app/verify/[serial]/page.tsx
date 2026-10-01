@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ShieldCheck, ShieldX } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { api } from "@/lib/api";
-import { languageName, languageMeta } from "@/lib/languages";
+import { languageName, languageMeta, levelDisplay } from "@/lib/languages";
 import type { CertVerification } from "@/lib/types";
 
 /**
@@ -66,7 +66,7 @@ export default function VerifyPage() {
                 label="Language"
                 value={`${flag} ${languageName(cert.language)}`}
               />
-              <Row label="Level" value={cert.level} />
+              <Row label="Level" value={levelDisplay(cert.level, cert.language)} />
               <Row label="Overall score" value={`${cert.score}%`} />
               <Row label="Issued" value={date} />
               <Row label="Verification ID" value={cert.serial} mono />

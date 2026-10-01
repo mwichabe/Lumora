@@ -39,7 +39,12 @@ class LumoraButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[icon!, const SizedBox(width: 8)],
-              Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: _fg())),
+              // Shrinks with an ellipsis rather than overflowing the pill when
+              // a label is long for the screen (narrow phones, large text).
+              Flexible(
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: _fg())),
+              ),
             ],
           );
 

@@ -223,7 +223,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     final needsChoice = !isNarrative && !isSpeak && !isWrite &&
         ([ExerciseType.multipleChoice, ExerciseType.listen, ExerciseType.match].contains(ex.type) || hasOptions);
     final needsTyping = [ExerciseType.translate, ExerciseType.fill].contains(ex.type) && !hasOptions;
-    final wordCount = _answer.trim().isEmpty ? 0 : _answer.trim().split(RegExp(r'\s+')).length;
+    final wordCount = countWords(_answer);
 
     final canCheck = _feedback != _Feedback.none
         ? false

@@ -51,16 +51,16 @@ var avatarColors = []string{"#6C3FC5", "#F5A623", "#00C2A8", "#FF5C5C", "#17A3DD
 func (a *AuthController) Register(c *fiber.Ctx) error {
 	var in registerInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
 	if in.Email == "" || len(in.Password) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "email and a 6+ char password are required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Enter your email and a password of at least 6 characters."})
 	}
 
 	var existing models.User
 	if err := database.DB.Where("email = ?", in.Email).First(&existing).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "email already registered"})
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "An account with this email already exists. Try signing in instead."})
 	}
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
@@ -79,7 +79,7 @@ func (a *AuthController) Register(c *fiber.Ctx) error {
 		LastActiveDate: time.Now().Format("2006-01-02"),
 	}
 	if err := database.DB.Create(&user).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not create user"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "We couldn't create your account right now. Please try again."})
 	}
 
 	// Send the welcome email in the background — never block registration on it.
@@ -94,16 +94,16 @@ func (a *AuthController) Register(c *fiber.Ctx) error {
 func (a *AuthController) Login(c *fiber.Ctx) error {
 	var in loginInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
 
 	var user models.User
 	if err := database.DB.Where("email = ?", in.Email).First(&user).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "That email and password don't match. Check them and try again."})
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)) != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "That email and password don't match. Check them and try again."})
 	}
 
 	// Greet the returning user in-app (throttled to ~3h) and email a welcome
@@ -143,7 +143,7 @@ func (a *AuthController) Setup(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	var in setupInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	if in.TargetLanguage != "" {
 		user.TargetLanguage = in.TargetLanguage
@@ -168,7 +168,7 @@ func (a *AuthController) UpdateProfile(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	var in profileInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	if name := strings.TrimSpace(in.Name); name != "" {
 		user.Name = name
@@ -290,13 +290,13 @@ func (a *AuthController) ChangePassword(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	var in passwordInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.CurrentPassword)) != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "current password is incorrect"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Your current password is incorrect."})
 	}
 	if len(in.NewPassword) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "new password must be at least 6 characters"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Your new password must be at least 6 characters."})
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(in.NewPassword), bcrypt.DefaultCost)
 	user.PasswordHash = string(hash)
@@ -313,7 +313,7 @@ type forgotInput struct {
 func (a *AuthController) ForgotPassword(c *fiber.Ctx) error {
 	var in forgotInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 
@@ -353,23 +353,23 @@ type resetInput struct {
 func (a *AuthController) ResetPassword(c *fiber.Ctx) error {
 	var in resetInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	if len(in.Password) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password must be at least 6 characters"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Your password must be at least 6 characters."})
 	}
 
 	var pr models.PasswordReset
 	if database.DB.Where("token = ? AND used = ?", in.Token, false).First(&pr).Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this reset link is invalid or has already been used"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "This reset link is invalid or has already been used. Request a new one."})
 	}
 	if time.Now().After(pr.ExpiresAt) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this reset link has expired — please request a new one"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "This reset link has expired. Request a new one."})
 	}
 
 	var user models.User
 	if database.DB.First(&user, pr.UserID).Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "account not found"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "We couldn't find that account."})
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	user.PasswordHash = string(hash)
@@ -388,10 +388,10 @@ func (a *AuthController) DeleteAccount(c *fiber.Ctx) error {
 	user := middleware.CurrentUser(c)
 	var in deleteInput
 	if err := c.BodyParser(&in); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)) != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password is incorrect"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "That password is incorrect."})
 	}
 
 	uid := user.ID
@@ -409,7 +409,7 @@ func (a *AuthController) DeleteAccount(c *fiber.Ctx) error {
 func (a *AuthController) tokenResponse(c *fiber.Ctx, user models.User) error {
 	token, err := utils.GenerateToken(user.ID, a.Cfg.JWTSecret)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "could not issue token"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "We couldn't sign you in right now. Please try again."})
 	}
 	return c.JSON(fiber.Map{"token": token, "user": user})
 }

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/languages.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
 import '../../core/theme/shadows.dart';
@@ -62,6 +63,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _removeLanguage(String code) async {
+    final user = ref.read(authProvider).user;
+    final name = languageMeta(code).name;
+    final active = code == user?.targetLanguage;
+    final confirm = await showLumoraConfirmDialog(
+      context,
+      title: 'Remove $name?',
+      message: active
+          ? "It will be taken off your courses and you'll switch to another language. Your progress is kept — add $name again any time to pick up where you left off."
+          : 'It will be taken off your courses. Your progress is kept — add it again any time to pick up where you left off.',
+      confirmLabel: 'Remove',
+      danger: true,
+    );
+    if (!confirm || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _switching = true);
+    try {
+      final (langs, _, updatedUser) = await ApiClient.instance.removeLanguage(code);
+      // If it was the active course the server moved them to another one;
+      // updating the user reloads Home, Learn and Practice for it.
+      ref.read(authProvider.notifier).setUser(updatedUser);
+      setState(() => _languages = langs);
+      messenger.showSnackBar(SnackBar(content: Text('$name removed from your courses')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _switching = false);
+    }
+  }
+
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
@@ -106,12 +137,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           padding: EdgeInsets.zero,
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(24, 56, 24, 40),
+              padding: EdgeInsets.fromLTRB(24, MediaQuery.paddingOf(context).top + 8, 24, 40),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [LumoraColors.purple, LumoraColors.purpleDark]),
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
               ),
-              child: Row(children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // Profile opens on top of the tab bar (from the More sheet), so
+                // like Ideas, Messages and Notifications it needs its own way back.
+                Transform.translate(
+                  offset: const Offset(-12, 0),
+                  child: IconButton(
+                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(children: [
                 GestureDetector(
                   onTap: _pickAvatar,
                   child: Stack(children: [
@@ -145,6 +188,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ]),
                 ),
+              ]),
               ]),
             ),
             Transform.translate(
@@ -217,11 +261,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   child: const Text('Active', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)))
                             else
                               const Icon(Icons.chevron_right, color: LumoraColors.gray300),
+                            // The app always needs one course, so the last one can't go.
+                            if (_languages.length > 1)
+                              IconButton(
+                                tooltip: 'Remove ${languageMeta(_languages[i]).name}',
+                                onPressed: _switching ? null : () => _removeLanguage(_languages[i]),
+                                icon: const Icon(Icons.delete_outline_rounded, color: LumoraColors.gray500),
+                                visualDensity: VisualDensity.compact,
+                              ),
                           ]),
                         ),
                       ),
                   ]),
                 ),
+                if (_languages.length == 1)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, left: 4),
+                    child: Text('Add another language to be able to remove this one.', style: TextStyle(color: LumoraColors.slatey, fontSize: 12)),
+                  ),
               ]),
             ),
             const SizedBox(height: 24),
@@ -240,7 +297,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     onTap: () => context.push('/certificates'),
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
                       child: Row(children: [
                         Container(width: 44, height: 44, decoration: BoxDecoration(color: LumoraColors.purpleLight, borderRadius: BorderRadius.circular(LumoraRadii.md)),
                             child: const Icon(Icons.workspace_premium, color: LumoraColors.purple)),
@@ -277,7 +334,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () => showCharacterBioModal(context, c),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.lg), boxShadow: LumoraShadows.card),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.lg), boxShadow: LumoraShadows.card),
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                             CircleAvatar(radius: 24, backgroundColor: LumoraColors.purpleLight, child: Text(c.emoji, style: const TextStyle(fontSize: 22))),
                             const SizedBox(height: 6),

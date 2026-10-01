@@ -49,7 +49,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                     if (r.valid) ...[
                       const SizedBox(height: 16),
                       Text(r.userName ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                      Text('${r.level} — ${languageName(r.language ?? "es")}', style: const TextStyle(color: LumoraColors.purple, fontWeight: FontWeight.w800)),
+                      Text('${levelDisplay(r.level ?? "", r.language)} — ${languageName(r.language ?? "es")}', style: const TextStyle(color: LumoraColors.purple, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 8),
                       Text('Score: ${r.score}%'),
                       Text(

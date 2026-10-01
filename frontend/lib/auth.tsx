@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user } = await api.me();
       setUser(user);
     } catch (e) {
-      // Only a genuine 401 means the session is invalid — clear it. Any other
-      // failure (server down, offline, timeout) keeps the cached user so the
-      // app stays usable and never bounces the user to onboarding.
-      if (e instanceof ApiError && e.status === 401) {
-        clearSession();
+      // Only a rejected *current* session means signing out (api.ts has
+      // already cleared it). Any other failure — server down, offline, a 401
+      // for a token that has since been replaced — keeps the cached user so
+      // the app stays usable and never bounces the user to onboarding.
+      if (e instanceof ApiError && e.sessionExpired) {
         setUserInternal(null);
       }
     } finally {

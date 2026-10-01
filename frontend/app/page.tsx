@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { FoxMascot } from "@/components/FoxMascot";
 import { useAuth } from "@/lib/auth";
 import { getLastRoute } from "@/lib/api";
+import { AVAILABLE_LANGUAGES } from "@/lib/languages";
 
 const APP_ROUTES = ["/home", "/learn", "/practice", "/leaderboard", "/profile", "/lesson"];
 
@@ -100,7 +101,7 @@ export default function SplashScreen() {
           className="mt-7 hidden items-center gap-5 text-white/70 sm:flex"
           style={{ fontSize: "clamp(0.75rem, 1.6vw, 0.95rem)" }}
         >
-          <Stat value="40+" label="languages" />
+          <Stat value={String(AVAILABLE_LANGUAGES.length)} label="languages" />
           <span className="h-4 w-px bg-white/20" />
           <Stat value="5 min" label="a day" />
           <span className="h-4 w-px bg-white/20" />

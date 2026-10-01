@@ -384,7 +384,7 @@ class _RoadmapEntry extends StatelessWidget {
             onTap: () => context.push('/learn'),
             child: Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(LumoraRadii.lg), boxShadow: LumoraShadows.card),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.lg), boxShadow: LumoraShadows.card),
               child: Row(children: [
                 Container(
                   width: 48, height: 48,

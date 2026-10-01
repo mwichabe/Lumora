@@ -352,8 +352,33 @@ function normalize(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // strip accents for fair comparison
-    .replace(/[.,!¡¿?"]/g, "")
+    .replace(/[.,!¡¿?"，。！？、；：“”‘’（）《》…—]/g, "")
     .trim();
+}
+
+const HAN = /\p{Script=Han}/u;
+
+/**
+ * Splits text into the units we compare and count: words for space-separated
+ * languages, and individual characters for Chinese, which has no spaces —
+ * otherwise a whole Chinese sentence is a single "word".
+ */
+function units(s: string): string[] {
+  const out: string[] = [];
+  for (const chunk of s.split(/\s+/).filter(Boolean)) {
+    if (!HAN.test(chunk)) {
+      out.push(chunk);
+      continue;
+    }
+    // Each Han character is its own unit; runs of other letters stay whole.
+    for (const part of chunk.match(/\p{Script=Han}|[^\p{Script=Han}]+/gu) || []) out.push(part);
+  }
+  return out;
+}
+
+/** Words written, counting each Chinese character as one (for writing tasks). */
+export function countWords(text: string): number {
+  return units(normalize(text)).length;
 }
 
 /**
@@ -367,8 +392,8 @@ export function scorePronunciation(target: string, said: string): number {
   if (!s) return 0;
   if (t === s) return 100;
 
-  const tWords = t.split(/\s+/).filter(Boolean);
-  const sWords = new Set(s.split(/\s+/).filter(Boolean));
+  const tWords = units(t);
+  const sWords = new Set(units(s));
   const hit = tWords.filter((w) => sWords.has(w)).length;
   const wordScore = tWords.length ? hit / tWords.length : 0;
 

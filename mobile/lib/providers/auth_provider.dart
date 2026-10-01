@@ -31,7 +31,15 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _bootstrap() async {
     final cached = await SessionStorage.instance.getStoredUser();
-    if (cached != null) state = state.copyWith(user: cached);
+    // A saved user plus a token is enough to open the app: stop "loading" now
+    // so the splash hands over immediately, and let refresh() revalidate in the
+    // background. Waiting on it here held the splash for a full round trip —
+    // close to a minute when the API is waking from idle. If the token turns
+    // out to be dead, refresh() clears the session and the router sends the
+    // user to sign in.
+    if (cached != null && await SessionStorage.instance.getToken() != null) {
+      state = AuthState(user: cached, loading: false);
+    }
     await refresh();
   }
 

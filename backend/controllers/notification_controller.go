@@ -88,6 +88,7 @@ var campaigns = []campaignItem{
 	{"tip_daily", "tip", "🎯", "#F5A623", "Tip: Little and often", "A few minutes every day beats one long cram session. Hit your daily goal!"},
 	{"feature_listening", "feature", "🎧", "#00C2A8", "New: Listening sessions", "Hear short conversations voiced by your companions, then answer questions."},
 	{"lang_de_fr", "language", "🌍", "#17A3DD", "German & French are live", "Tap the language switcher on Learn or Profile to add a new course anytime."},
+	{"lang_zh", "language", "🇨🇳", "#FF5C5C", "Mandarin Chinese is live", "Learn Pinyin, tones and characters from HSK 1 to HSK 6. Add it from Profile → My Languages."},
 	{"tip_speak", "tip", "💬", "#6C3FC5", "Tip: Speak it out loud", "Saying answers aloud — not just reading — cements vocabulary far faster."},
 	{"feature_reading", "feature", "📖", "#17A3DD", "New: Reading passages", "Every unit now has a reading session to train your eyes on real text."},
 	{"tip_review", "tip", "🔁", "#00C2A8", "Tip: Review your mistakes", "The Practice tab turns anything you miss into quick, targeted drills."},

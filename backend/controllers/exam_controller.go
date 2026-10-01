@@ -178,7 +178,7 @@ func (ec *ExamController) Submit(c *fiber.Ctx) error {
 // examLangDisplay maps a language code to a friendly name for notifications.
 var examLangDisplay = map[string]string{
 	"es": "Spanish", "de": "German", "fr": "French", "it": "Italian",
-	"pt": "Portuguese", "en": "English",
+	"pt": "Portuguese", "en": "English", "zh": "Mandarin Chinese",
 }
 
 func langDisplay(code string) string {

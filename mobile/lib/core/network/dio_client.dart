@@ -11,8 +11,10 @@ class DioClient {
   DioClient._();
   static final DioClient instance = DioClient._();
 
-  /// Called after a 401 clears the session, so the router can bounce to auth.
+  /// Called after a 401 clears the session, so the app can sign out.
   void Function()? onUnauthorized;
+
+  static const _sentWithToken = 'lumora.sentWithToken';
 
   late final Dio dio = Dio(
     BaseOptions(
@@ -28,29 +30,59 @@ class DioClient {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          // Remember which session this request belongs to (see onError).
+          options.extra[_sentWithToken] = token;
           handler.next(options);
         },
         onError: (error, handler) async {
+          // A 401 only ends the session if it's about the session we have NOW.
+          // Requests sent with no token (background polls after signing out,
+          // a wrong password on the login form) or with a previous token (in
+          // flight across sign-out → sign-in) get 401s too, and acting on those
+          // used to delete the freshly issued token — after which every request
+          // failed and the app kept bouncing back to home.
           if (error.response?.statusCode == 401) {
-            await SessionStorage.instance.clearSession();
-            onUnauthorized?.call();
+            final sentWith = error.requestOptions.extra[_sentWithToken] as String?;
+            final current = await SessionStorage.instance.getToken();
+            if (sentWith != null && sentWith == current) {
+              await SessionStorage.instance.clearSession();
+              onUnauthorized?.call();
+            }
           }
           handler.next(error);
         },
       ),
     );
 
-  /// Converts a DioException into the app-wide ApiException, extracting the
-  /// backend's `{"error": "..."}` message when present (matches api.ts).
+  /// Converts a DioException into the app-wide ApiException with a message fit
+  /// to show the user: the backend's own `{"error": "..."}` when it sent one,
+  /// otherwise a plain-language fallback (matches api.ts).
   ApiException toApiException(DioException e) {
     final status = e.response?.statusCode ?? 0;
-    String message = 'request failed ($status)';
     final data = e.response?.data;
-    if (data is Map && data['error'] != null) {
-      message = data['error'].toString();
-    } else if (status == 0) {
-      message = 'network error';
+    if (data is Map && data['error'] != null && data['error'].toString().isNotEmpty) {
+      return ApiException(data['error'].toString(), status);
     }
-    return ApiException(message, status);
+    return ApiException(_fallbackMessage(e, status), status);
+  }
+
+  static String _fallbackMessage(DioException e, int status) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'Lumora is taking longer than usual to respond — it may be waking up. Please try again in a moment.';
+      case DioExceptionType.connectionError:
+        return "We can't reach Lumora right now. Check your internet connection and try again.";
+      default:
+        break;
+    }
+    if (status == 401) return 'Please sign in to continue.';
+    if (status == 403) return "You don't have access to that.";
+    if (status == 404) return "We couldn't find what you were looking for.";
+    if (status == 429) return 'Too many attempts. Please wait a moment and try again.';
+    if (status >= 500) return 'Lumora is having trouble right now — it may be waking up. Please try again in a moment.';
+    if (status == 0) return "We can't reach Lumora right now. Check your internet connection and try again.";
+    return 'Something went wrong. Please try again.';
   }
 }

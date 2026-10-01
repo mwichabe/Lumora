@@ -21,13 +21,14 @@ import {
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
+import { availableLanguageList } from "@/lib/languages";
 
 type Mode = "intro" | "signup" | "signin";
 
 const FEATURES = [
   { icon: Gamepad2, text: "Learn through bite-sized, game-like lessons" },
   { icon: Headphones, text: "Listen & speak with distinct character voices" },
-  { icon: Globe, text: "40+ languages, from Spanish to Swahili" },
+  { icon: Globe, text: `Full courses in ${availableLanguageList()}, with more on the way` },
   { icon: Trophy, text: "Streaks, XP and weekly leagues to keep you going" },
 ];
 

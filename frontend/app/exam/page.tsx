@@ -25,13 +25,14 @@ import { Button } from "@/components/Button";
 import { SpeakerChip } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { languageName } from "@/lib/languages";
+import { languageName, levelDisplay } from "@/lib/languages";
 import {
   speakAs,
   speakSequence,
   stopSpeaking,
   recognizeSpeech,
   scorePronunciation,
+  countWords,
   speechRecognitionSupported,
 } from "@/lib/voices";
 import type {
@@ -71,6 +72,7 @@ const LOCALE: Record<string, string> = {
   de: "de-DE",
   it: "it-IT",
   pt: "pt-PT",
+  zh: "zh-CN",
 };
 
 const SECTION_PHASES: Phase[] = ["listening", "reading", "writing", "speaking"];
@@ -789,11 +791,13 @@ function LevelSelect({
             >
               <div className="flex items-center justify-between">
                 <span className="text-heading-sm font-extrabold text-ink">
-                  {l.code}
+                  {lang === "zh" ? levelDisplay(l.code, lang).split(" · ")[0] : l.code}
                 </span>
                 {done && <Check size={16} className="text-teal" />}
               </div>
-              <span className="block text-label-md text-slatey">{l.name}</span>
+              <span className="block text-label-md text-slatey">
+                {lang === "zh" ? `${l.code} · ${l.name}` : l.name}
+              </span>
               {paymentsOn && (
                 <span className="mt-1 block text-label-sm font-bold text-purple">
                   {paidFor(l.code)
@@ -1161,10 +1165,9 @@ function WritingSection({
   onDone: (score: number) => void;
 }) {
   const [text, setText] = useState("");
-  const words = useMemo(
-    () => text.trim().split(/\s+/).filter(Boolean).length,
-    [text]
-  );
+  // Chinese is counted in characters (it has no spaces between words).
+  const words = useMemo(() => countWords(text), [text]);
+  const unit = lang === "zh" ? "characters" : "words";
 
   function finish() {
     const score = Math.min(100, Math.round((words / minWords) * 100));
@@ -1185,7 +1188,7 @@ function WritingSection({
         className="mt-4 w-full rounded-xl border border-gray-100 bg-white p-4 text-body-lg outline-none transition focus:border-purple"
       />
       <p className="mt-2 text-body-sm text-slatey">
-        {words} words{" "}
+        {words} {unit}{" "}
         {words < minWords ? `· aim for at least ${minWords}` : "· nice!"}
       </p>
       <div className="mt-auto pt-6">
@@ -1368,11 +1371,11 @@ function ResultView({
       </h2>
       <p className="mt-1 text-body-md text-slatey">
         {result.alreadyTaken
-          ? `You've already earned the ${result.level} certificate for ${languageName(lang)}.`
+          ? `You've already earned the ${levelDisplay(result.level, lang)} certificate for ${languageName(lang)}.`
           : `${languageName(lang)} · Level `}
         {!result.alreadyTaken && (
           <>
-            <strong className="text-purple">{result.level}</strong> ·{" "}
+            <strong className="text-purple">{levelDisplay(result.level, lang)}</strong> ·{" "}
             {result.overall}%
           </>
         )}
