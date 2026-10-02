@@ -24,6 +24,7 @@ import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { SpeakerChip } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
+import { useIsHandheld } from "@/lib/device";
 import { api } from "@/lib/api";
 import { languageName, levelDisplay } from "@/lib/languages";
 import {
@@ -82,10 +83,71 @@ const fmtTime = (s: number) =>
   `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
 
 export default function ExamPage() {
+  const handheld = useIsHandheld();
   return (
     <AppShell tabs>
-      <ExamRunner />
+      {handheld === null ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <FoxMascot size={110} glow />
+        </div>
+      ) : handheld ? (
+        <DesktopOnlyNotice />
+      ) : (
+        <ExamRunner />
+      )}
     </AppShell>
+  );
+}
+
+/**
+ * Shown instead of the exam on phones and tablets. Exams are proctored with a
+ * camera and a screen share and must be sat on a laptop or desktop; the
+ * backend refuses handheld browsers too.
+ */
+function DesktopOnlyNotice() {
+  const [copied, setCopied] = useState(false);
+  const examUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/exam` : "/exam";
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(examUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* clipboard blocked — the link is shown on screen to copy by hand */
+    }
+  }
+
+  return (
+    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
+      <FoxMascot size={96} glow />
+      <h1 className="mt-5 text-heading-xl font-extrabold text-ink">
+        Exams need a laptop or desktop
+      </h1>
+      <p className="mt-2 text-body-md text-slatey">
+        Certification exams are proctored with your camera and a screen share,
+        so they can only be taken on a laptop or desktop computer — not on a
+        phone or tablet.
+      </p>
+      <p className="mt-4 w-full break-all rounded-xl bg-gray-50 px-3 py-2 text-body-sm font-semibold text-ink">
+        {examUrl}
+      </p>
+      <div className="mt-5 w-full space-y-2">
+        <Button full onClick={copyLink}>
+          {copied ? "Link copied" : "Copy exam link"}
+        </Button>
+        <Link href="/home" className="block">
+          <Button full variant="outline">
+            Back to learning
+          </Button>
+        </Link>
+      </div>
+      <p className="mt-4 text-body-sm text-gray-500">
+        Any attempt you&apos;ve paid for stays on your account — it&apos;ll be
+        waiting when you sign in on a computer.
+      </p>
+    </div>
   );
 }
 

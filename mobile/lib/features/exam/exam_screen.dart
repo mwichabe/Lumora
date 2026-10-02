@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/env.dart';
 import '../../core/languages.dart';
@@ -84,11 +84,11 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     if (paid) messenger.showSnackBar(SnackBar(content: Text('Payment received — your ${levelDisplay(level, _lang)} attempt is ready 🎉')));
   }
 
-  Future<void> _openOnWeb() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final opened = await launchUrl(Uri.parse(_examUrl), mode: LaunchMode.externalApplication).catchError((_) => false);
-    if (!opened) messenger.showSnackBar(const SnackBar(content: Text("Couldn't open the browser — copy the link instead.")));
-  }
+  /// Sends the exam link somewhere the learner can open it on a computer
+  /// (email, a chat with themselves…). Opening it in this phone's browser
+  /// would only reach the "laptop or desktop only" screen.
+  Future<void> _sendToComputer() =>
+      Share.share('Take my Lumora exam on a laptop or desktop: $_examUrl', subject: 'Lumora exam link');
 
   Future<void> _copyLink() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -229,7 +229,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
-          'Exams are proctored with your camera and a screen share, so they run in a web browser on a computer — not in the app.',
+          'Exams are proctored with your camera and a screen share, so they can only be taken in a web browser on a laptop or desktop computer — not on a phone or tablet.',
           textAlign: TextAlign.center,
           style: TextStyle(color: LumoraColors.slatey, height: 1.4),
         ),
@@ -238,7 +238,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
           child: Column(children: [
-            const _Step(n: '1', text: 'On a computer, open the link below in Chrome, Edge or Firefox.'),
+            const _Step(n: '1', text: 'On a laptop or desktop, open the link below in Chrome, Edge or Firefox.'),
             _Step(n: '2', text: 'Sign in as ${ref.watch(authProvider).user?.email ?? "the same account"}.'),
             _Step(n: '3', text: 'Open Exam, choose $level and begin.', last: true),
           ]),
@@ -264,7 +264,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        LumoraButton(label: 'Open in browser', full: true, variant: LumoraButtonVariant.outline, onPressed: _openOnWeb),
+        LumoraButton(label: 'Send the link to my computer', full: true, variant: LumoraButtonVariant.outline, onPressed: _sendToComputer),
         const SizedBox(height: 24),
       ],
     );
@@ -273,7 +273,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
 
 class _WebOnlyBanner extends StatelessWidget {
   final String text;
-  const _WebOnlyBanner({this.text = 'Exams are taken on the web, on a computer. You can pay for an attempt here.'});
+  const _WebOnlyBanner({this.text = 'Exams are taken on a laptop or desktop computer only — not on phones or tablets. You can pay for an attempt here.'});
 
   @override
   Widget build(BuildContext context) {

@@ -723,6 +723,8 @@ function describeEvent(e: IdeaDetail["history"][number]): string {
       return `linked it to "${e.to}"`;
     case "brainstorm":
       return `started a ${e.to} silent brainstorm`;
+    case "brainstorm_ended":
+      return `ended the silent brainstorm early`;
     default:
       return e.kind;
   }

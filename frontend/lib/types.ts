@@ -359,6 +359,8 @@ export interface BrainstormSession {
   topic: string;
   endsAt: string;
   secondsRemaining: number;
+  /** Whether the viewer may end it early (whoever started it, or the author). */
+  canStop: boolean;
 }
 
 export interface IdeaThread {

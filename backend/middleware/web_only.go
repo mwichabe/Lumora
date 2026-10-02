@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,6 +30,10 @@ func AllowedOrigin(c *fiber.Ctx, corsOrigins string) string {
 // take it. This is a product rule, not a security boundary — a determined
 // caller can set the header by hand — but it holds for every shipped client,
 // including older app builds that still contain the exam screens.
+//
+// The web app must also be open on a laptop or desktop: a phone or tablet
+// browser is refused the same way (see IsHandheld). The page checks this
+// itself; this is the server's half of the rule.
 func WebOnly(corsOrigins, appURL string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if AllowedOrigin(c, corsOrigins) == "" {
@@ -37,6 +42,27 @@ func WebOnly(corsOrigins, appURL string) fiber.Handler {
 				"webOnly": true,
 			})
 		}
+		if IsHandheld(c) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error":       "Exams can only be taken on a laptop or desktop computer, not a phone or tablet. Open " + appURL + " on a computer to take yours.",
+				"desktopOnly": true,
+			})
+		}
 		return c.Next()
 	}
+}
+
+// handheldUA matches the user agents of phone and tablet browsers. iPadOS
+// Safari reports itself as a Mac, so it slips through here — the web page
+// catches it by its touch screen.
+var handheldUA = regexp.MustCompile(`(?i)android|iphone|ipad|ipod|mobile|tablet|silk|kindle|playbook|bb10|opera mini|iemobile|windows phone`)
+
+// IsHandheld reports whether the request comes from a phone or tablet browser:
+// the Sec-CH-UA-Mobile client hint when the browser sends it, else the user
+// agent string.
+func IsHandheld(c *fiber.Ctx) bool {
+	if c.Get("Sec-CH-UA-Mobile") == "?1" {
+		return true
+	}
+	return handheldUA.MatchString(c.Get(fiber.HeaderUserAgent))
 }

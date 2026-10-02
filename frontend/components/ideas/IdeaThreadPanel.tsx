@@ -149,7 +149,16 @@ export function IdeaThreadPanel({
         </div>
       </div>
 
-      {brainstorm && <BrainstormBanner session={brainstorm} />}
+      {brainstorm && idea && (
+        <BrainstormBanner
+          session={brainstorm}
+          onEnd={async () => {
+            await api.stopBrainstorm(idea.id);
+            onRefresh();
+          }}
+          onExpired={onRefresh}
+        />
+      )}
 
       <AnimatePresence>
         {summary && (
@@ -205,14 +214,42 @@ export function IdeaThreadPanel({
 
 // --- banners -----------------------------------------------------------------
 
-function BrainstormBanner({ session }: { session: BrainstormSession }) {
+function BrainstormBanner({
+  session,
+  onEnd,
+  onExpired,
+}: {
+  session: BrainstormSession;
+  /** Ends the brainstorm now; only offered when the viewer may. */
+  onEnd: () => Promise<void>;
+  /** Called when the countdown reaches zero, so the thread reloads. */
+  onExpired: () => void;
+}) {
   const [left, setLeft] = useState(session.secondsRemaining);
+  const [ending, setEnding] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => setLeft(session.secondsRemaining), [session.secondsRemaining]);
   useEffect(() => {
     const t = setInterval(() => setLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, []);
+  // When time runs out, reload so the banner goes and names come back.
+  useEffect(() => {
+    if (left === 0) onExpired();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left === 0]);
+
+  const end = async () => {
+    setEnding(true);
+    setError("");
+    try {
+      await onEnd();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "couldn't end it");
+      setEnding(false);
+    }
+  };
 
   const mm = Math.floor(left / 60);
   const ss = String(left % 60).padStart(2, "0");
@@ -228,6 +265,17 @@ function BrainstormBanner({ session }: { session: BrainstormSession }) {
       <span className="ml-auto font-mono text-label-lg font-bold">
         {mm}:{ss}
       </span>
+      {session.canStop && (
+        <button
+          onClick={end}
+          disabled={ending}
+          title="End the silent brainstorm now — new posts will show names again"
+          className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-label-md font-extrabold transition hover:bg-white/25 disabled:opacity-50"
+        >
+          {ending ? "Ending…" : "End brainstorm"}
+        </button>
+      )}
+      {error && <span className="text-label-sm text-coral">{error}</span>}
     </div>
   );
 }

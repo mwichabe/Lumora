@@ -406,12 +406,15 @@ class BrainstormSession {
   final String topic;
   final String endsAt;
   final int secondsRemaining;
+  /// Whether this viewer may end it early (whoever started it, or the author).
+  final bool canStop;
 
   const BrainstormSession({
     required this.id,
     required this.topic,
     required this.endsAt,
     required this.secondsRemaining,
+    required this.canStop,
   });
 
   factory BrainstormSession.fromJson(Map<String, dynamic> j) => BrainstormSession(
@@ -419,6 +422,7 @@ class BrainstormSession {
         topic: asString(j['topic']),
         endsAt: asString(j['endsAt']),
         secondsRemaining: asInt(j['secondsRemaining']),
+        canStop: asBool(j['canStop']),
       );
 }
 

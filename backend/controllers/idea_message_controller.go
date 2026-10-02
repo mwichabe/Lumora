@@ -174,7 +174,7 @@ func (ic *IdeaController) Messages(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"messages":   out,
 		"idea":       ic.toDTO(*idea, user.ID),
-		"brainstorm": activeBrainstorm(idea.ID),
+		"brainstorm": brainstormDTO(activeBrainstorm(idea.ID), *idea, user.ID),
 		"reactions":  reactionPalette(),
 	})
 }
@@ -523,11 +523,14 @@ func (ic *IdeaController) StartBrainstorm(c *fiber.Ctx) error {
 		fmt.Sprintf("%s opened a %d-minute anonymous brainstorm on \"%s\". Every post is unattributed.",
 			displayName(*user), minutes, idea.Title))
 
-	return c.JSON(fiber.Map{"brainstorm": brainstormDTO(&session)})
+	return c.JSON(fiber.Map{"brainstorm": brainstormDTO(&session, *idea, user.ID)})
 }
 
-// StopBrainstorm ends the window early.
+// StopBrainstorm ends the window early. Only whoever started it, or the
+// idea's author, may: anyone else ending it would cut short a window other
+// people are relying on to post anonymously.
 func (ic *IdeaController) StopBrainstorm(c *fiber.Ctx) error {
+	user := middleware.CurrentUser(c)
 	idea, ok := ic.load(c)
 	if !ok {
 		return nil // the helper already wrote the error response
@@ -536,9 +539,19 @@ func (ic *IdeaController) StopBrainstorm(c *fiber.Ctx) error {
 	if b == nil {
 		return c.JSON(fiber.Map{"brainstorm": nil})
 	}
+	if !mayStopBrainstorm(b, *idea, user.ID) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "only the person who started the brainstorm, or the idea's author, can end it early",
+		})
+	}
 	b.EndsAt = time.Now()
 	database.DB.Save(b)
+	logIdeaEvent(idea.ID, user.ID, "brainstorm_ended", "", "", "", "ended early")
 	return c.JSON(fiber.Map{"brainstorm": nil})
+}
+
+func mayStopBrainstorm(b *models.BrainstormSession, idea models.Idea, userID uint) bool {
+	return b.StartedBy == userID || idea.OwnerID == userID
 }
 
 func activeBrainstorm(ideaID uint) *models.BrainstormSession {
@@ -550,7 +563,9 @@ func activeBrainstorm(ideaID uint) *models.BrainstormSession {
 	return &b
 }
 
-func brainstormDTO(b *models.BrainstormSession) fiber.Map {
+// brainstormDTO is the session as the client sees it. It returns a nil map
+// (JSON null) when no brainstorm is running.
+func brainstormDTO(b *models.BrainstormSession, idea models.Idea, viewerID uint) fiber.Map {
 	if b == nil {
 		return nil
 	}
@@ -558,6 +573,7 @@ func brainstormDTO(b *models.BrainstormSession) fiber.Map {
 		"id": b.ID, "topic": b.Topic,
 		"endsAt":           b.EndsAt.Format(time.RFC3339),
 		"secondsRemaining": int(time.Until(b.EndsAt).Seconds()),
+		"canStop":          mayStopBrainstorm(b, idea, viewerID),
 	}
 }
 

@@ -716,6 +716,7 @@ String _describeEvent(IdeaEvent e) => switch (e.kind) {
       'restored' => 'restored it to ${_label(e.to)}',
       'task' => 'converted it to a task: "${e.to}"',
       'brainstorm' => 'started a ${e.to} silent brainstorm',
+      'brainstorm_ended' => 'ended the silent brainstorm early',
       _ => e.kind,
     };
 

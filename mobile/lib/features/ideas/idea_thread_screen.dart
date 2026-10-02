@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
 import '../../models/idea.dart';
@@ -100,6 +101,8 @@ class _IdeaThreadScreenState extends State<IdeaThreadScreen> {
     try {
       await ApiClient.instance.stopBrainstorm(widget.id);
       _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {}
   }
 
@@ -165,11 +168,13 @@ class _IdeaThreadScreenState extends State<IdeaThreadScreen> {
             tooltip: 'Summarize thread',
             onPressed: _showSummary,
           ),
-          IconButton(
-            icon: Icon(thread?.brainstorm != null ? Icons.stop_circle_outlined : Icons.psychology_outlined),
-            tooltip: thread?.brainstorm != null ? 'Stop silent brainstorm' : 'Start silent brainstorm',
-            onPressed: thread?.brainstorm != null ? _stopBrainstorm : _startBrainstorm,
-          ),
+          // Ending early is limited to whoever started it or the idea's author.
+          if (thread?.brainstorm == null || thread!.brainstorm!.canStop)
+            IconButton(
+              icon: Icon(thread?.brainstorm != null ? Icons.stop_circle_outlined : Icons.psychology_outlined),
+              tooltip: thread?.brainstorm != null ? 'End silent brainstorm' : 'Start silent brainstorm',
+              onPressed: thread?.brainstorm != null ? _stopBrainstorm : _startBrainstorm,
+            ),
         ],
       ),
       body: Column(
