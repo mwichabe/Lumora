@@ -577,7 +577,13 @@ export const api = {
     return request<IdeaBoard>(`/api/ideas${qs ? `?${qs}` : ""}`);
   },
 
-  createIdea: (input: { title: string; description?: string; tags?: string[] }) =>
+  createIdea: (input: {
+    title: string;
+    description?: string;
+    tags?: string[];
+    /** "under_review" posts straight into review instead of as a draft. */
+    status?: IdeaStatus;
+  }) =>
     request<{ idea: Idea }>("/api/ideas", {
       method: "POST",
       body: JSON.stringify(input),
@@ -592,6 +598,8 @@ export const api = {
       description?: string;
       status?: IdeaStatus;
       tags?: string[];
+      /** Recorded in the history alongside a status change. */
+      note?: string;
     }
   ) =>
     request<{ idea: Idea }>(`/api/ideas/${id}`, {

@@ -7,6 +7,7 @@ import '../../core/theme/radii.dart';
 import '../../core/theme/shadows.dart';
 import '../../models/home_data.dart';
 import '../../providers/home_provider.dart';
+import '../../providers/learn_provider.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/fox_mascot.dart';
 import '../../widgets/header_bells.dart';
@@ -187,7 +188,15 @@ class _StartHero extends StatelessWidget {
             const Text('Great work. Unlock new skills on your learning path.',
                 textAlign: TextAlign.center, style: TextStyle(color: LumoraColors.slatey)),
             const SizedBox(height: 16),
-            LumoraButton(label: 'Explore the map', onPressed: () => context.push('/learn')),
+            Consumer(
+              builder: (context, ref, _) => LumoraButton(
+                label: 'Explore the map',
+                onPressed: () {
+                  ref.read(learnViewProvider.notifier).state = LearnView.roadmap;
+                  context.go('/learn');
+                },
+              ),
+            ),
           ],
         ),
       );
@@ -367,10 +376,10 @@ class _DailyGoalCard extends StatelessWidget {
   }
 }
 
-class _RoadmapEntry extends StatelessWidget {
+class _RoadmapEntry extends ConsumerWidget {
   const _RoadmapEntry();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -381,7 +390,11 @@ class _RoadmapEntry extends StatelessWidget {
           borderRadius: BorderRadius.circular(LumoraRadii.lg),
           child: InkWell(
             borderRadius: BorderRadius.circular(LumoraRadii.lg),
-            onTap: () => context.push('/learn'),
+            onTap: () {
+              // Open the Learn tab on its Roadmap view, not the course list.
+              ref.read(learnViewProvider.notifier).state = LearnView.roadmap;
+              context.go('/learn');
+            },
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.lg), boxShadow: LumoraShadows.card),
@@ -425,6 +438,7 @@ class _QuestList extends StatelessWidget {
       children: [
         for (final q in data.quests)
           Padding(
+            key: ValueKey(q.questId),
             padding: const EdgeInsets.only(bottom: 8),
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -438,11 +452,18 @@ class _QuestList extends StatelessWidget {
                     const SizedBox(height: 4),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(LumoraRadii.full),
-                      child: LinearProgressIndicator(
-                        value: (q.progress / (q.quest?.target ?? 1)).clamp(0, 1).toDouble(),
-                        minHeight: 6,
-                        backgroundColor: LumoraColors.gray100,
-                        valueColor: const AlwaysStoppedAnimation(LumoraColors.amber),
+                      // Animates from the old value when a refresh lands, so
+                      // progress made in a lesson visibly fills the bar.
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(end: (q.progress / (q.quest?.target ?? 1)).clamp(0, 1).toDouble()),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, _) => LinearProgressIndicator(
+                          value: value,
+                          minHeight: 6,
+                          backgroundColor: LumoraColors.gray100,
+                          valueColor: const AlwaysStoppedAnimation(LumoraColors.amber),
+                        ),
                       ),
                     ),
                   ]),

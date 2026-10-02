@@ -28,11 +28,11 @@ class LearnScreen extends ConsumerStatefulWidget {
 }
 
 class _LearnScreenState extends ConsumerState<LearnScreen> {
-  bool _roadmap = false;
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(learnProvider);
+    final roadmap = ref.watch(learnViewProvider) == LearnView.roadmap;
+    void setView(LearnView v) => ref.read(learnViewProvider.notifier).state = v;
     final user = ref.watch(authProvider).user;
 
     final totalLessons = state.skills.fold<int>(0, (n, s) => n + s.lessonCount);
@@ -105,8 +105,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(LumoraRadii.full)),
                     child: Row(children: [
-                      Expanded(child: _ViewTab(label: 'Course', icon: Icons.menu_book_rounded, active: !_roadmap, onTap: () => setState(() => _roadmap = false))),
-                      Expanded(child: _ViewTab(label: 'Roadmap', icon: Icons.map_rounded, active: _roadmap, onTap: () => setState(() => _roadmap = true))),
+                      Expanded(child: _ViewTab(label: 'Course', icon: Icons.menu_book_rounded, active: !roadmap, onTap: () => setView(LearnView.course))),
+                      Expanded(child: _ViewTab(label: 'Roadmap', icon: Icons.map_rounded, active: roadmap, onTap: () => setView(LearnView.roadmap))),
                     ]),
                   ),
                 ],
@@ -134,7 +134,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
             const SliverFillRemaining(
               child: Center(child: Text('No lessons yet. Your course is being prepared.', style: TextStyle(color: LumoraColors.slatey))),
             )
-          else if (_roadmap)
+          else if (roadmap)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               // A lazy list: only the units near the viewport are built, which

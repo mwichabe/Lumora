@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/league_provider.dart';
 import '../../providers/learn_provider.dart';
 import '../../widgets/more_sheet.dart';
 import '../theme/colors.dart';
@@ -26,6 +27,8 @@ class AppShell extends ConsumerWidget {
     // Start fetching the course as soon as the signed-in app is on screen, not
     // when the Learn tab is first opened — by then it's already there.
     ref.listen(learnProvider, (_, _) {});
+    // Likewise the league, so the Leagues tab is filled in on first tap.
+    ref.listen(leagueProvider, (_, _) {});
 
     return Scaffold(
       body: shell,

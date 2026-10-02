@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/json_utils.dart';
 import '../../core/languages.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -35,18 +36,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _load();
   }
 
+  /// The three requests run together — one after another they cost three
+  /// round trips before anything showed — and each section starts from the
+  /// copy saved on the last visit.
   Future<void> _load() async {
-    try {
-      _characters = await ApiClient.instance.characters();
-    } catch (_) {}
-    try {
-      final (langs, _) = await ApiClient.instance.enrollments();
-      _languages = langs;
-    } catch (_) {}
-    try {
-      _certCount = (await ApiClient.instance.certificates()).length;
-    } catch (_) {}
-    if (mounted) setState(() {});
+    final uid = ref.read(authProvider).user?.id;
+    Future<void> watch<T>(String path, T Function(Map<String, dynamic>) map, void Function(T) apply) async {
+      try {
+        await for (final v in ApiClient.instance.cachedGet(path, cacheKey: 'profile_${uid}_$path', map: map)) {
+          if (!mounted) return;
+          setState(() => apply(v));
+        }
+      } catch (_) {}
+    }
+
+    await Future.wait([
+      watch('/api/characters',
+          (j) => asList(j['characters'], (e) => CharacterWithFriendship.fromJson(asMap(e))), (v) => _characters = v),
+      watch('/api/enrollments', (j) => asStringList(j['languages']), (v) => _languages = v),
+      watch('/api/certificates', (j) => asList(j['certificates'], (e) => e).length, (v) => _certCount = v),
+    ]);
   }
 
   Future<void> _switchLanguage(String code) async {

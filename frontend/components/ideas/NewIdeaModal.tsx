@@ -28,6 +28,7 @@ export function NewIdeaModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  const [submitNow, setSubmitNow] = useState(false);
   const [similar, setSimilar] = useState<SimilarIdea[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -60,6 +61,7 @@ export function NewIdeaModal({
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
+        status: submitNow ? "under_review" : undefined,
       });
       onCreated(idea.id);
     } catch (e) {
@@ -153,6 +155,24 @@ export function NewIdeaModal({
           placeholder="ai, ux, v2.0"
           className="mt-1 w-full rounded-lg bg-gray-50 px-3 py-2 text-body-md outline-none ring-purple/30 focus:ring-2"
         />
+
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-gray-50 p-3">
+          <input
+            type="checkbox"
+            checked={submitNow}
+            onChange={(e) => setSubmitNow(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-purple"
+          />
+          <span>
+            <span className="block text-label-lg font-bold text-ink">
+              Submit for review now
+            </span>
+            <span className="block text-label-md text-slatey">
+              Leave unticked to post it as a draft you can keep refining and
+              submit later.
+            </span>
+          </span>
+        </label>
 
         {error && (
           <p className="mt-3 rounded-lg bg-coral-light px-3 py-2 text-label-md text-coral">

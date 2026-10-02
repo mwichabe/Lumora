@@ -52,7 +52,45 @@ class DioClient {
           handler.next(error);
         },
       ),
+    )
+    ..interceptors.add(
+      InterceptorsWrapper(
+        onError: (error, handler) async {
+          // The API sleeps when idle, and the first requests after it wakes
+          // time out or get a 502/503 from the proxy. Retrying reads here means
+          // a cold start costs a few seconds instead of a "Try again" button
+          // on every screen. Only GETs: repeating a write could apply it twice.
+          final options = error.requestOptions;
+          final attempt = (options.extra[_retryAttempt] as int?) ?? 0;
+          if (options.method.toUpperCase() != 'GET' || attempt >= _maxRetries || !_isTransient(error)) {
+            return handler.next(error);
+          }
+          options.extra[_retryAttempt] = attempt + 1;
+          await Future.delayed(Duration(milliseconds: 1500 * (attempt + 1)));
+          try {
+            handler.resolve(await dio.fetch(options));
+          } on DioException catch (e) {
+            handler.next(e);
+          }
+        },
+      ),
     );
+
+  static const _retryAttempt = 'lumora.retryAttempt';
+  static const _maxRetries = 2;
+
+  static bool _isTransient(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      default:
+        final status = e.response?.statusCode ?? 0;
+        return status == 502 || status == 503 || status == 504;
+    }
+  }
 
   /// Converts a DioException into the app-wide ApiException with a message fit
   /// to show the user: the backend's own `{"error": "..."}` when it sent one,

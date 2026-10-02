@@ -40,7 +40,14 @@ import 'app_shell.dart';
 /// screen's routing rules in frontend/app/page.tsx).
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(Ref ref) {
-    ref.listen(authProvider, (_, _) => notifyListeners());
+    // Only what `redirect` actually reads. Listening to the whole auth state
+    // re-ran routing on every setUser() — each home refresh, lesson or XP
+    // change — and a re-parse landing mid tab switch could leave the bottom
+    // nav highlighting a different tab from the one on screen.
+    ref.listen(
+      authProvider.select((a) => (a.loading, a.isAuthenticated, a.user?.targetLanguage.isEmpty ?? true)),
+      (_, _) => notifyListeners(),
+    );
   }
 }
 

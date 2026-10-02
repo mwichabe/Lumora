@@ -244,6 +244,36 @@ class SimilarIdea {
       );
 }
 
+/// One move available from the idea's current status, as the server sees it
+/// for this viewer. Disallowed moves still come back, with [reason], so the UI
+/// can explain what has to happen next.
+class IdeaTransition {
+  final IdeaStatus to;
+  final String label;
+  final String hint;
+  final bool allowed;
+  final String reason;
+  final bool primary;
+
+  const IdeaTransition({
+    required this.to,
+    required this.label,
+    required this.hint,
+    required this.allowed,
+    required this.reason,
+    required this.primary,
+  });
+
+  factory IdeaTransition.fromJson(Map<String, dynamic> j) => IdeaTransition(
+        to: ideaStatusFromString(asString(j['to'])),
+        label: asString(j['label']),
+        hint: asString(j['hint']),
+        allowed: asBool(j['allowed']),
+        reason: asString(j['reason']),
+        primary: asBool(j['primary']),
+      );
+}
+
 class IdeaDetail {
   final Idea idea;
   final List<IdeaEvent> history;
@@ -253,6 +283,9 @@ class IdeaDetail {
   final bool canEdit;
   final List<IdeaStatus> statusFlow;
   final List<SimilarIdea> similar;
+  final List<IdeaTransition> transitions;
+  final String nextStep;
+  final int openTasks;
 
   const IdeaDetail({
     required this.idea,
@@ -263,6 +296,9 @@ class IdeaDetail {
     required this.canEdit,
     required this.statusFlow,
     required this.similar,
+    required this.transitions,
+    required this.nextStep,
+    required this.openTasks,
   });
 
   factory IdeaDetail.fromJson(Map<String, dynamic> j) => IdeaDetail(
@@ -274,6 +310,9 @@ class IdeaDetail {
         canEdit: asBool(j['canEdit']),
         statusFlow: asList(j['statusFlow'], (e) => ideaStatusFromString(asString(e))),
         similar: asList(j['similar'], (e) => SimilarIdea.fromJson(asMap(e))),
+        transitions: asList(j['transitions'], (e) => IdeaTransition.fromJson(asMap(e))),
+        nextStep: asString(j['nextStep']),
+        openTasks: asInt(j['openTasks']),
       );
 }
 

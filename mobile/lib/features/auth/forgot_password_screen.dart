@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/validation.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/auth_field.dart';
@@ -20,12 +21,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _email = TextEditingController();
   bool _sent = false;
   bool _loading = false;
+  String? _emailError;
 
   Future<void> _submit() async {
-    if (_email.text.trim().isEmpty) return;
+    final problem = emailError(_email.text);
+    setState(() => _emailError = problem);
+    if (problem != null) return;
     setState(() => _loading = true);
     try {
-      await ApiClient.instance.forgotPassword(_email.text.trim());
+      await ApiClient.instance.forgotPassword(normaliseEmail(_email.text));
     } catch (_) {
       // still show the confirmation — enumeration-safe by design
     } finally {
@@ -109,7 +113,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         TextField(
           controller: _email,
           keyboardType: TextInputType.emailAddress,
-          decoration: authFieldDecoration(icon: Icons.mail_outline_rounded, hint: 'you@example.com'),
+          autocorrect: false,
+          // Clear the message as soon as they fix the address.
+          onChanged: (_) {
+            if (_emailError != null) setState(() => _emailError = emailError(_email.text));
+          },
+          decoration: authFieldDecoration(icon: Icons.mail_outline_rounded, hint: 'you@example.com')
+              .copyWith(errorText: _emailError),
         ),
         const SizedBox(height: 20),
         LumoraButton(label: 'Send reset link', full: true, loading: _loading, onPressed: _submit),

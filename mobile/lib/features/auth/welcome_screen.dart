@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/validation.dart';
 import '../../core/languages.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/theme/colors.dart';
@@ -60,10 +61,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     });
     try {
       if (_mode == _Mode.signup) {
-        await ref.read(authProvider.notifier).register(_email.text.trim(), _password.text, _name.text.trim());
+        await ref.read(authProvider.notifier).register(normaliseEmail(_email.text), _password.text, _name.text.trim());
         if (mounted) context.go('/onboarding/language');
       } else {
-        await ref.read(authProvider.notifier).login(_email.text.trim(), _password.text);
+        await ref.read(authProvider.notifier).login(normaliseEmail(_email.text), _password.text);
         if (mounted) context.go('/home');
       }
     } on ApiException catch (e) {
@@ -245,7 +246,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             decoration: authFieldDecoration(icon: Icons.mail_outline_rounded, hint: 'you@example.com'),
-            validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            autocorrect: false,
+            validator: emailError,
           ),
           const SizedBox(height: 16),
           const AuthFieldLabel('Password'),

@@ -12,6 +12,7 @@ import '../../models/quest.dart';
 import '../../models/character.dart';
 import '../../models/league.dart';
 import '../../models/home_data.dart';
+import '../storage/session_storage.dart';
 import 'dio_client.dart';
 
 /// Bytes + a filename, used for any multipart upload (avatar, chat image,
@@ -143,6 +144,40 @@ class ApiClient {
   /// need the JSON itself rather than the parsed models (see learn_provider).
   Future<Map<String, dynamic>> getJson(String path) => _req('GET', path, map: (j) => j);
 
+  /// A GET that never makes the screen wait on the network when it doesn't
+  /// have to: emits the copy saved on the last visit straight away (if there
+  /// is one), then the fresh response once it lands — which is saved for next
+  /// time. The request starts before the saved copy is read, so it isn't
+  /// delayed. If the refresh fails after a saved copy was shown, the error is
+  /// swallowed and the saved copy stays on screen.
+  ///
+  /// [cacheKey] must identify whose data this is (user, and language where the
+  /// response depends on it); sign-out clears every saved copy.
+  Stream<T> cachedGet<T>(String path, {required String cacheKey, required T Function(Map<String, dynamic>) map}) async* {
+    final fresh = getJson(path)..ignore();
+    var shownSaved = false;
+    final saved = await SessionStorage.instance.readCache(cacheKey);
+    if (saved != null) {
+      T? parsed;
+      try {
+        parsed = map(saved);
+      } catch (_) {
+        // an unreadable copy is ignored; the network fills the screen
+      }
+      if (parsed != null) {
+        shownSaved = true;
+        yield parsed;
+      }
+    }
+    try {
+      final json = await fresh;
+      SessionStorage.instance.writeCache(cacheKey, json).catchError((_) {});
+      yield map(json);
+    } catch (_) {
+      if (!shownSaved) rethrow;
+    }
+  }
+
   Future<Lesson> lesson(int id) =>
       _req('GET', '/api/lessons/$id', map: (j) => Lesson.fromJson(asMap(j['lesson'])));
 
@@ -233,15 +268,18 @@ class ApiClient {
         List<Mistake> mistakes,
         int listeningCount,
         int readingCount,
-      })> practice() => _req(
-        'GET',
-        '/api/practice',
-        map: (j) => (
-          vocab: asList(j['vocab'], (e) => VocabItem.fromJson(asMap(e))),
-          mistakes: asList(j['mistakes'], (e) => Mistake.fromJson(asMap(e))),
-          listeningCount: asInt(j['listeningCount']),
-          readingCount: asInt(j['readingCount']),
-        ),
+      })> practice() => _req('GET', '/api/practice', map: parsePractice);
+
+  static ({
+    List<VocabItem> vocab,
+    List<Mistake> mistakes,
+    int listeningCount,
+    int readingCount,
+  }) parsePractice(Map<String, dynamic> j) => (
+        vocab: asList(j['vocab'], (e) => VocabItem.fromJson(asMap(e))),
+        mistakes: asList(j['mistakes'], (e) => Mistake.fromJson(asMap(e))),
+        listeningCount: asInt(j['listeningCount']),
+        readingCount: asInt(j['readingCount']),
       );
 
   Future<List<ListeningSession>> practiceListening() => _req(
@@ -512,13 +550,21 @@ class ApiClient {
         map: IdeaBoard.fromJson,
       );
 
-  Future<Idea> createIdea({required String title, String? description, List<String>? tags}) => _req(
+  /// [submitForReview] posts straight into review instead of as a draft.
+  Future<Idea> createIdea({
+    required String title,
+    String? description,
+    List<String>? tags,
+    bool submitForReview = false,
+  }) =>
+      _req(
         'POST',
         '/api/ideas',
         data: {
           'title': title,
           if (description != null) 'description': description,
           if (tags != null) 'tags': tags,
+          if (submitForReview) 'status': 'under_review',
         },
         map: (j) => Idea.fromJson(asMap(j['idea'])),
       );
@@ -531,6 +577,7 @@ class ApiClient {
     String? description,
     IdeaStatus? status,
     List<String>? tags,
+    String? note,
   }) =>
       _req(
         'PATCH',
@@ -540,6 +587,7 @@ class ApiClient {
           if (description != null) 'description': description,
           if (status != null) 'status': ideaStatusToString(status),
           if (tags != null) 'tags': tags,
+          if (note != null && note.isNotEmpty) 'note': note,
         },
         map: (j) => Idea.fromJson(asMap(j['idea'])),
       );

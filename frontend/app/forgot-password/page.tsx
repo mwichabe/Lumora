@@ -6,17 +6,22 @@ import { ArrowLeft, Mail, MailCheck } from "lucide-react";
 import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
+import { emailError, normaliseEmail } from "@/lib/validation";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const invalid = emailError(email);
+  const showError = touched && email.trim() !== "" && invalid !== "";
 
   async function submit() {
-    if (busy || email.trim().length < 4) return;
+    setTouched(true);
+    if (busy || invalid) return;
     setBusy(true);
     try {
-      await api.forgotPassword(email.trim());
+      await api.forgotPassword(normaliseEmail(email));
     } catch {
       /* always show the same confirmation — don't reveal whether the email exists */
     } finally {
@@ -87,18 +92,23 @@ export default function ForgotPasswordPage() {
                     autoFocus
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => setTouched(true)}
                     onKeyDown={(e) => e.key === "Enter" && submit()}
                     placeholder="you@email.com"
-                    className="h-[52px] w-full rounded-xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-body-lg outline-none transition focus:border-purple focus:bg-white focus:ring-4 focus:ring-purple/10"
+                    aria-invalid={showError}
+                    className={`h-[52px] w-full rounded-xl border bg-gray-50 pl-11 ${showError ? "border-coral" : "border-gray-100"} pr-4 text-body-lg outline-none transition focus:border-purple focus:bg-white focus:ring-4 focus:ring-purple/10`}
                   />
                 </div>
+                {showError && (
+                  <p className="mt-1.5 text-body-sm font-semibold text-coral">{invalid}</p>
+                )}
               </div>
 
               <div className="mt-6">
                 <Button
                   full
                   loading={busy}
-                  disabled={email.trim().length < 4}
+                  disabled={!!invalid}
                   onClick={submit}
                 >
                   Send reset link

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
 import '../models/league.dart';
+import 'auth_provider.dart';
 
 class LeagueState {
   final LeagueStandings? data;
@@ -24,21 +25,31 @@ class LeagueState {
 class LeagueController extends Notifier<LeagueState> {
   @override
   LeagueState build() {
-    _load();
+    // Standings are per learner and per course: reload when either changes.
+    final (userId, _) = ref.watch(authProvider.select((a) => (a.user?.id, a.user?.targetLanguage)));
+    if (userId != null) Future.microtask(_load);
     return LeagueState.initial();
   }
 
+  /// Standings from the saved copy first, then fresh; the end-of-season result
+  /// is fetched alongside (not after) them, and never cached — it's a one-off.
   Future<void> _load() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+    final result = ApiClient.instance.leagueResult().then<LeagueResult?>((r) => r, onError: (_) => null);
     try {
-      final data = await ApiClient.instance.league();
-      LeagueResult? result;
-      try {
-        result = await ApiClient.instance.leagueResult();
-      } catch (_) {}
-      state = state.copyWith(data: data, result: result, loading: false);
+      await for (final data in ApiClient.instance.cachedGet(
+        '/api/league',
+        cacheKey: 'league_${user.id}_${user.targetLanguage}',
+        map: LeagueStandings.fromJson,
+      )) {
+        state = state.copyWith(data: data, loading: false);
+      }
     } catch (_) {
       state = state.copyWith(loading: false);
     }
+    final r = await result;
+    if (r != null) state = state.copyWith(result: r);
   }
 
   Future<void> refresh() => _load();

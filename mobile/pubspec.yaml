@@ -55,3 +55,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Nunito, bundled so google_fonts never downloads it at runtime (which held
+  # up first paint and competed with API requests on a cold start). Files are
+  # the exact ones google_fonts would fetch, named as it expects; OFL licensed.
+  assets:
+    - assets/google_fonts/

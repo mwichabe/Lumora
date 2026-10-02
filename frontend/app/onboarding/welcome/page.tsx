@@ -22,6 +22,7 @@ import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { availableLanguageList } from "@/lib/languages";
+import { emailError, normaliseEmail } from "@/lib/validation";
 
 type Mode = "intro" | "signup" | "signin";
 
@@ -43,22 +44,29 @@ export default function WelcomeScreen() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  const emailProblem = emailError(email);
+  // Shown once the learner leaves the field (or tries to submit), not on
+  // every keystroke of an address they're still typing.
+  const emailHint = emailTouched && email.trim() !== "" ? emailProblem : "";
 
   const canSubmit =
-    email.trim().length > 3 &&
+    !emailProblem &&
     password.length >= 6 &&
     (mode !== "signup" || name.trim().length > 0);
 
   async function submit() {
+    setEmailTouched(true);
     if (!canSubmit || busy) return;
     setError("");
     setBusy(true);
     try {
       if (mode === "signup") {
-        await register(email, password, name || "Learner");
+        await register(normaliseEmail(email), password, name || "Learner");
         router.push("/onboarding/language");
       } else {
-        await login(email, password);
+        await login(normaliseEmail(email), password);
         router.push("/home");
       }
     } catch (e: any) {
@@ -70,6 +78,7 @@ export default function WelcomeScreen() {
 
   function goTo(next: Mode) {
     setError("");
+    setEmailTouched(false);
     setMode(next);
   }
 
@@ -220,6 +229,8 @@ export default function WelcomeScreen() {
                     type="email"
                     icon={<Mail size={18} />}
                     autoComplete="email"
+                    error={emailHint}
+                    onBlur={() => setEmailTouched(true)}
                     autoFocus={mode === "signin"}
                   />
                   <Field
@@ -324,6 +335,8 @@ function Field({
   trailing,
   autoFocus,
   autoComplete,
+  error,
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -335,6 +348,9 @@ function Field({
   trailing?: React.ReactNode;
   autoFocus?: boolean;
   autoComplete?: string;
+  /** Inline validation message; the field turns red while it's set. */
+  error?: string;
+  onBlur?: () => void;
 }) {
   return (
     <label className="block">
@@ -354,15 +370,20 @@ function Field({
           autoFocus={autoFocus}
           autoComplete={autoComplete}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          aria-invalid={!!error}
           onKeyDown={(e) => {
             if (e.key === "Enter") onSubmit?.();
           }}
-          className={`h-[52px] w-full rounded-xl border border-gray-100 bg-gray-50 text-body-lg outline-none transition focus:border-purple focus:bg-white focus:ring-4 focus:ring-purple/10 ${
+          className={`h-[52px] w-full rounded-xl border bg-gray-50 ${error ? "border-coral" : "border-gray-100"} text-body-lg outline-none transition focus:border-purple focus:bg-white focus:ring-4 focus:ring-purple/10 ${
             icon ? "pl-11" : "pl-4"
           } ${trailing ? "pr-11" : "pr-4"}`}
         />
         {trailing && <span className="absolute right-3.5">{trailing}</span>}
       </div>
+      {error && (
+        <span className="mt-1.5 block text-body-sm font-semibold text-coral">{error}</span>
+      )}
     </label>
   );
 }

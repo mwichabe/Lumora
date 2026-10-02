@@ -11,6 +11,7 @@ import '../../core/theme/shadows.dart';
 import '../../models/idea.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/lumora_button.dart';
+import 'idea_status_style.dart';
 
 const _kStatusFilters = ['', 'draft', 'under_review', 'approved', 'in_progress', 'completed'];
 const _kSorts = [
@@ -22,24 +23,6 @@ const _kSorts = [
 
 /// The board's count key for each status filter.
 const _kCountKeys = {'': 'all', 'draft': 'draft', 'under_review': 'underReview', 'approved': 'approved', 'in_progress': 'inProgress', 'completed': 'completed'};
-
-Color _statusColor(IdeaStatus status) => switch (status) {
-      IdeaStatus.draft => LumoraColors.gray500,
-      IdeaStatus.underReview => const Color(0xFFD48806),
-      IdeaStatus.approved => LumoraColors.teal,
-      IdeaStatus.inProgress => LumoraColors.purple,
-      IdeaStatus.completed => const Color(0xFF0B9E6E),
-      IdeaStatus.archived => LumoraColors.gray500,
-    };
-
-IconData _statusIcon(IdeaStatus status) => switch (status) {
-      IdeaStatus.draft => Icons.edit_note_rounded,
-      IdeaStatus.underReview => Icons.hourglass_top_rounded,
-      IdeaStatus.approved => Icons.thumb_up_alt_rounded,
-      IdeaStatus.inProgress => Icons.construction_rounded,
-      IdeaStatus.completed => Icons.check_circle_rounded,
-      IdeaStatus.archived => Icons.inventory_2_rounded,
-    };
 
 class IdeasScreen extends StatefulWidget {
   final int? ideaId;
@@ -69,7 +52,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
     super.initState();
     _load();
     if (widget.ideaId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => context.push('/ideas/${widget.ideaId}'));
+      WidgetsBinding.instance.addPostFrameCallback((_) => _open(widget.ideaId!));
     }
   }
 
@@ -101,6 +84,13 @@ class _IdeasScreenState extends State<IdeasScreen> {
       await ApiClient.instance.starIdea(idea.id);
       _load();
     } catch (_) {}
+  }
+
+  /// Opens an idea and refreshes the board on return — its status, votes or
+  /// tasks may have changed there.
+  Future<void> _open(int id) async {
+    await context.push('/ideas/$id');
+    if (mounted) _load();
   }
 
   void _openCreate() {
@@ -254,7 +244,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
           final idea = board.ideas[i];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _IdeaCard(idea: idea, onVote: (v) => _vote(idea, v), onStar: () => _star(idea)),
+            child: _IdeaCard(idea: idea, onOpen: () => _open(idea.id), onVote: (v) => _vote(idea, v), onStar: () => _star(idea)),
           );
         },
       ),
@@ -303,17 +293,18 @@ class _IdeaCard extends StatelessWidget {
   final Idea idea;
   final void Function(int) onVote;
   final VoidCallback onStar;
-  const _IdeaCard({required this.idea, required this.onVote, required this.onStar});
+  final VoidCallback onOpen;
+  const _IdeaCard({required this.idea, required this.onOpen, required this.onVote, required this.onStar});
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(idea.status);
+    final statusColor = ideaStatusColor(idea.status);
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(LumoraRadii.xl),
       child: InkWell(
         borderRadius: BorderRadius.circular(LumoraRadii.xl),
-        onTap: () => context.push('/ideas/${idea.id}'),
+        onTap: onOpen,
         child: Container(
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LumoraRadii.xl), boxShadow: LumoraShadows.card),
           clipBehavior: Clip.antiAlias,
@@ -326,7 +317,7 @@ class _IdeaCard extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      _StatusBadge(status: idea.status),
+                      IdeaStatusBadge(status: idea.status),
                       const Spacer(),
                       InkResponse(
                         onTap: onStar,
@@ -377,25 +368,6 @@ class _IdeaCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final IdeaStatus status;
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = _statusColor(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(LumoraRadii.full)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(_statusIcon(status), size: 12, color: c),
-        const SizedBox(width: 4),
-        Text(ideaStatusLabel(status), style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w800)),
-      ]),
     );
   }
 }
@@ -474,6 +446,8 @@ class _NewIdeaSheet extends StatefulWidget {
 class _NewIdeaSheetState extends State<_NewIdeaSheet> {
   final _title = TextEditingController();
   final _desc = TextEditingController();
+  final _tags = TextEditingController();
+  bool _submitNow = false;
   bool _busy = false;
   String? _error;
   List<SimilarIdea> _similar = [];
@@ -482,6 +456,9 @@ class _NewIdeaSheetState extends State<_NewIdeaSheet> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _title.dispose();
+    _desc.dispose();
+    _tags.dispose();
     super.dispose();
   }
 
@@ -503,7 +480,12 @@ class _NewIdeaSheetState extends State<_NewIdeaSheet> {
     if (_title.text.trim().isEmpty) return;
     setState(() { _busy = true; _error = null; });
     try {
-      await ApiClient.instance.createIdea(title: _title.text.trim(), description: _desc.text.trim());
+      await ApiClient.instance.createIdea(
+        title: _title.text.trim(),
+        description: _desc.text.trim(),
+        tags: _tags.text.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList(),
+        submitForReview: _submitNow,
+      );
       widget.onCreated();
       if (mounted) Navigator.pop(context);
     } on ApiException catch (e) {
@@ -518,7 +500,7 @@ class _NewIdeaSheetState extends State<_NewIdeaSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 20 + MediaQuery.of(context).viewInsets.bottom),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -544,11 +526,22 @@ class _NewIdeaSheetState extends State<_NewIdeaSheet> {
               ),
             const SizedBox(height: 12),
             TextField(controller: _desc, maxLines: 4, decoration: const InputDecoration(labelText: 'Description (optional)')),
+            const SizedBox(height: 12),
+            TextField(controller: _tags, decoration: const InputDecoration(labelText: 'Tags (optional, comma separated)')),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              value: _submitNow,
+              onChanged: (v) => setState(() => _submitNow = v ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text('Submit for review now', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              subtitle: const Text('Leave unticked to post a draft you can refine and submit later.', style: TextStyle(fontSize: 12)),
+            ),
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: LumoraColors.coral))),
             const SizedBox(height: 16),
             LumoraButton(label: 'Post idea', full: true, loading: _busy, onPressed: _submit),
           ],
-        ),
+        )),
       ),
     );
   }

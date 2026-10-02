@@ -295,6 +295,18 @@ export interface SimilarIdea {
   similarity: number;
 }
 
+/** One move the viewer can (or can't yet) make from the idea's current status. */
+export interface IdeaTransition {
+  to: IdeaStatus;
+  label: string;
+  hint: string;
+  allowed: boolean;
+  /** Why the move isn't available to this viewer right now. */
+  reason?: string;
+  /** The natural next step, rendered as the main action. */
+  primary: boolean;
+}
+
 export interface IdeaDetail {
   idea: Idea;
   history: IdeaEvent[];
@@ -304,6 +316,11 @@ export interface IdeaDetail {
   canEdit: boolean;
   statusFlow: IdeaStatus[];
   similar: SimilarIdea[];
+  transitions: IdeaTransition[];
+  /** One line saying what happens next in the workflow. */
+  nextStep: string;
+  openTasks: number;
+  thresholds: { review: number; approve: number };
 }
 
 export interface IdeaReaction {

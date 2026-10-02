@@ -38,12 +38,19 @@ class LearnController extends Notifier<LearnState> {
   // Bumped on every load so a slow response from an earlier load (e.g. the
   // previous language) can't overwrite a newer one.
   int _generation = 0;
+  bool _loading = false;
 
   @override
   LearnState build() {
     // The course belongs to one learner and one language: rebuild — and so
     // reload — whenever either changes (sign-in, sign-out, language switch).
     final (userId, _) = ref.watch(authProvider.select((a) => (a.user?.id, a.user?.targetLanguage)));
+    // Finishing a lesson, listening or reading session earns XP: reload so the
+    // path shows it done (and the next one unlocked) without a manual refresh.
+    // Skipped while a load is running — that one will already include it.
+    ref.listen(authProvider.select((a) => a.user?.xp), (prev, next) {
+      if (prev != null && next != null && prev != next && !_loading) load();
+    });
     // Deferred a tick: load() reads and writes `state`, which only exists once
     // build has returned.
     if (userId != null) Future.microtask(load);
@@ -70,6 +77,7 @@ class LearnController extends Notifier<LearnState> {
   /// there while a reload is in flight.
   Future<void> load() async {
     final gen = ++_generation;
+    _loading = true;
     final cacheKey = _cacheKey();
     state = LearnState(skills: state.skills, listening: state.listening, reading: state.reading, loading: true, error: false);
 
@@ -123,6 +131,7 @@ class LearnController extends Notifier<LearnState> {
     }, onError: (_) {});
 
     await Future.wait([skills, listening, reading]);
+    if (gen == _generation) _loading = false;
 
     // Only a complete set is saved: a partial one would show a course with its
     // listening or reading sessions missing on the next launch.
@@ -133,3 +142,10 @@ class LearnController extends Notifier<LearnState> {
 }
 
 final learnProvider = NotifierProvider<LearnController, LearnState>(LearnController.new);
+
+/// Which view the Learn tab shows. Shared state rather than local to the
+/// screen so other screens can open it on a given view — Home's "Explore the
+/// galaxy map" card lands on the roadmap.
+enum LearnView { course, roadmap }
+
+final learnViewProvider = StateProvider<LearnView>((ref) => LearnView.course);

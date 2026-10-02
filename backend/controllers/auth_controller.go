@@ -53,9 +53,12 @@ func (a *AuthController) Register(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
-	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
-	if in.Email == "" || len(in.Password) < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Enter your email and a password of at least 6 characters."})
+	in.Email = utils.NormaliseEmail(in.Email)
+	if msg := utils.EmailError(in.Email); msg != "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": msg})
+	}
+	if len(in.Password) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Choose a password of at least 6 characters."})
 	}
 
 	var existing models.User
@@ -96,10 +99,15 @@ func (a *AuthController) Login(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
-	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
+	in.Email = utils.NormaliseEmail(in.Email)
 
 	var user models.User
 	if err := database.DB.Where("email = ?", in.Email).First(&user).Error; err != nil {
+		// Checked only after the lookup misses, so an account created before
+		// the stricter format rule can still sign in.
+		if msg := utils.EmailError(in.Email); msg != "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": msg})
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "That email and password don't match. Check them and try again."})
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)) != nil {
@@ -315,10 +323,19 @@ func (a *AuthController) ForgotPassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Something went wrong with that request. Please try again."})
 	}
-	email := strings.ToLower(strings.TrimSpace(in.Email))
+	email := utils.NormaliseEmail(in.Email)
 
 	var user models.User
-	if email != "" && database.DB.Where("email = ?", email).First(&user).Error == nil {
+	found := email != "" && database.DB.Where("email = ?", email).First(&user).Error == nil
+	// A malformed address can't have an account (accounts made before the
+	// format rule are still found above), so say so rather than pretending
+	// to send a link.
+	if !found {
+		if msg := utils.EmailError(email); msg != "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": msg})
+		}
+	}
+	if found {
 		token := utils.RandomToken(32)
 		database.DB.Create(&models.PasswordReset{
 			UserID: user.ID, Token: token,

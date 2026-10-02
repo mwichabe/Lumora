@@ -38,10 +38,15 @@ class NotificationsState {
       );
 }
 
-class NotificationsController extends Notifier<NotificationsState> {
+/// The notifications list. Auto-disposed so every visit to the screen fetches a
+/// fresh list (the badge polls the server on its own, so a list cached from an
+/// earlier visit would show nothing new while the badge says otherwise).
+class NotificationsController extends AutoDisposeNotifier<NotificationsState> {
   @override
   NotificationsState build() {
-    load();
+    // Rebuild (and drop the previous account's items) when the session changes.
+    ref.watch(authProvider.select((a) => a.user?.id));
+    Future.microtask(load);
     return NotificationsState.initial();
   }
 
@@ -49,13 +54,21 @@ class NotificationsController extends Notifier<NotificationsState> {
     try {
       final (items, unread) = await ApiClient.instance.notifications();
       state = state.copyWith(items: items, unread: unread, loading: false);
+      _syncBadge();
     } catch (_) {
       state = state.copyWith(loading: false);
     }
   }
 
+  /// Re-polls the unread badge right away instead of waiting for its next tick.
+  void _syncBadge() => ref.invalidate(unreadNotificationsProvider);
+
   Future<void> markAllRead() async {
-    await ApiClient.instance.markNotificationsRead();
+    try {
+      await ApiClient.instance.markNotificationsRead();
+    } catch (_) {
+      return;
+    }
     state = state.copyWith(
       items: state.items.map((n) => AppNotification(
             id: n.id, kind: n.kind, emoji: n.emoji, tint: n.tint, title: n.title,
@@ -63,10 +76,16 @@ class NotificationsController extends Notifier<NotificationsState> {
           )).toList(),
       unread: 0,
     );
+    _syncBadge();
   }
 
   Future<void> markRead(int id) async {
-    final unread = await ApiClient.instance.markNotificationRead(id);
+    final int unread;
+    try {
+      unread = await ApiClient.instance.markNotificationRead(id);
+    } catch (_) {
+      return;
+    }
     state = state.copyWith(
       items: [
         for (final n in state.items)
@@ -78,14 +97,21 @@ class NotificationsController extends Notifier<NotificationsState> {
       ],
       unread: unread,
     );
+    _syncBadge();
   }
 
   Future<void> delete(int id) async {
-    final unread = await ApiClient.instance.deleteNotification(id);
+    final int unread;
+    try {
+      unread = await ApiClient.instance.deleteNotification(id);
+    } catch (_) {
+      return load(); // the row was swiped away locally; resync with the server
+    }
     state = state.copyWith(items: state.items.where((n) => n.id != id).toList(), unread: unread);
+    _syncBadge();
   }
 }
 
-final notificationsProvider = NotifierProvider<NotificationsController, NotificationsState>(
+final notificationsProvider = NotifierProvider.autoDispose<NotificationsController, NotificationsState>(
   NotificationsController.new,
 );

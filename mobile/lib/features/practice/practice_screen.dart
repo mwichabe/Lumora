@@ -44,17 +44,24 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
   }
 
   Future<void> _load() async {
+    final user = ref.read(authProvider).user;
     try {
-      final r = await ApiClient.instance.practice();
-      if (!mounted) return;
-      setState(() {
-        _vocabCount = r.vocab.length;
-        _mistakeCount = r.mistakes.length;
-        _listeningCount = r.listeningCount;
-        _readingCount = r.readingCount;
-      });
+      // Saved counts first, so the tab opens filled in; fresh ones replace them.
+      await for (final r in ApiClient.instance.cachedGet(
+        '/api/practice',
+        cacheKey: 'practice_${user?.id}_${user?.targetLanguage}',
+        map: ApiClient.parsePractice,
+      )) {
+        if (!mounted) return;
+        setState(() {
+          _vocabCount = r.vocab.length;
+          _mistakeCount = r.mistakes.length;
+          _listeningCount = r.listeningCount;
+          _readingCount = r.readingCount;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _vocabCount = 0);
+      if (mounted) setState(() => _vocabCount ??= 0);
     }
   }
 

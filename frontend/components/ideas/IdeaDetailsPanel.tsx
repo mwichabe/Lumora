@@ -213,11 +213,16 @@ function AboutTab({
 
       {/* Status as workflow, not as a label */}
       <Section icon={<Clock size={13} />} title="Status">
-        <StatusStepper
-          current={idea.status}
-          flow={detail.statusFlow}
-          onPick={(s) => act(() => api.updateIdea(idea.id, { status: s }))}
+        <StatusStepper current={idea.status} flow={detail.statusFlow} />
+        {detail.nextStep && (
+          <p className="mt-2 text-label-md text-slatey">{detail.nextStep}</p>
+        )}
+        <StatusActions
+          detail={detail}
           disabled={busy}
+          onMove={(status, note) =>
+            act(() => api.updateIdea(idea.id, { status, note }))
+          }
         />
       </Section>
 
@@ -317,15 +322,20 @@ function AboutTab({
       <div className="space-y-2 border-t border-gray-100 pt-4">
         {!idea.archived ? (
           <>
-            <ActionButton
-              icon={<CheckSquare size={14} />}
-              onClick={() =>
-                act(() => api.createIdeaTask(idea.id, { title: idea.title }))
-              }
-              disabled={busy}
-            >
-              Convert to task
-            </ActionButton>
+            {/* Only approved work becomes a task — converting skips no steps. */}
+            {(idea.status === "approved" ||
+              idea.status === "in_progress" ||
+              idea.status === "completed") && (
+              <ActionButton
+                icon={<CheckSquare size={14} />}
+                onClick={() =>
+                  act(() => api.createIdeaTask(idea.id, { title: idea.title }))
+                }
+                disabled={busy}
+              >
+                Convert to task
+              </ActionButton>
+            )}
 
             <ActionButton
               icon={<GitMerge size={14} />}
@@ -491,16 +501,16 @@ function truncate(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
+/**
+ * Where the idea sits on the ladder. Read-only: status moves through the
+ * actions below it, which the server validates step by step.
+ */
 function StatusStepper({
   current,
   flow,
-  onPick,
-  disabled,
 }: {
   current: IdeaStatus;
   flow: IdeaStatus[];
-  onPick: (s: IdeaStatus) => void;
-  disabled?: boolean;
 }) {
   // Archived isn't a step on the ladder — it's how an idea leaves it, and it
   // has its own button. The annotation keeps the array widened: TypeScript
@@ -516,13 +526,9 @@ function StatusStepper({
         const active = current === s;
         const meta = STATUS_META[s];
         return (
-          <button
+          <div
             key={s}
-            onClick={() => onPick(s)}
-            disabled={disabled || active}
-            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-label-lg font-bold transition disabled:cursor-default ${
-              active ? "" : "hover:bg-gray-50"
-            }`}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-label-lg font-bold"
             style={active ? { background: meta.bg, color: meta.tint } : undefined}
           >
             <span
@@ -535,9 +541,77 @@ function StatusStepper({
             <span className={active ? "" : done ? "text-slatey" : "text-gray-500"}>
               {meta.label}
             </span>
-          </button>
+          </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * The moves available from the current status. Moves the viewer can't make
+ * yet stay visible, disabled, with the reason — that's what tells people how
+ * an idea gets from draft to approved.
+ */
+function StatusActions({
+  detail,
+  disabled,
+  onMove,
+}: {
+  detail: IdeaDetail;
+  disabled: boolean;
+  onMove: (status: IdeaStatus, note?: string) => void;
+}) {
+  const [pending, setPending] = useState<IdeaStatus | null>(null);
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    setPending(null);
+    setNote("");
+  }, [detail.idea.id, detail.idea.status]);
+
+  if (detail.transitions.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {detail.transitions.map((t) => (
+        <div key={t.to}>
+          <button
+            onClick={() => (t.primary ? onMove(t.to) : setPending(pending === t.to ? null : t.to))}
+            disabled={disabled || !t.allowed}
+            title={t.allowed ? t.hint : t.reason}
+            className={`w-full rounded-full px-3 py-2 text-label-lg font-extrabold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+              t.primary
+                ? "bg-purple text-white hover:bg-purple/90"
+                : "border border-gray-200 bg-white text-ink hover:bg-gray-50"
+            }`}
+          >
+            {t.label}
+          </button>
+          {!t.allowed && t.reason && (
+            <p className="mt-1 px-1 text-label-sm text-gray-500">{t.reason}</p>
+          )}
+          {pending === t.to && (
+            <div className="mt-2 rounded-lg bg-gray-50 p-2.5">
+              <p className="text-label-md text-slatey">{t.hint}</p>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="Add a note for everyone following (optional)"
+                className="mt-1.5 w-full resize-none rounded-lg bg-white p-2 text-body-sm outline-none ring-purple/30 focus:ring-2"
+              />
+              <button
+                onClick={() => onMove(t.to, note.trim() || undefined)}
+                disabled={disabled}
+                className="mt-1.5 w-full rounded-full bg-ink py-1.5 text-label-lg font-extrabold text-white disabled:opacity-40"
+              >
+                Confirm: {t.label}
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -632,7 +706,7 @@ function describeEvent(e: IdeaDetail["history"][number]): string {
     case "status":
       return `moved it from ${labelOf(e.from)} to ${labelOf(e.to)}`;
     case "vote_threshold":
-      return `— it reached the review threshold and moved to ${labelOf(e.to)}`;
+      return `— community votes moved it to ${labelOf(e.to)}${e.note ? ` (${e.note})` : ""}`;
     case "edited":
       return `edited the ${e.field}`;
     case "tagged":

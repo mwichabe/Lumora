@@ -10,6 +10,9 @@ import '../../core/theme/shadows.dart';
 import '../../core/voices.dart';
 import '../../models/lesson.dart';
 import '../../providers/hearts_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/learn_provider.dart';
+import '../../providers/home_provider.dart';
 import '../payments/checkout_screen.dart';
 import '../../widgets/fox_mascot.dart';
 import '../../widgets/lumora_button.dart';
@@ -156,8 +159,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     setState(() => _submitting = true);
     final accuracy = _gradedCount > 0 ? ((_correctCount / _gradedCount) * 100).round() : 100;
     try {
-      final (xpEarned, resultAccuracy, _, firstClear) = await ApiClient.instance.completeLesson(widget.id, accuracy);
+      final (xpEarned, resultAccuracy, user, firstClear) = await ApiClient.instance.completeLesson(widget.id, accuracy);
       LessonCompleteScreen.pendingResult = LessonResult(xp: xpEarned, accuracy: resultAccuracy, firstClear: firstClear);
+      // Start refreshing Home and the course now, while the celebration plays,
+      // so "continue where you left off" and the quest bars have moved on by
+      // the time the learner taps Continue.
+      ref.read(homeProvider.notifier).refresh();
+      ref.read(learnProvider.notifier).load();
+      ref.read(authProvider.notifier).setUser(user);
     } catch (_) {
       LessonCompleteScreen.pendingResult = LessonResult(xp: _lesson?.exercises.length ?? 0, accuracy: accuracy, firstClear: true);
     } finally {

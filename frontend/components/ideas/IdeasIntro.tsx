@@ -52,7 +52,7 @@ const STEPS = [
     icon: CheckSquare,
     tint: "#17A3DD",
     title: "Status is the progress",
-    body: "Draft → Under review → Approved → In progress → Completed. Pass 20 votes and an idea moves to review on its own — nobody has to remember to escalate it.",
+    body: "Draft → Under review → Approved → In progress → Completed. The author submits a draft for review; any other member can approve it. Votes do it too: 5 moves a draft to review, 10 approves it. Converting to a task starts the work, and finishing every task completes it.",
   },
 ];
 

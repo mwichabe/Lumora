@@ -20,11 +20,9 @@ import (
 // workspace (the centre panel is idea_message_controller.go).
 type IdeaController struct{}
 
+// reviewThreshold / approveThreshold and the transition rules live in
+// idea_workflow.go.
 const (
-	// An idea that clears this much net support is pushed into review
-	// automatically. Nobody has to remember to escalate it.
-	reviewThreshold = 20
-
 	// Hot ranking half-life. Support decays so a two-year-old idea with 200
 	// votes doesn't permanently outrank this morning's good one.
 	hotHalfLife = 36 * time.Hour
@@ -290,10 +288,13 @@ func (ic *IdeaController) counts(userID uint) fiber.Map {
 // --- create / read / update --------------------------------------------------
 
 type ideaInput struct {
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
+	Title string `json:"title"`
+	// A pointer so "not sent" differs from "cleared": a status-only PATCH
+	// must not read as an edit that empties the description.
+	Description *string  `json:"description"`
 	Tags        []string `json:"tags"`
 	Status      string   `json:"status"`
+	Note        string   `json:"note"` // optional reason recorded with a status change
 }
 
 // Create posts a new idea. Only the title is required — every extra mandatory
@@ -316,7 +317,7 @@ func (ic *IdeaController) Create(c *fiber.Ctx) error {
 	now := time.Now()
 	idea := models.Idea{
 		OwnerID: user.ID, Title: title,
-		Description:    strings.TrimSpace(in.Description),
+		Description:    strings.TrimSpace(deref(in.Description)),
 		Status:         models.IdeaDraft,
 		LastActivityAt: now,
 	}
@@ -329,6 +330,13 @@ func (ic *IdeaController) Create(c *fiber.Ctx) error {
 	// The author's own idea starts with their vote. Posting something is a
 	// stronger endorsement than clicking an arrow.
 	applyVote(&idea, user.ID, 1)
+
+	// The composer can post straight into review instead of as a draft.
+	if in.Status == models.IdeaUnderReview && idea.Status == models.IdeaDraft {
+		idea.Status = models.IdeaUnderReview
+		logIdeaEvent(idea.ID, user.ID, "status", "status", models.IdeaDraft, models.IdeaUnderReview, "submitted on posting")
+		database.DB.Save(&idea)
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"idea": ic.toDTO(idea, user.ID)})
 }
@@ -389,6 +397,10 @@ func (ic *IdeaController) Get(c *fiber.Ctx) error {
 		"mergedIn":     mergedDTO,
 		"canEdit":      idea.OwnerID == user.ID,
 		"statusFlow":   statusFlow,
+		"transitions":  transitionsFor(*idea, user.ID),
+		"nextStep":     nextStepHint(*idea),
+		"openTasks":    openTaskCount(idea.ID),
+		"thresholds":   fiber.Map{"review": reviewThreshold, "approve": approveThreshold},
 		"similar":      ic.similarTo(*idea, 3),
 	})
 }
@@ -414,24 +426,30 @@ func (ic *IdeaController) Update(c *fiber.Ctx) error {
 		logIdeaEvent(idea.ID, user.ID, "edited", "title", idea.Title, t, "")
 		idea.Title = t
 	}
-	if in.Description != idea.Description {
+	if in.Description != nil && strings.TrimSpace(*in.Description) != idea.Description {
 		if !ic.mayEdit(idea, user) {
 			return forbidden(c)
 		}
+		desc := strings.TrimSpace(*in.Description)
 		logIdeaEvent(idea.ID, user.ID, "edited", "description",
-			snippet(idea.Description), snippet(in.Description), "")
-		idea.Description = strings.TrimSpace(in.Description)
+			snippet(idea.Description), snippet(desc), "")
+		idea.Description = desc
 	}
 	if in.Status != "" && in.Status != idea.Status {
 		if !validStatus(in.Status) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "unknown status"})
 		}
-		// Status is a team decision, not an ownership one — anyone can move it,
-		// and the history records who did.
-		logIdeaEvent(idea.ID, user.ID, "status", "status", idea.Status, in.Status, "")
+		// Status moves along the workflow in idea_workflow.go, and each step
+		// says who may take it. The history records who did.
+		if reason := checkTransition(*idea, user.ID, in.Status); reason != "" {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": reason})
+		}
+		note := strings.TrimSpace(in.Note)
+		from := idea.Status
+		logIdeaEvent(idea.ID, user.ID, "status", "status", from, in.Status, note)
 		idea.Status = in.Status
-		notifyThread(*idea, user.ID, "📌", "Status: "+statusLabel(in.Status),
-			fmt.Sprintf("%s moved \"%s\" to %s.", displayName(*user), idea.Title, statusLabel(in.Status)))
+		emoji, title, body := statusChangeMessage(*idea, *user, from, note)
+		notifyThread(*idea, user.ID, emoji, title, body)
 	}
 	if in.Tags != nil {
 		if !ic.mayEdit(idea, user) {
@@ -560,20 +578,15 @@ func applyVote(idea *models.Idea, userID uint, value int) {
 	database.DB.Model(&models.IdeaVote{}).Where("idea_id = ? AND value > 0", idea.ID).Count(&up)
 	database.DB.Model(&models.IdeaVote{}).Where("idea_id = ? AND value < 0", idea.ID).Count(&down)
 
-	wasBelow := idea.Score < reviewThreshold
+	prevScore := idea.Score
 	idea.Upvotes, idea.Downvotes = int(up), int(down)
 	idea.Score = int(up - down)
 
-	// Crossing the threshold escalates the idea on its own. Nobody has to
-	// notice, which is the point — good ideas shouldn't need a champion with a
-	// calendar reminder.
-	if wasBelow && idea.Score >= reviewThreshold && idea.Status == models.IdeaDraft {
-		idea.Status = models.IdeaUnderReview
-		logIdeaEvent(idea.ID, userID, "vote_threshold", "status",
-			models.IdeaDraft, models.IdeaUnderReview,
-			fmt.Sprintf("reached %d votes", reviewThreshold))
-		notifyThread(*idea, 0, "🚀", "Idea flagged for review",
-			fmt.Sprintf("\"%s\" passed %d votes and moved to Under review.", idea.Title, reviewThreshold))
+	// Crossing a threshold escalates the idea on its own (draft → review →
+	// approved). Nobody has to notice, which is the point — good ideas
+	// shouldn't need a champion with a calendar reminder.
+	if idea.ArchivedAt == nil && idea.MergedIntoID == nil {
+		autoAdvance(idea, userID, prevScore)
 	}
 	database.DB.Save(idea)
 }
@@ -614,6 +627,9 @@ func (ic *IdeaController) Archive(c *fiber.Ctx) error {
 	}
 	var in archiveInput
 	_ = c.BodyParser(&in)
+	if idea.ArchivedAt != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "this idea is already archived"})
+	}
 	reason := strings.TrimSpace(in.Reason)
 	if reason == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -622,13 +638,15 @@ func (ic *IdeaController) Archive(c *fiber.Ctx) error {
 	}
 
 	now := time.Now()
+	from := idea.Status
 	idea.ArchivedAt = &now
 	idea.ArchiveReason = reason
 	idea.Status = models.IdeaArchived
 	idea.LastActivityAt = now
 	database.DB.Save(idea)
 
-	logIdeaEvent(idea.ID, user.ID, "archived", "status", "", models.IdeaArchived, reason)
+	// "from" is what Restore reads back to return the idea to the same step.
+	logIdeaEvent(idea.ID, user.ID, "archived", "status", from, models.IdeaArchived, reason)
 	notifyThread(*idea, user.ID, "🗄️", "Idea archived",
 		fmt.Sprintf("\"%s\" was archived: %s", idea.Title, reason))
 
@@ -643,13 +661,23 @@ func (ic *IdeaController) Restore(c *fiber.Ctx) error {
 	if !ok {
 		return nil // the helper already wrote the error response
 	}
+	if idea.MergedIntoID != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": "this idea was merged into another — its votes and discussion live there now",
+		})
+	}
+	if idea.ArchivedAt == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "this idea isn't archived"})
+	}
 	idea.ArchivedAt = nil
 	idea.ArchiveReason = ""
-	idea.Status = models.IdeaUnderReview
+	idea.Status = statusBeforeArchive(idea.ID)
 	idea.LastActivityAt = time.Now()
 	database.DB.Save(idea)
 
 	logIdeaEvent(idea.ID, user.ID, "restored", "status", models.IdeaArchived, idea.Status, "")
+	notifyThread(*idea, user.ID, "♻️", "Idea restored",
+		fmt.Sprintf("%s restored \"%s\" to %s.", displayName(*user), idea.Title, statusLabel(idea.Status)))
 	return c.JSON(fiber.Map{"idea": ic.toDTO(*idea, user.ID)})
 }
 
@@ -750,6 +778,14 @@ func (ic *IdeaController) CreateTask(c *fiber.Ctx) error {
 	if !ok {
 		return nil // the helper already wrote the error response
 	}
+	if idea.ArchivedAt != nil || idea.MergedIntoID != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "restore the idea before adding work to it"})
+	}
+	if idea.Status == models.IdeaDraft || idea.Status == models.IdeaUnderReview {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": "an idea has to be approved before it becomes a task",
+		})
+	}
 	var in taskInput
 	_ = c.BodyParser(&in)
 	title := strings.TrimSpace(in.Title)
@@ -763,7 +799,8 @@ func (ic *IdeaController) CreateTask(c *fiber.Ctx) error {
 	}
 	database.DB.Create(&task)
 
-	if idea.Status != models.IdeaInProgress && idea.Status != models.IdeaCompleted {
+	// Approved → in progress, and new work on a completed idea reopens it.
+	if idea.Status != models.IdeaInProgress {
 		logIdeaEvent(idea.ID, user.ID, "status", "status", idea.Status, models.IdeaInProgress, "converted to a task")
 		idea.Status = models.IdeaInProgress
 	}
@@ -792,6 +829,9 @@ func (ic *IdeaController) UpdateTask(c *fiber.Ctx) error {
 
 	var in taskInput
 	_ = c.BodyParser(&in)
+	if in.Status != "" && in.Status != "todo" && in.Status != "doing" && in.Status != "done" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "task status must be todo, doing or done"})
+	}
 	if in.Status != "" {
 		task.Status = in.Status
 		if in.Status == "done" {
@@ -810,15 +850,26 @@ func (ic *IdeaController) UpdateTask(c *fiber.Ctx) error {
 	database.DB.Model(&models.IdeaTask{}).
 		Where("idea_id = ? AND status != ?", task.IdeaID, "done").Count(&open)
 	var idea models.Idea
-	if database.DB.First(&idea, task.IdeaID).Error == nil && open == 0 &&
-		idea.Status == models.IdeaInProgress {
-		logIdeaEvent(idea.ID, user.ID, "status", "status", idea.Status, models.IdeaCompleted,
-			"all tasks completed")
-		idea.Status = models.IdeaCompleted
-		idea.LastActivityAt = time.Now()
-		database.DB.Save(&idea)
+	if database.DB.First(&idea, task.IdeaID).Error == nil && idea.ArchivedAt == nil {
+		switch {
+		case open == 0 && idea.Status == models.IdeaInProgress:
+			logIdeaEvent(idea.ID, user.ID, "status", "status", idea.Status, models.IdeaCompleted,
+				"all tasks completed")
+			idea.Status = models.IdeaCompleted
+			idea.LastActivityAt = time.Now()
+			database.DB.Save(&idea)
+			notifyThread(idea, user.ID, "🏁", "Idea completed",
+				fmt.Sprintf("Every task on \"%s\" is done — it's marked Completed.", idea.Title))
+		case open > 0 && idea.Status == models.IdeaCompleted:
+			// Un-ticking a task means the work isn't finished after all.
+			logIdeaEvent(idea.ID, user.ID, "status", "status", idea.Status, models.IdeaInProgress,
+				"a task was reopened")
+			idea.Status = models.IdeaInProgress
+			idea.LastActivityAt = time.Now()
+			database.DB.Save(&idea)
+		}
 	}
-	return c.JSON(fiber.Map{"task": task})
+	return c.JSON(fiber.Map{"task": task, "idea": ic.toDTO(idea, user.ID)})
 }
 
 // --- helpers -----------------------------------------------------------------
@@ -845,9 +896,57 @@ func (ic *IdeaController) load(c *fiber.Ctx) (*models.Idea, bool) {
 	return &idea, true
 }
 
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func forbidden(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusForbidden).
 		JSON(fiber.Map{"error": "only the owner can change this"})
+}
+
+// statusBeforeArchive reads the step an idea was archived from, so restoring
+// puts it back where it was rather than resetting its progress.
+func statusBeforeArchive(ideaID uint) string {
+	var ev models.IdeaEvent
+	if database.DB.Where("idea_id = ? AND kind = ?", ideaID, "archived").
+		Order("created_at desc, id desc").First(&ev).Error == nil &&
+		validStatus(ev.From) && ev.From != models.IdeaArchived {
+		return ev.From
+	}
+	return models.IdeaDraft
+}
+
+// statusChangeMessage words the notification for a manual status move.
+func statusChangeMessage(idea models.Idea, actor models.User, from, note string) (emoji, title, body string) {
+	who := displayName(actor)
+	switch {
+	case idea.Status == models.IdeaUnderReview && from == models.IdeaDraft:
+		emoji, title = "📝", "Idea submitted for review"
+		body = fmt.Sprintf("%s submitted \"%s\" for review. Vote or approve it.", who, idea.Title)
+	case idea.Status == models.IdeaApproved && from == models.IdeaUnderReview:
+		emoji, title = "🎉", "Idea approved"
+		body = fmt.Sprintf("%s approved \"%s\".", who, idea.Title)
+	case idea.Status == models.IdeaDraft && from == models.IdeaUnderReview && idea.OwnerID == actor.ID:
+		emoji, title = "↩️", "Idea withdrawn"
+		body = fmt.Sprintf("%s withdrew \"%s\" from review to keep working on it.", who, idea.Title)
+	case idea.Status == models.IdeaDraft && from == models.IdeaUnderReview:
+		emoji, title = "↩️", "Changes requested"
+		body = fmt.Sprintf("%s sent \"%s\" back to draft.", who, idea.Title)
+	case idea.Status == models.IdeaCompleted:
+		emoji, title = "🏁", "Idea completed"
+		body = fmt.Sprintf("%s marked \"%s\" as completed.", who, idea.Title)
+	default:
+		emoji, title = "📌", "Status: "+statusLabel(idea.Status)
+		body = fmt.Sprintf("%s moved \"%s\" to %s.", who, idea.Title, statusLabel(idea.Status))
+	}
+	if note != "" {
+		body += " Note: " + note
+	}
+	return emoji, title, body
 }
 
 func statusLabel(s string) string {

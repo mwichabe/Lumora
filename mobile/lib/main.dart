@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
@@ -7,6 +8,8 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 
 void main() {
+  // Nunito ships in assets/google_fonts/ — never fetch it over the network.
+  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(const ProviderScope(child: LumoraApp()));
 }
 

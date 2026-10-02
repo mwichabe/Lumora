@@ -146,7 +146,7 @@ class _HeaderState extends State<_Header> {
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [widget.tint, widget.tint.withValues(alpha: 0.7)]),
+        color: widget.tint, // solid league colour — no gradients on this screen
       ),
       child: Column(
         children: [
@@ -256,7 +256,7 @@ class _TournamentBanner extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF17A3DD), LumoraColors.purple]),
+        color: LumoraColors.purple,
         borderRadius: BorderRadius.circular(LumoraRadii.xl),
       ),
       child: Row(children: [

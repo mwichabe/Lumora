@@ -53,14 +53,21 @@ class NotificationsScreen extends ConsumerWidget {
       ),
       body: state.loading
           ? const Center(child: CircularProgressIndicator())
-          : state.items.isEmpty
-              ? const _EmptyState()
-              : ListView(
-                  children: [
-                    if (newItems.isNotEmpty) _Section(label: 'New', items: newItems, ref: ref),
-                    if (earlier.isNotEmpty) _Section(label: 'Earlier', items: earlier, ref: ref),
-                  ],
-                ),
+          : RefreshIndicator(
+              onRefresh: () => ref.read(notificationsProvider.notifier).load(),
+              child: state.items.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [SizedBox(height: 120), _EmptyState()],
+                    )
+                  : ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        if (newItems.isNotEmpty) _Section(label: 'New', items: newItems, ref: ref),
+                        if (earlier.isNotEmpty) _Section(label: 'Earlier', items: earlier, ref: ref),
+                      ],
+                    ),
+            ),
     );
   }
 }
@@ -124,7 +131,15 @@ class _NotificationTile extends StatelessWidget {
             context: context,
             backgroundColor: Colors.white,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-            builder: (_) => _NotificationDetail(n: n),
+            builder: (sheetContext) => _NotificationDetail(
+              n: n,
+              onFollowLink: n.link.isEmpty
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      _followLink(context, n.link);
+                    },
+            ),
           );
         },
         leading: Container(
@@ -143,9 +158,23 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
+/// Tab destinations live in the bottom-nav shell and must be switched to with
+/// `go`; anything else opens on top of the notifications screen.
+const _kTabRoutes = ['/home', '/learn', '/practice', '/leaderboard'];
+
+void _followLink(BuildContext context, String link) {
+  final path = Uri.parse(link).path;
+  if (_kTabRoutes.contains(path)) {
+    context.go(link);
+  } else {
+    context.push(link);
+  }
+}
+
 class _NotificationDetail extends StatelessWidget {
   final AppNotification n;
-  const _NotificationDetail({required this.n});
+  final VoidCallback? onFollowLink;
+  const _NotificationDetail({required this.n, this.onFollowLink});
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -166,6 +195,17 @@ class _NotificationDetail extends StatelessWidget {
             Text(n.body, style: const TextStyle(fontSize: 15)),
             const SizedBox(height: 12),
             Text(_fullDate(n.createdAt), style: const TextStyle(color: LumoraColors.gray500, fontSize: 11)),
+            if (onFollowLink != null) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onFollowLink,
+                  style: FilledButton.styleFrom(backgroundColor: LumoraColors.purple),
+                  child: const Text('Open'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
