@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/characters.dart';
+import '../../core/grading.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radii.dart';
@@ -43,6 +45,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _gradedCount = 0;
   bool _submitting = false;
   bool _outOfHeartsShown = false;
+  // What the feedback bar explains beyond right/wrong.
+  _Detail _detail = const _Detail();
+  // Problems with a free-writing answer that must be fixed before it counts.
+  List<String> _writeProblems = const [];
+  bool _checking = false;
 
   @override
   void initState() {
@@ -105,45 +112,121 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     return _idx < exercises.length ? exercises[_idx] : null;
   }
 
-  void _check() {
+  bool _isTyped(Exercise ex) =>
+      [ExerciseType.translate, ExerciseType.fill].contains(ex.type) && (ex.options == null || ex.options!.isEmpty);
+
+  Future<void> _check() async {
     final ex = _ex;
     if (ex == null) return;
     final isNarrative = ex.type == ExerciseType.character;
     final isSpeak = ex.type == ExerciseType.speak;
-    final isWrite = ex.type == ExerciseType.write;
-    if (isNarrative || isSpeak || isWrite) {
+    if (isNarrative || isSpeak) {
       _advance();
       return;
     }
-    final ok = _normalise(_answer) == _normalise(ex.correctAnswer);
+    if (ex.type == ExerciseType.write) return _checkWriting(ex);
+    if (_isTyped(ex)) return _checkTyped(ex);
+    if (_normalise(_answer) == _normalise(ex.correctAnswer)) {
+      _markCorrect();
+    } else {
+      _markWrong(ex);
+    }
+  }
+
+  void _markCorrect([_Detail d = const _Detail()]) {
     setState(() {
       _gradedCount++;
-      if (ok) {
-        _correctCount++;
-        _feedback = _Feedback.correct;
-      } else {
-        _feedback = _Feedback.incorrect;
-        _misses.add(ReviewItem(
-          prompt: ex.prompt,
-          question: ex.question,
-          correctAnswer: ex.correctAnswer,
-          playText: ex.type == ExerciseType.listen ? ex.question : null,
-          speaker: ex.character,
-        ));
-      }
+      _correctCount++;
+      _detail = d;
+      _feedback = _Feedback.correct;
     });
-    if (!ok) {
-      ApiClient.instance.recordMistake(prompt: ex.prompt, question: ex.question, correctAnswer: ex.correctAnswer).catchError((_) {});
-      ref.read(heartsProvider.notifier).lose().then((s) {
-        if (s != null && s.hearts <= 0) _maybeShowOutOfHearts(HeartsState(status: s, secondsToNext: s.secondsToNext));
-      });
+  }
+
+  /// Typed answers: point out exactly what's wrong, accept accent slips and
+  /// one-letter typos, and ask the server about valid alternative wordings.
+  Future<void> _checkTyped(Exercise ex) async {
+    final g = gradeTyped(_answer, ex.correctAnswer);
+    if (g.verdict != Verdict.incorrect) {
+      return _markCorrect(_Detail(note: g.note.isEmpty ? null : g.note, lines: issueLines(g.issues)));
     }
+    if (ex.correctAnswer.trim().split(RegExp(r'\s+')).length >= 2) {
+      setState(() => _checking = true);
+      try {
+        final second = await ApiClient.instance
+            .checkAnswer(lessonId: ex.lessonId, question: ex.question, expected: ex.correctAnswer, answer: _answer)
+            .timeout(const Duration(seconds: 9));
+        if (second.available && second.correct) {
+          if (!mounted) return;
+          setState(() => _checking = false);
+          return _markCorrect(_Detail(
+            note: second.explanation.isEmpty ? "That's another correct way to say it." : second.explanation,
+            lines: ['Also correct: “${ex.correctAnswer}”'],
+          ));
+        }
+      } catch (_) {
+        // No second opinion — keep the local verdict.
+      }
+      if (!mounted) return;
+      setState(() => _checking = false);
+    }
+    _markWrong(ex, _Detail(note: g.note, lines: issueLines(g.issues)));
+  }
+
+  /// Free writing: rule checks (no copying the example, long enough, right
+  /// language) must pass before it counts; then corrections are shown.
+  Future<void> _checkWriting(Exercise ex) async {
+    if (copiesExample(_answer, ex.correctAnswer)) {
+      setState(() => _writeProblems = const ['An example cannot be used here — write your own answer in your own words.']);
+      return;
+    }
+    setState(() {
+      _writeProblems = const [];
+      _checking = true;
+    });
+    try {
+      final r = await ApiClient.instance.checkWriting(ex.id, _answer);
+      if (!mounted) return;
+      if (!r.ok) {
+        setState(() => _writeProblems = r.problems);
+        return;
+      }
+      final d = _Detail(note: r.summary.isEmpty ? null : r.summary, corrections: r.corrections, hideAnswer: true);
+      r.acceptable ? _markCorrect(d) : _markWrong(ex, d);
+    } on ApiException catch (_) {
+      if (mounted) _markCorrect(const _Detail(note: "Saved. Detailed feedback isn't available right now.", hideAnswer: true));
+    } catch (_) {
+      // Offline: the local checks passed, so accept it.
+      if (mounted) _markCorrect(const _Detail(note: "Saved. Detailed feedback isn't available right now.", hideAnswer: true));
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  void _markWrong(Exercise ex, [_Detail d = const _Detail()]) {
+    setState(() {
+      _gradedCount++;
+      _detail = d;
+      _feedback = _Feedback.incorrect;
+      _misses.add(ReviewItem(
+        prompt: ex.prompt,
+        question: ex.question,
+        correctAnswer: ex.correctAnswer,
+        playText: ex.type == ExerciseType.listen ? ex.question : null,
+        speaker: ex.character,
+      ));
+    });
+    ApiClient.instance.recordMistake(prompt: ex.prompt, question: ex.question, correctAnswer: ex.correctAnswer).catchError((_) {});
+    ref.read(heartsProvider.notifier).lose().then((s) {
+      if (s != null && s.hearts <= 0) _maybeShowOutOfHearts(HeartsState(status: s, secondsToNext: s.secondsToNext));
+    });
   }
 
   void _advance() {
     final total = _lesson?.exercises.length ?? 0;
     setState(() {
       _feedback = _Feedback.none;
+      _detail = const _Detail();
+      _writeProblems = const [];
       _answer = '';
       if (_idx + 1 < total) {
         _idx++;
@@ -234,13 +317,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     final needsTyping = [ExerciseType.translate, ExerciseType.fill].contains(ex.type) && !hasOptions;
     final wordCount = countWords(_answer);
 
-    final canCheck = _feedback != _Feedback.none
+    final canCheck = _feedback != _Feedback.none || _checking
         ? false
         : (isNarrative || isSpeak)
             ? true
-            : isWrite
-                ? wordCount >= 12
-                : _answer.trim().isNotEmpty;
+            : _answer.trim().isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,23 +338,41 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             }),
           if (needsTyping)
             TextField(
+              key: ValueKey('typed-$_idx'), // a fresh field per exercise
               autofocus: true,
               enabled: _feedback == _Feedback.none,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) {
+                if (canCheck) _check();
+              },
               onChanged: (v) => setState(() => _answer = v),
               decoration: const InputDecoration(hintText: 'Type your answer…'),
             ),
           if (isSpeak) _SpeakControl(phrase: ex.question, disabled: _feedback != _Feedback.none),
-          if (isWrite) _WriteControl(value: _answer, onChange: (v) => setState(() => _answer = v), words: wordCount, example: ex.correctAnswer),
+          if (isWrite)
+            _WriteControl(
+              key: ValueKey('write-$_idx'),
+              onChange: (v) => setState(() {
+                _answer = v;
+                if (_writeProblems.isNotEmpty) _writeProblems = const [];
+              }),
+              words: wordCount,
+              example: ex.correctAnswer,
+              problems: _writeProblems,
+              enabled: _feedback == _Feedback.none,
+            ),
         ],
         const Spacer(),
         Padding(
           padding: const EdgeInsets.only(bottom: 24, top: 12),
           child: _feedback != _Feedback.none
-              ? _FeedbackBar(correct: _feedback == _Feedback.correct, correctAnswer: ex.correctAnswer, onContinue: _advance)
+              ? _FeedbackBar(correct: _feedback == _Feedback.correct, correctAnswer: ex.correctAnswer, detail: _detail, onContinue: _advance)
               : LumoraButton(
-                  label: isNarrative ? 'Continue' : isSpeak ? "I said it!" : isWrite ? 'Done' : 'Check',
+                  label: isNarrative ? 'Continue' : isSpeak ? "I said it!" : isWrite ? 'Check my writing' : 'Check',
                   full: true,
-                  loading: _submitting,
+                  loading: _submitting || _checking,
                   onPressed: canCheck ? _check : null,
                 ),
         ),
@@ -523,11 +622,20 @@ class _ChoiceButton extends StatelessWidget {
 }
 
 class _WriteControl extends StatefulWidget {
-  final String value;
   final ValueChanged<String> onChange;
   final int words;
   final String example;
-  const _WriteControl({required this.value, required this.onChange, required this.words, required this.example});
+  /// Why the answer can't be accepted yet (copied example, too short…).
+  final List<String> problems;
+  final bool enabled;
+  const _WriteControl({
+    super.key,
+    required this.onChange,
+    required this.words,
+    required this.example,
+    required this.problems,
+    required this.enabled,
+  });
 
   @override
   State<_WriteControl> createState() => _WriteControlState();
@@ -543,12 +651,32 @@ class _WriteControlState extends State<_WriteControl> {
       children: [
         TextField(
           maxLines: 6,
+          enabled: widget.enabled,
           onChanged: widget.onChange,
-          decoration: const InputDecoration(hintText: 'Write here…'),
+          decoration: InputDecoration(
+            hintText: 'Write your answer here…',
+            enabledBorder: widget.problems.isEmpty
+                ? null
+                : OutlineInputBorder(borderSide: const BorderSide(color: LumoraColors.coral, width: 1.5), borderRadius: BorderRadius.circular(LumoraRadii.lg)),
+          ),
         ),
+        if (widget.problems.isNotEmpty)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: LumoraColors.coralLight, borderRadius: BorderRadius.circular(LumoraRadii.lg)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final p in widget.problems)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(p, style: const TextStyle(color: LumoraColors.coral, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+            ]),
+          ),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('${widget.words} words ${widget.words < 12 ? "· aim for 12+" : "· nice!"}', style: const TextStyle(color: LumoraColors.slatey, fontSize: 12)),
+          Text('${widget.words} words', style: const TextStyle(color: LumoraColors.slatey, fontSize: 12)),
           if (widget.example.isNotEmpty)
             TextButton(onPressed: () => setState(() => _showExample = !_showExample),
                 child: Text(_showExample ? 'Hide example' : 'Show example', style: const TextStyle(color: LumoraColors.teal))),
@@ -644,11 +772,25 @@ class _SpeakControlState extends State<_SpeakControl> {
   }
 }
 
+/// What the feedback bar explains beyond right/wrong.
+class _Detail {
+  /// Headline under "Nailed it!" / "Not quite" (e.g. "Watch the accents").
+  final String? note;
+  /// Pointed-out errors in a typed answer, one per line.
+  final List<String> lines;
+  /// Writing-coach corrections on free writing.
+  final List<WritingCorrection> corrections;
+  /// Hide "Answer: …" (free writing has no single answer).
+  final bool hideAnswer;
+  const _Detail({this.note, this.lines = const [], this.corrections = const [], this.hideAnswer = false});
+}
+
 class _FeedbackBar extends StatelessWidget {
   final bool correct;
   final String correctAnswer;
+  final _Detail detail;
   final VoidCallback onContinue;
-  const _FeedbackBar({required this.correct, required this.correctAnswer, required this.onContinue});
+  const _FeedbackBar({required this.correct, required this.correctAnswer, required this.detail, required this.onContinue});
 
   @override
   Widget build(BuildContext context) {
@@ -665,10 +807,44 @@ class _FeedbackBar extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(correct ? 'Nailed it!' : 'Not quite', style: TextStyle(fontWeight: FontWeight.w800, color: correct ? LumoraColors.teal : LumoraColors.coral)),
-                if (!correct) Text.rich(TextSpan(text: 'Answer: ', children: [TextSpan(text: correctAnswer, style: const TextStyle(fontWeight: FontWeight.w800))])),
+                if (!correct && !detail.hideAnswer)
+                  Text.rich(TextSpan(text: 'Answer: ', children: [TextSpan(text: correctAnswer, style: const TextStyle(fontWeight: FontWeight.w800))])),
               ]),
             ),
           ]),
+          if (detail.note != null) ...[
+            const SizedBox(height: 8),
+            Text(detail.note!, style: const TextStyle(color: LumoraColors.ink, fontSize: 13)),
+          ],
+          for (final l in detail.lines)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('• $l', style: const TextStyle(color: LumoraColors.ink, fontSize: 13)),
+            ),
+          if (detail.corrections.isNotEmpty)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(top: 8),
+                children: [
+                  for (final c in detail.corrections)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(LumoraRadii.md)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text.rich(TextSpan(children: [
+                          TextSpan(text: c.original, style: const TextStyle(color: LumoraColors.coral, decoration: TextDecoration.lineThrough)),
+                          const TextSpan(text: '  →  '),
+                          TextSpan(text: c.correction, style: const TextStyle(color: LumoraColors.teal, fontWeight: FontWeight.w800)),
+                        ]), style: const TextStyle(fontSize: 13)),
+                        Text(c.explanation, style: const TextStyle(color: LumoraColors.slatey, fontSize: 12)),
+                      ]),
+                    ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           LumoraButton(label: correct ? 'Continue' : 'Got it', full: true, variant: correct ? LumoraButtonVariant.primary : LumoraButtonVariant.danger, onPressed: onContinue),
         ],

@@ -74,6 +74,9 @@ type Config struct {
 	// empty to disable translation — messages still get a language label.
 	AnthropicAPIKey string
 	TranslateModel  string // defaults to claude-opus-4-8
+	// Lesson writing feedback (corrections on free writing, and a second
+	// opinion on typed translations). Same key; off when it's empty.
+	WritingModel string // defaults to claude-opus-5-5
 }
 
 // Load reads configuration from the environment, applying sensible defaults so
@@ -106,6 +109,7 @@ func Load() Config {
 
 		AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
 		TranslateModel:  getEnv("TRANSLATE_MODEL", "claude-opus-4-8"),
+		WritingModel:    getEnv("WRITING_MODEL", "claude-opus-5-5"),
 	}
 }
 

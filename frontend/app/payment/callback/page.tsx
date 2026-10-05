@@ -7,10 +7,12 @@ import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useIsHandheld } from "@/lib/device";
 
 type State = "checking" | "success" | "failed";
 
 export default function PaymentCallbackPage() {
+  const handheld = useIsHandheld();
   const router = useRouter();
   const { refresh } = useAuth();
   const [state, setState] = useState<State>("checking");
@@ -65,7 +67,9 @@ export default function PaymentCallbackPage() {
             <p className="mt-1 text-body-md text-slatey">
               {isHearts
                 ? "Your hearts are full again — jump back into your lesson."
-                : "Your exam attempt is ready. Good luck!"}
+                : handheld
+                  ? "Your exam attempt is ready. Take it on a laptop or desktop computer — it's waiting on your account."
+                  : "Your exam attempt is ready. Good luck!"}
             </p>
             <div className="mt-6 space-y-2">
               {isHearts ? (
@@ -74,7 +78,7 @@ export default function PaymentCallbackPage() {
                 </Button>
               ) : (
                 <Button full onClick={() => router.push("/exam")}>
-                  Start the exam
+                  {handheld ? "How to take it" : "Start the exam"}
                 </Button>
               )}
               <Button full variant="outline" onClick={() => router.push("/home")}>

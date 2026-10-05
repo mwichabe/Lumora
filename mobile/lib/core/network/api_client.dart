@@ -181,6 +181,33 @@ class ApiClient {
   Future<Lesson> lesson(int id) =>
       _req('GET', '/api/lessons/$id', map: (j) => Lesson.fromJson(asMap(j['lesson'])));
 
+  /// Second opinion on a typed answer marked wrong (alternative wordings).
+  /// `available` is false when the server has no writing coach configured.
+  Future<({bool available, bool correct, String explanation})> checkAnswer({
+    required int lessonId,
+    required String question,
+    required String expected,
+    required String answer,
+  }) =>
+      _req(
+        'POST',
+        '/api/lessons/check-answer',
+        data: {'lessonId': lessonId, 'question': question, 'expected': expected, 'answer': answer},
+        map: (j) => (
+          available: asBool(j['available']),
+          correct: asBool(j['correct']),
+          explanation: asString(j['explanation']),
+        ),
+      );
+
+  /// Rule checks + corrections for a free-writing answer.
+  Future<WritingCheck> checkWriting(int exerciseId, String text) => _req(
+        'POST',
+        '/api/exercises/$exerciseId/check-writing',
+        data: {'text': text},
+        map: WritingCheck.fromJson,
+      );
+
   Future<(int xpEarned, int accuracy, User user, bool firstClear)> completeLesson(
     int id,
     int accuracy,

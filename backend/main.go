@@ -45,6 +45,7 @@ func main() {
 	// Message translation. Offline language detection always runs; the model
 	// call only happens when an API key is configured.
 	controllers.InitTranslation(utils.NewTranslator(cfg))
+	controllers.InitWritingCoach(utils.NewWritingCoach(cfg))
 
 	routes.Register(app, cfg)
 

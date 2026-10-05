@@ -98,9 +98,12 @@ func (l *LessonController) GetLesson(c *fiber.Ctx) error {
 		lesson.Exercises[i].Options = o
 	}
 
-	// The learner can't type the target language yet, so turn typed exercises
-	// (translate / fill) into multiple choice by generating plausible options.
-	addChoiceOptions(&lesson)
+	// Decide which translate/fill exercises are typed and which are picked
+	// from options, and add typed practice from the lesson's vocabulary
+	// (lesson_writing.go).
+	var skill models.Skill
+	database.DB.First(&skill, lesson.SkillID)
+	applyAnswerModes(&lesson, skill.Language, unitLevel(skill.Unit))
 
 	return c.JSON(fiber.Map{"lesson": lesson})
 }

@@ -46,6 +46,8 @@ import type {
 type Phase =
   | "intro"
   | "pay"
+  // Handhelds: paid (or free) and ready, but the exam itself needs a computer.
+  | "desktop"
   | "rules"
   | "listening"
   | "reading"
@@ -90,21 +92,28 @@ export default function ExamPage() {
         <div className="flex min-h-[60vh] items-center justify-center">
           <FoxMascot size={110} glow />
         </div>
-      ) : handheld ? (
-        <DesktopOnlyNotice />
       ) : (
-        <ExamRunner />
+        <ExamRunner handheld={handheld} />
       )}
     </AppShell>
   );
 }
 
 /**
- * Shown instead of the exam on phones and tablets. Exams are proctored with a
- * camera and a screen share and must be sat on a laptop or desktop; the
- * backend refuses handheld browsers too.
+ * Shown on a phone or tablet once a level is chosen (and paid for, where
+ * payment applies). Paying works on any device; sitting the exam doesn't — it's
+ * proctored with a camera and a screen share, so it needs a laptop or desktop,
+ * and the backend refuses handheld browsers too.
  */
-function DesktopOnlyNotice() {
+function DesktopOnlyNotice({
+  levelLabel,
+  paid,
+  onBack,
+}: {
+  levelLabel: string;
+  paid: boolean;
+  onBack: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const examUrl =
     typeof window !== "undefined" ? `${window.location.origin}/exam` : "/exam";
@@ -123,12 +132,14 @@ function DesktopOnlyNotice() {
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
       <FoxMascot size={96} glow />
       <h1 className="mt-5 text-heading-xl font-extrabold text-ink">
-        Exams need a laptop or desktop
+        {paid
+          ? `Your ${levelLabel} attempt is ready`
+          : `Take the ${levelLabel} exam on a computer`}
       </h1>
       <p className="mt-2 text-body-md text-slatey">
-        Certification exams are proctored with your camera and a screen share,
-        so they can only be taken on a laptop or desktop computer — not on a
-        phone or tablet.
+        Exams are proctored with your camera and a screen share, so they can
+        only be taken on a laptop or desktop computer — not on a phone or
+        tablet. Open this link there and sign in with the same account.
       </p>
       <p className="mt-4 w-full break-all rounded-xl bg-gray-50 px-3 py-2 text-body-sm font-semibold text-ink">
         {examUrl}
@@ -137,21 +148,20 @@ function DesktopOnlyNotice() {
         <Button full onClick={copyLink}>
           {copied ? "Link copied" : "Copy exam link"}
         </Button>
-        <Link href="/home" className="block">
-          <Button full variant="outline">
-            Back to learning
-          </Button>
-        </Link>
+        <Button full variant="outline" onClick={onBack}>
+          Back to levels
+        </Button>
       </div>
       <p className="mt-4 text-body-sm text-gray-500">
-        Any attempt you&apos;ve paid for stays on your account — it&apos;ll be
-        waiting when you sign in on a computer.
+        {paid
+          ? "Your paid attempt is saved to your account — it'll be waiting when you sign in on a computer."
+          : "Nothing is lost by switching device — your progress is on your account."}
       </p>
     </div>
   );
 }
 
-function ExamRunner() {
+function ExamRunner({ handheld }: { handheld: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const lang = user?.targetLanguage || "";
@@ -253,6 +263,13 @@ function ExamRunner() {
       setPaper(null);
       setPaperLoading(true);
       const mustPay = !!payStatus?.paymentsEnabled && !payStatus?.paid?.[lvl];
+      // On a phone or tablet: pay here if needed, but never start — the
+      // exam paper is only served to computers.
+      if (handheld) {
+        setPaperLoading(false);
+        setPhase(mustPay ? "pay" : "desktop");
+        return;
+      }
       setPhase(mustPay ? "pay" : "rules");
       api
         .examPaper(lvl)
@@ -260,7 +277,7 @@ function ExamRunner() {
         .catch(() => setPaper(null))
         .finally(() => setPaperLoading(false));
     },
-    [payStatus]
+    [payStatus, handheld]
   );
 
   /* ---------- proctoring streams ---------- */
@@ -333,6 +350,7 @@ function ExamRunner() {
 
   /* ---------- begin (require camera + screen, then start) ---------- */
   const beginExam = useCallback(async () => {
+    if (handheld) return; // exams are only sat on a laptop or desktop
     setStarting(true);
     setSetupError(null);
     endedRef.current = false;
@@ -413,7 +431,7 @@ function ExamRunner() {
     setSecondsLeft(duration);
     setStarting(false);
     setPhase("listening");
-  }, [duration, stopProctoring, endExam, level, lang]);
+  }, [duration, stopProctoring, endExam, level, lang, handheld]);
 
   function advance(
     section: keyof typeof scores,
@@ -480,6 +498,13 @@ function ExamRunner() {
           <FoxMascot size={110} glow />
         </Centered>
       ) : phase === "intro" ? (
+        <>
+        {handheld && (
+          <p className="mx-auto mb-4 w-full max-w-2xl rounded-xl bg-amber-light px-4 py-3 text-body-sm text-slatey">
+            You can choose a level and pay on this device. The exam itself is
+            taken on a laptop or desktop computer.
+          </p>
+        )}
         <LevelSelect
           lang={lang}
           completed={completed}
@@ -489,6 +514,13 @@ function ExamRunner() {
           priceUsdFor={priceUsdFor}
           paidFor={paidFor}
           onStart={selectLevel}
+        />
+        </>
+      ) : phase === "desktop" ? (
+        <DesktopOnlyNotice
+          levelLabel={levelDisplay(level, lang)}
+          paid={!!payStatus?.paid?.[level]}
+          onBack={() => setPhase("intro")}
         />
       ) : phase === "pay" ? (
         <UnlockScreen

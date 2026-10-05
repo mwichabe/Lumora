@@ -29,6 +29,7 @@ import type {
   IdeaDetail,
   IdeaMessage,
   IdeaStatus,
+  WritingCheck,
   IdeaTask,
   IdeaThread,
   SimilarIdea,
@@ -299,6 +300,25 @@ export const api = {
 
   lesson: (id: number | string) =>
     request<{ lesson: Lesson }>(`/api/lessons/${id}`),
+
+  /** Second opinion on a typed answer marked wrong (alternative wordings). */
+  checkAnswer: (input: {
+    lessonId: number;
+    question: string;
+    expected: string;
+    answer: string;
+  }) =>
+    request<{ available: boolean; correct?: boolean; explanation?: string }>(
+      "/api/lessons/check-answer",
+      { method: "POST", body: JSON.stringify(input) }
+    ),
+
+  /** Rule checks + corrections for a free-writing answer. */
+  checkWriting: (exerciseId: number, text: string) =>
+    request<WritingCheck>(`/api/exercises/${exerciseId}/check-writing`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
 
   completeLesson: (id: number | string, accuracy: number) =>
     request<{

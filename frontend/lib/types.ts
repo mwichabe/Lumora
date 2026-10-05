@@ -295,6 +295,27 @@ export interface SimilarIdea {
   similarity: number;
 }
 
+/** A mistake the writing coach found, with its fix. */
+export interface WritingCorrection {
+  original: string;
+  correction: string;
+  explanation: string;
+}
+
+/** The server's verdict on a free-writing answer. */
+export interface WritingCheck {
+  /** False when rule checks failed — fix `problems` and try again. */
+  ok: boolean;
+  problems: { kind: string; message: string }[];
+  wordCount: number;
+  minWords: number;
+  /** Whether Claude-backed corrections ran (needs an API key server-side). */
+  feedbackAvailable: boolean;
+  acceptable?: boolean;
+  summary?: string;
+  corrections?: WritingCorrection[];
+}
+
 /** One move the viewer can (or can't yet) make from the idea's current status. */
 export interface IdeaTransition {
   to: IdeaStatus;

@@ -201,3 +201,48 @@ class Skill {
         completedCount: asInt(j['completedCount']),
       );
 }
+
+/// A mistake the writing coach found, with its fix.
+class WritingCorrection {
+  final String original;
+  final String correction;
+  final String explanation;
+  const WritingCorrection({required this.original, required this.correction, required this.explanation});
+  factory WritingCorrection.fromJson(Map<String, dynamic> j) => WritingCorrection(
+        original: asString(j['original']),
+        correction: asString(j['correction']),
+        explanation: asString(j['explanation']),
+      );
+}
+
+/// The server's verdict on a free-writing answer.
+class WritingCheck {
+  /// False when rule checks failed — fix [problems] and try again.
+  final bool ok;
+  final List<String> problems;
+  final int wordCount;
+  final int minWords;
+  final bool acceptable;
+  final String summary;
+  final List<WritingCorrection> corrections;
+
+  const WritingCheck({
+    required this.ok,
+    required this.problems,
+    required this.wordCount,
+    required this.minWords,
+    required this.acceptable,
+    required this.summary,
+    required this.corrections,
+  });
+
+  factory WritingCheck.fromJson(Map<String, dynamic> j) => WritingCheck(
+        ok: asBool(j['ok']),
+        problems: asList(j['problems'], (e) => asString(asMap(e)['message'])),
+        wordCount: asInt(j['wordCount']),
+        minWords: asInt(j['minWords']),
+        acceptable: j['acceptable'] == null ? true : asBool(j['acceptable']),
+        summary: asString(j['summary']),
+        corrections: asList(j['corrections'], (e) => WritingCorrection.fromJson(asMap(e))),
+      );
+}

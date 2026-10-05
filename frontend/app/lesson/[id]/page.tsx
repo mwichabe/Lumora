@@ -21,9 +21,22 @@ import {
   countWords,
   speechRecognitionSupported,
 } from "@/lib/voices";
-import type { Lesson, Exercise } from "@/lib/types";
+import { gradeTyped, issueLines, copiesExample } from "@/lib/grading";
+import type { Lesson, Exercise, WritingCorrection } from "@/lib/types";
 
 type Feedback = null | "correct" | "incorrect";
+
+/** What the feedback bar explains beyond right/wrong. */
+interface FeedbackDetail {
+  /** Headline under "Nailed it!" / "Not quite" (e.g. "Watch the accents"). */
+  note?: string;
+  /** Pointed-out errors in a typed answer, one per line. */
+  lines?: string[];
+  /** Writing-coach corrections on free writing. */
+  corrections?: WritingCorrection[];
+  /** Hide "Answer: …" (free writing has no single answer). */
+  hideAnswer?: boolean;
+}
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +54,10 @@ export default function LessonPage() {
   const [correctCount, setCorrectCount] = useState(0);
   const [gradedCount, setGradedCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [detail, setDetail] = useState<FeedbackDetail>({});
+  // Problems with a free-writing answer that must be fixed before it counts.
+  const [writeProblems, setWriteProblems] = useState<string[]>([]);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     api
@@ -86,55 +103,129 @@ export default function LessonPage() {
   const canCheck = useMemo(() => {
     if (!ex || feedback) return false;
     if (isNarrative || isSpeak) return true;
-    if (isWrite) return wordCount >= 12;
+    if (checking) return false;
     return answer.trim().length > 0;
-  }, [ex, feedback, answer, isNarrative, isSpeak, isWrite, wordCount]);
+  }, [ex, feedback, answer, isNarrative, isSpeak, checking]);
 
   function normalise(s: string) {
     return s.trim().toLowerCase().replace(/[.,!¡¿?]/g, "");
   }
 
-  function check() {
+  function markCorrect(d: FeedbackDetail = {}) {
+    setGradedCount((c) => c + 1);
+    setCorrectCount((c) => c + 1);
+    setDetail(d);
+    setFeedback("correct");
+  }
+
+  async function check() {
     if (!ex) return;
-    if (isNarrative || isSpeak || isWrite) {
+    if (isNarrative || isSpeak) {
       advance();
       return;
     }
-    const ok = normalise(answer) === normalise(ex.correctAnswer);
-    setGradedCount((c) => c + 1);
-    if (ok) {
-      setCorrectCount((c) => c + 1);
-      setFeedback("correct");
-    } else {
-      setFeedback("incorrect");
-      // Spend a heart on the server; if that empties them, the lesson ends.
-      lose().then((s) => {
-        if (s && s.hearts <= 0) setOutOfHearts(true);
-      });
-      // Remember the miss so it shows up in Practice → Review Mistakes.
-      api
-        .recordMistake({
-          prompt: ex.prompt || "Choose the correct answer",
-          question: ex.question,
-          correctAnswer: ex.correctAnswer,
-        })
-        .catch(() => {});
-      // ...and collect it for the end-of-lesson review.
-      setMisses((m) => [
-        ...m,
-        {
-          prompt: ex.prompt,
-          question: ex.question,
-          correctAnswer: ex.correctAnswer,
-          playText: ex.type === "listen" ? ex.question : undefined,
-          speaker: ex.character,
-        },
-      ]);
+    if (isWrite) return checkWriting(ex);
+    if (needsTyping) return checkTyped(ex);
+    if (normalise(answer) === normalise(ex.correctAnswer)) markCorrect();
+    else markWrong(ex);
+  }
+
+  /** Typed answers: point out exactly what's wrong, accept accent slips and
+   *  one-letter typos, and ask the server about valid alternative wordings. */
+  async function checkTyped(ex: Exercise) {
+    const g = gradeTyped(answer, ex.correctAnswer);
+    if (g.verdict !== "incorrect") {
+      return markCorrect({ note: g.note || undefined, lines: issueLines(g.issues) });
     }
+    if (ex.correctAnswer.trim().split(/\s+/).length >= 2) {
+      setChecking(true);
+      const second = await Promise.race([
+        api
+          .checkAnswer({
+            lessonId: ex.lessonId,
+            question: ex.question,
+            expected: ex.correctAnswer,
+            answer,
+          })
+          .catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 9000)),
+      ]);
+      setChecking(false);
+      if (second?.available && second.correct) {
+        return markCorrect({
+          note: second.explanation || "That's another correct way to say it.",
+          lines: [`Also correct: “${ex.correctAnswer}”`],
+        });
+      }
+    }
+    markWrong(ex, { note: g.note, lines: issueLines(g.issues) });
+  }
+
+  /** Free writing: rule checks (no copying the example, long enough, right
+   *  language) must pass before it counts; then corrections are shown. */
+  async function checkWriting(ex: Exercise) {
+    if (copiesExample(answer, ex.correctAnswer)) {
+      setWriteProblems([
+        "An example cannot be used here — write your own answer in your own words.",
+      ]);
+      return;
+    }
+    setWriteProblems([]);
+    setChecking(true);
+    try {
+      const r = await api.checkWriting(ex.id, answer);
+      if (!r.ok) {
+        setWriteProblems(r.problems.map((p) => p.message));
+        return;
+      }
+      const d: FeedbackDetail = {
+        note: r.summary,
+        corrections: r.corrections ?? [],
+        hideAnswer: true,
+      };
+      if (r.acceptable === false) markWrong(ex, d);
+      else markCorrect(d);
+    } catch {
+      // Offline or server trouble: the local checks passed, so accept it.
+      markCorrect({ note: "Saved. Detailed feedback isn't available right now.", hideAnswer: true });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  function markWrong(ex: Exercise, d: FeedbackDetail = {}) {
+    setGradedCount((c) => c + 1);
+    setDetail(d);
+    setFeedback("incorrect");
+    // Spend a heart on the server; if that empties them, the lesson ends.
+    lose().then((s) => {
+      if (s && s.hearts <= 0) setOutOfHearts(true);
+    });
+    // Remember the miss so it shows up in Practice → Review Mistakes.
+    api
+      .recordMistake({
+        prompt: ex.prompt || "Choose the correct answer",
+        question: ex.question,
+        correctAnswer: ex.correctAnswer,
+      })
+      .catch(() => {});
+    // ...and collect it for the end-of-lesson review.
+    setMisses((m) => [
+      ...m,
+      {
+        prompt: ex.prompt,
+        question: ex.question,
+        correctAnswer: ex.correctAnswer,
+        playText: ex.type === "listen" ? ex.question : undefined,
+        speaker: ex.character,
+      },
+    ]);
   }
 
   function advance() {
     setFeedback(null);
+    setDetail({});
+    setWriteProblems([]);
     setAnswer("");
     if (idx + 1 < total) {
       setIdx((i) => i + 1);
@@ -259,7 +350,12 @@ export default function LessonPage() {
                 )}
                 {needsTyping && (
                   <input
+                    key={idx}
                     autoFocus
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    onKeyDown={(e) => e.key === "Enter" && canCheck && check()}
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     disabled={!!feedback}
@@ -271,9 +367,14 @@ export default function LessonPage() {
                 {isWrite && (
                   <WriteControl
                     value={answer}
-                    onChange={setAnswer}
+                    onChange={(v) => {
+                      setAnswer(v);
+                      if (writeProblems.length) setWriteProblems([]);
+                    }}
                     words={wordCount}
                     example={ex.correctAnswer}
+                    problems={writeProblems}
+                    disabled={!!feedback}
                   />
                 )}
               </div>
@@ -289,6 +390,7 @@ export default function LessonPage() {
                 key="fb"
                 feedback={feedback}
                 correctAnswer={ex?.correctAnswer || ""}
+                detail={detail}
                 onContinue={advance}
               />
             ) : (
@@ -296,7 +398,7 @@ export default function LessonPage() {
                 key="check"
                 full
                 disabled={!canCheck}
-                loading={submitting}
+                loading={submitting || checking}
                 onClick={check}
               >
                 {isNarrative
@@ -304,7 +406,7 @@ export default function LessonPage() {
                   : isSpeak
                   ? "I said it!"
                   : isWrite
-                  ? "Done"
+                  ? "Check my writing"
                   : "Check"}
               </Button>
             )}
@@ -505,11 +607,16 @@ function WriteControl({
   onChange,
   words,
   example,
+  problems,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   words: number;
   example: string;
+  /** Why the answer can't be accepted yet (copied example, too short…). */
+  problems: string[];
+  disabled: boolean;
 }) {
   const [showExample, setShowExample] = useState(false);
   return (
@@ -517,14 +624,28 @@ function WriteControl({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         rows={6}
-        placeholder="Schreib hier… (write here)"
-        className="w-full rounded-xl border border-gray-100 bg-white p-4 text-body-lg outline-none transition focus:border-purple"
+        placeholder="Write your answer here…"
+        // Pasting the example back in is exactly what's not allowed.
+        onPaste={(e) => {
+          const pasted = e.clipboardData.getData("text");
+          if (example && copiesExample(pasted, example)) e.preventDefault();
+        }}
+        aria-invalid={problems.length > 0}
+        className={`w-full rounded-xl border bg-white p-4 text-body-lg outline-none transition focus:border-purple ${
+          problems.length ? "border-coral" : "border-gray-100"
+        }`}
       />
+      {problems.length > 0 && (
+        <ul className="mt-2 space-y-1 rounded-xl bg-coral-light px-4 py-3 text-body-sm font-semibold text-coral">
+          {problems.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      )}
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-body-sm text-slatey">
-          {words} words {words < 12 ? "· aim for 12+" : "· nice!"}
-        </span>
+        <span className="text-body-sm text-slatey">{words} words</span>
         {example && (
           <button
             type="button"
@@ -633,10 +754,12 @@ function SpeakControl({ phrase, disabled }: { phrase: string; disabled: boolean 
 function FeedbackBar({
   feedback,
   correctAnswer,
+  detail,
   onContinue,
 }: {
   feedback: Feedback;
   correctAnswer: string;
+  detail: FeedbackDetail;
   onContinue: () => void;
 }) {
   const correct = feedback === "correct";
@@ -658,13 +781,32 @@ function FeedbackBar({
           <p className={`font-extrabold ${correct ? "text-teal" : "text-coral"}`}>
             {correct ? "Nailed it!" : "Not quite"}
           </p>
-          {!correct && (
+          {!correct && !detail.hideAnswer && (
             <p className="text-body-sm text-ink">
               Answer: <span className="font-bold">{correctAnswer}</span>
             </p>
           )}
         </div>
       </div>
+      {detail.note && <p className="mb-2 text-body-sm text-ink">{detail.note}</p>}
+      {detail.lines && detail.lines.length > 0 && (
+        <ul className="mb-3 space-y-0.5 text-body-sm text-ink">
+          {detail.lines.map((l) => (
+            <li key={l}>• {l}</li>
+          ))}
+        </ul>
+      )}
+      {detail.corrections && detail.corrections.length > 0 && (
+        <ul className="mb-3 max-h-56 space-y-2 overflow-y-auto">
+          {detail.corrections.map((c, i) => (
+            <li key={i} className="rounded-lg bg-white/70 px-3 py-2 text-body-sm">
+              <span className="text-coral line-through">{c.original}</span>{" "}
+              → <span className="font-bold text-teal">{c.correction}</span>
+              <span className="block text-slatey">{c.explanation}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <Button
         full
         variant={correct ? "primary" : "danger"}

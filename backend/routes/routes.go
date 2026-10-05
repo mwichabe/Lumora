@@ -56,6 +56,9 @@ func Register(app *fiber.App, cfg config.Config) {
 	lessons := &controllers.LessonController{}
 	protected.Get("/skills", lessons.GalaxyMap)
 	protected.Get("/lessons/:id", lessons.GetLesson)
+	// Checks on what learners write in lessons (lesson_writing.go).
+	protected.Post("/lessons/check-answer", lessons.CheckAnswer)
+	protected.Post("/exercises/:id/check-writing", lessons.CheckWriting)
 
 	progress := &controllers.ProgressController{}
 	protected.Get("/home", progress.Home)
