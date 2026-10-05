@@ -14,7 +14,7 @@ export const LANGUAGES: LanguageMeta[] = [
   { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵", available: true },
   { code: "zh", name: "Mandarin", native: "中文", flag: "🇨🇳", available: true },
   { code: "ar", name: "Arabic", native: "العربية", flag: "🇸🇦", available: false },
-  { code: "sw", name: "Swahili", native: "Kiswahili", flag: "🇰🇪", available: false },
+  { code: "sw", name: "Swahili", native: "Kiswahili", flag: "🇰🇪", available: true },
   { code: "pt", name: "Portuguese", native: "Português", flag: "🇵🇹", available: false },
   { code: "it", name: "Italian", native: "Italiano", flag: "🇮🇹", available: false },
   { code: "ko", name: "Korean", native: "한국어", flag: "🇰🇷", available: false },

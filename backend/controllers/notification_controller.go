@@ -93,6 +93,7 @@ var campaigns = []campaignItem{
 	{"feature_reading", "feature", "📖", "#17A3DD", "New: Reading passages", "Every unit now has a reading session to train your eyes on real text."},
 	{"tip_review", "tip", "🔁", "#00C2A8", "Tip: Review your mistakes", "The Practice tab turns anything you miss into quick, targeted drills."},
 	{"lang_ja", "language", "🇯🇵", "#FF5C5C", "Japanese is live", "Hiragana, katakana, kanji and keigo — from JLPT N5 to N1 and beyond. Add it from Profile → My Languages."},
+	{"lang_sw", "language", "🇰🇪", "#00C2A8", "Kiswahili is live", "Karibu! From greetings and noun classes to methali and Sheng — A1 to C2. Add it from Profile → My Languages."},
 	{"lang_soon", "language", "🇮🇹", "#FF5C5C", "Coming soon: Italian & Korean", "More languages are on the way — keep your streak warm for launch!"},
 	{"tip_streak", "tip", "🔥", "#FF5C5C", "Tip: Protect your streak", "One lesson a day keeps your flame alive. Don't let it go out!"},
 }

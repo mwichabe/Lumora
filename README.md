@@ -7,7 +7,8 @@ Lumora the Fennec Fox guides learners through a galaxy-map skill tree, XP, strea
 hearts, gems, leagues, daily quests, and a Fluency Score (0–1000). Seeded courses:
 **Spanish** and **German** (A1 → C2), **Mandarin Chinese** (HSK 1 → HSK 6, mapped onto
 A1 → C2, with Pinyin and tones first), **Japanese** (JLPT N5 → N1 plus a "Beyond N1"
-level, mapped onto A1 → C2, with hiragana, katakana and pitch accent first), and a short
+level, mapped onto A1 → C2, with hiragana, katakana and pitch accent first), **Swahili**
+(A1 → C2, from greetings and noun classes to methali, Sheng and utenzi), and a short
 beginner **French** course.
 
 ---

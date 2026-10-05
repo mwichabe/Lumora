@@ -22,7 +22,7 @@ const kLanguages = <LanguageMeta>[
   LanguageMeta(code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵', available: true),
   LanguageMeta(code: 'zh', name: 'Mandarin', nativeName: '中文', flag: '🇨🇳', available: true),
   LanguageMeta(code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', available: false),
-  LanguageMeta(code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', available: false),
+  LanguageMeta(code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', available: true),
   LanguageMeta(code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇵🇹', available: false),
   LanguageMeta(code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹', available: false),
   LanguageMeta(code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷', available: false),

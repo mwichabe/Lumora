@@ -77,6 +77,7 @@ const LOCALE: Record<string, string> = {
   pt: "pt-PT",
   zh: "zh-CN",
   ja: "ja-JP",
+  sw: "sw-KE",
 };
 
 const SECTION_PHASES: Phase[] = ["listening", "reading", "writing", "speaking"];
