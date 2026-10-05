@@ -33,6 +33,7 @@ const LANG_LOCALE: Record<string, string> = {
   zh: "zh-CN",
   ar: "ar-SA",
   sw: "sw-KE",
+  hi: "hi-IN",
 };
 
 /** Normalise a language code or locale into a BCP-47 locale (e.g. "de" → "de-DE"). */
@@ -352,7 +353,7 @@ function normalize(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // strip accents for fair comparison
-    .replace(/[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・]/g, "")
+    .replace(/[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・।॥]/g, "")
     .trim();
 }
 

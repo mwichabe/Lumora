@@ -124,6 +124,10 @@ var choiceFillers = map[string]struct{ phrases, words []string }{
 		[]string{"Bonjour", "S'il vous plaît", "À plus tard", "Je ne sais pas", "Enchanté"},
 		[]string{"merci", "salut", "maison", "eau", "bien", "oui"},
 	},
+	"it": {
+		[]string{"Buongiorno", "Per favore", "A dopo", "Non lo so", "Piacere"},
+		[]string{"grazie", "ciao", "casa", "acqua", "bene", "sì"},
+	},
 	"sw": {
 		[]string{"Habari za asubuhi", "Asante sana", "Tutaonana baadaye", "Sijui", "Nimefurahi kukujua"},
 		[]string{"asante", "jambo", "nyumba", "maji", "nzuri", "ndiyo"},

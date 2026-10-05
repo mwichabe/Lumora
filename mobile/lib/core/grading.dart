@@ -29,7 +29,7 @@ class Grade {
   const Grade(this.verdict, this.note, this.issues, this.expected);
 }
 
-final _punct = RegExp(r'[.,!?¡¿;:"«»„“”()…。，！？、；：]');
+final _punct = RegExp(r'[.,!?¡¿;:"«»„“”()…。，！？、；：।॥]');
 
 String _normalise(String s) => s
     .toLowerCase()

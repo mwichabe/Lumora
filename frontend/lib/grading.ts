@@ -25,7 +25,7 @@ export interface Grade {
   expected: string;
 }
 
-const PUNCT = /[.,!?¡¿;:"«»„“”()…。，！？、；：]/g;
+const PUNCT = /[.,!?¡¿;:"«»„“”()…。，！？、；：।॥]/g;
 
 function normalise(s: string): string {
   return s
@@ -37,10 +37,14 @@ function normalise(s: string): string {
     .trim();
 }
 
+// Accent-insensitive form. Only marks on Latin letters are dropped (é → e):
+// in Devanagari the vowel signs are combining marks too, and dropping them
+// would make किताब and कताब look the same.
 function fold(s: string): string {
   return s
     .normalize("NFD")
-    .replace(/\p{M}/gu, "")
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .normalize("NFC")
     .replace(/ß/g, "ss")
     .replace(/œ/g, "oe")
     .replace(/æ/g, "ae");

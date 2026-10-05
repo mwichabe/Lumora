@@ -68,6 +68,16 @@ func Seed(db *gorm.DB) {
 	if swahili == 0 {
 		seedSwahili(db)
 	}
+	var italian int64
+	db.Model(&models.Skill{}).Where("language = ?", "it").Count(&italian)
+	if italian == 0 {
+		seedItalian(db)
+	}
+	var hindi int64
+	db.Model(&models.Skill{}).Where("language = ?", "hi").Count(&hindi)
+	if hindi == 0 {
+		seedHindi(db)
+	}
 }
 
 // --- language-aware builders (used by non-Spanish courses) -------------------

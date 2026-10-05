@@ -8,7 +8,9 @@ hearts, gems, leagues, daily quests, and a Fluency Score (0–1000). Seeded cour
 **Spanish** and **German** (A1 → C2), **Mandarin Chinese** (HSK 1 → HSK 6, mapped onto
 A1 → C2, with Pinyin and tones first), **Japanese** (JLPT N5 → N1 plus a "Beyond N1"
 level, mapped onto A1 → C2, with hiragana, katakana and pitch accent first), **Swahili**
-(A1 → C2, from greetings and noun classes to methali, Sheng and utenzi), and a short
+(A1 → C2, from greetings and noun classes to methali, Sheng and utenzi), **Italian**
+(A1 → C2, from essere/avere and articles to the congiuntivo, Dante and dialects), **Hindi**
+(A1 → C2, Devanagari first, then gender, postpositions, ने and honorifics up to Kabir and Premchand), and a short
 beginner **French** course.
 
 ---

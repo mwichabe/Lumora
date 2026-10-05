@@ -18,12 +18,12 @@ class VoiceProfile {
 
 const _kLangLocale = <String, String>{
   'es': 'es-ES', 'de': 'de-DE', 'fr': 'fr-FR', 'en': 'en-US', 'it': 'it-IT',
-  'pt': 'pt-PT', 'ja': 'ja-JP', 'zh': 'zh-CN', 'ar': 'ar-SA', 'sw': 'sw-KE',
+  'pt': 'pt-PT', 'ja': 'ja-JP', 'zh': 'zh-CN', 'ar': 'ar-SA', 'sw': 'sw-KE', 'hi': 'hi-IN',
 };
 
 const _kLangName = <String, String>{
   'es': 'Spanish', 'de': 'German', 'fr': 'French', 'en': 'English', 'it': 'Italian',
-  'pt': 'Portuguese', 'ja': 'Japanese', 'zh': 'Chinese (Mandarin)', 'ar': 'Arabic', 'sw': 'Swahili',
+  'pt': 'Portuguese', 'ja': 'Japanese', 'zh': 'Chinese (Mandarin)', 'ar': 'Arabic', 'sw': 'Swahili', 'hi': 'Hindi',
 };
 
 /// Each character gets a distinct pitch/rate (and, where the phone has
@@ -284,7 +284,7 @@ String _normalize(String s) {
     'ñ': 'n', 'ç': 'c',
   };
   accents.forEach((k, v) => out = out.replaceAll(k, v));
-  out = out.replaceAll(RegExp(r'[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・]'), '').trim();
+  out = out.replaceAll(RegExp(r'[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・।॥]'), '').trim();
   return out;
 }
 

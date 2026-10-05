@@ -24,9 +24,9 @@ const kLanguages = <LanguageMeta>[
   LanguageMeta(code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', available: false),
   LanguageMeta(code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', available: true),
   LanguageMeta(code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇵🇹', available: false),
-  LanguageMeta(code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹', available: false),
+  LanguageMeta(code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹', available: true),
   LanguageMeta(code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷', available: false),
-  LanguageMeta(code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳', available: false),
+  LanguageMeta(code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳', available: true),
 ];
 
 LanguageMeta languageMeta(String code) =>

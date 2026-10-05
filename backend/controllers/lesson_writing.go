@@ -33,14 +33,14 @@ func InitWritingCoach(c *utils.WritingCoach) { coach = c }
 //     produce the language, not recognise it.
 //   - At A1 they alternate — pick, type, pick, type — so beginners practise
 //     writing from their first lesson without being thrown in at the deep end.
-//   - Chinese and Japanese stay multiple choice throughout: answers are
-//     characters, and a learner can't be assumed to have the keyboard set up.
-//     (Their free-writing tasks are still typed.)
+//   - Chinese, Japanese and Hindi stay multiple choice throughout: answers
+//     are in a non-Latin script, and a learner can't be assumed to have the
+//     keyboard set up. (Their free-writing tasks are still typed.)
 //
 // Two typed exercises are then added from the lesson's vocabulary (see
 // vocabWriting), so every lesson includes writing.
 func applyAnswerModes(lesson *models.Lesson, lang, level string) {
-	if lang == "zh" || lang == "ja" {
+	if lang == "zh" || lang == "ja" || lang == "hi" {
 		// Their exercises are all authored with options; this only fills any
 		// gaps.
 		addChoiceOptions(lesson, lang)
