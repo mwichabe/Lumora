@@ -127,3 +127,26 @@ func TestChineseStaysMultipleChoice(t *testing.T) {
 		t.Fatalf("Chinese got %d typed exercises (%d total)", typed, len(l.Exercises))
 	}
 }
+
+// Japanese has no spaces: every kana and kanji counts as one unit, so length
+// targets and the copy check work on characters.
+func TestJapaneseWritingIsCountedByCharacter(t *testing.T) {
+	if n := countWritingWords("きょうはねつがあります。"); n != 11 {
+		t.Errorf("counted %d units, want 11 characters", n)
+	}
+	if n := countWritingWords("会議を変更してください"); n != 11 {
+		t.Errorf("counted %d units, want 11 characters", n)
+	}
+	if got := minWordsFor("Write a short message (about 40 characters, in Japanese)…"); got != 24 {
+		t.Errorf("min for 40 characters = %d, want 24", got)
+	}
+
+	sample := "せんせい、すみません。きのうからねつがあるので、きょうはがっこうをやすみます。あしたはいきます。"
+	if !kinds(writingProblems(sample, "Write to your teacher…", sample, "ja", 24))["copied_example"] {
+		t.Error("a Japanese copy of the example was accepted")
+	}
+	own := "たなかせんせい、おはようございます。あたまがいたくて、せきもでるので、きょうはびょういんへいきます。すみません。"
+	if ps := writingProblems(own, "Write to your teacher…", sample, "ja", 24); len(ps) != 0 {
+		t.Errorf("an original Japanese answer was flagged: %+v", ps)
+	}
+}

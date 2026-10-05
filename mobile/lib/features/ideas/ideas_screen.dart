@@ -89,8 +89,12 @@ class _IdeasScreenState extends State<IdeasScreen> {
   /// Opens an idea and refreshes the board on return — its status, votes or
   /// tasks may have changed there.
   Future<void> _open(int id) async {
-    await context.push('/ideas/$id');
-    if (mounted) _load();
+    final deleted = await context.push<bool>('/ideas/$id');
+    if (!mounted) return;
+    if (deleted == true) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Idea deleted')));
+    }
+    _load();
   }
 
   void _openCreate() {

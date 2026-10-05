@@ -284,7 +284,7 @@ String _normalize(String s) {
     'ñ': 'n', 'ç': 'c',
   };
   accents.forEach((k, v) => out = out.replaceAll(k, v));
-  out = out.replaceAll(RegExp(r'[.,!¡¿?"，。！？、；：“”‘’（）《》…—]'), '').trim();
+  out = out.replaceAll(RegExp(r'[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・]'), '').trim();
   return out;
 }
 
@@ -305,11 +305,15 @@ int _editDistance(String a, String b) {
   return dp[m][n];
 }
 
-final _han = RegExp(r'\p{Script=Han}', unicode: true);
-final _hanOrRun = RegExp(r'\p{Script=Han}|[^\p{Script=Han}]+', unicode: true);
+// Chinese and Japanese characters (kanji, hiragana, katakana, the long-vowel
+// mark): scripts written without spaces between words.
+final _han = RegExp(r'[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]', unicode: true);
+final _hanOrRun = RegExp(
+    r'[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]|[^\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+',
+    unicode: true);
 
 /// Splits text into the units we compare and count: words for space-separated
-/// languages, and individual characters for Chinese, which has no spaces —
+/// languages, and individual characters for Chinese and Japanese, which have no spaces —
 /// otherwise a whole Chinese sentence is a single "word". Mirrors voices.ts.
 List<String> _units(String s) {
   final out = <String>[];

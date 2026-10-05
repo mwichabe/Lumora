@@ -48,11 +48,33 @@ export function IdeaDetailsPanel({
 }) {
   const [tab, setTab] = useState<"about" | "history">("about");
   const [editing, setEditing] = useState(false);
+  // One delete dialog for both entry points (header icon and the About tab).
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     setTab("about");
     setEditing(false);
+    setConfirmingDelete(false);
+    setDeleteError("");
   }, [detail?.idea.id]);
+
+  // Deleting doesn't refresh this panel afterwards — there's nothing left to
+  // load. The page clears the selection and reloads the board instead.
+  const deleteIdea = async (id: number) => {
+    setConfirmingDelete(false);
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api.deleteIdea(id);
+      onDeleted();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "couldn't delete that idea");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading || !detail) {
     return (
@@ -94,6 +116,17 @@ export function IdeaDetailsPanel({
                 <Pencil size={15} />
               </button>
             )}
+            {detail.canEdit && (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                disabled={deleting}
+                aria-label="Delete idea"
+                title="Delete idea"
+                className="rounded-md p-1.5 text-slatey transition hover:bg-coral-light hover:text-coral disabled:opacity-40"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
             {onClose && (
               <button
                 onClick={onClose}
@@ -122,12 +155,28 @@ export function IdeaDetailsPanel({
             detail={detail}
             onRefresh={onRefresh}
             onOpenIdea={onOpenIdea}
-            onDeleted={onDeleted}
+            onRequestDelete={() => setConfirmingDelete(true)}
+            deleting={deleting}
+            deleteError={deleteError}
           />
         ) : (
           <HistoryTab detail={detail} />
         )}
       </div>
+
+      {/* Deleting is the owner's call, but it takes other people's
+          contributions with it — so the dialog counts exactly what's lost and
+          offers archiving, which keeps the thread readable, as the way out. */}
+      <ConfirmDialog
+        open={confirmingDelete}
+        danger
+        title={`Delete "${truncate(idea.title, 40)}"?`}
+        message={deletionWarning(detail)}
+        confirmLabel="Delete forever"
+        cancelLabel="Keep it"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => deleteIdea(idea.id)}
+      />
 
       <AnimatePresence>
         {editing && (
@@ -172,16 +221,19 @@ function AboutTab({
   detail,
   onRefresh,
   onOpenIdea,
-  onDeleted,
+  onRequestDelete,
+  deleting,
+  deleteError,
 }: {
   detail: IdeaDetail;
   onRefresh: () => void;
   onOpenIdea: (id: number) => void;
-  onDeleted: () => void;
+  onRequestDelete: () => void;
+  deleting: boolean;
+  deleteError: string;
 }) {
   const { idea } = detail;
   const [archiving, setArchiving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [merging, setMerging] = useState(false);
   const [reason, setReason] = useState("");
   const [mergeTarget, setMergeTarget] = useState("");
@@ -430,37 +482,27 @@ function AboutTab({
           </ActionButton>
         )}
 
-        {detail.canEdit && (
+        {detail.canEdit ? (
           <ActionButton
             icon={<Trash2 size={14} />}
             tone="danger"
-            disabled={busy}
-            onClick={() => setConfirmingDelete(true)}
+            disabled={busy || deleting}
+            onClick={onRequestDelete}
           >
-            Delete permanently
+            {deleting ? "Deleting…" : "Delete permanently"}
           </ActionButton>
+        ) : (
+          <p className="text-label-sm text-gray-500">
+            Only {idea.owner.name || "the person who posted it"} can delete this
+            idea. Archive it instead if it&apos;s no longer relevant.
+          </p>
+        )}
+        {deleteError && (
+          <p className="rounded-lg bg-coral-light px-3 py-2 text-label-md text-coral">
+            {deleteError}
+          </p>
         )}
       </div>
-
-      {/* Deleting is the owner's call, but it takes other people's
-          contributions with it — so the dialog counts exactly what's lost and
-          offers archiving, which keeps the thread readable, as the way out. */}
-      <ConfirmDialog
-        open={confirmingDelete}
-        danger
-        title={`Delete "${truncate(idea.title, 40)}"?`}
-        message={deletionWarning(detail)}
-        confirmLabel="Delete forever"
-        cancelLabel="Keep it"
-        onCancel={() => setConfirmingDelete(false)}
-        onConfirm={() => {
-          setConfirmingDelete(false);
-          act(async () => {
-            await api.deleteIdea(idea.id);
-            onDeleted();
-          });
-        }}
-      />
     </>
   );
 }

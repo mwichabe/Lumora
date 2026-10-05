@@ -19,7 +19,7 @@ const kLanguages = <LanguageMeta>[
   LanguageMeta(code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', available: true),
   LanguageMeta(code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪', available: true),
   LanguageMeta(code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', available: true),
-  LanguageMeta(code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵', available: false),
+  LanguageMeta(code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵', available: true),
   LanguageMeta(code: 'zh', name: 'Mandarin', nativeName: '中文', flag: '🇨🇳', available: true),
   LanguageMeta(code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', available: false),
   LanguageMeta(code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', available: false),
@@ -40,11 +40,23 @@ final kAvailableLanguages = kLanguages.where((l) => l.available).toList();
 /// HSK equivalent of each CEFR level, for Mandarin (HSK 3.0).
 const _kHsk = {'A1': 'HSK 1', 'A2': 'HSK 2', 'B1': 'HSK 3', 'B2': 'HSK 4', 'C1': 'HSK 5', 'C2': 'HSK 6', 'FINAL': 'HSK 7–9'};
 
-/// How to show an exam / certificate level for a language: Mandarin learners
-/// see the HSK level they know ("HSK 1 · A1"); everyone else sees CEFR.
-/// Mirrors frontend/lib/languages.ts `levelDisplay`.
+/// JLPT equivalent of each CEFR level, for Japanese. The JLPT stops at N1, so
+/// C2 is "Beyond N1" (classical Japanese, literature, dialects, ceremony).
+const _kJlpt = {'A1': 'JLPT N5', 'A2': 'JLPT N4', 'B1': 'JLPT N3', 'B2': 'JLPT N2', 'C1': 'JLPT N1', 'C2': 'Beyond N1', 'FINAL': 'JLPT N1+'};
+
+const _kNativeScales = {'zh': _kHsk, 'ja': _kJlpt};
+
+/// Whether a language's levels are shown on its own exam scale (HSK, JLPT).
+bool hasNativeLevels(String? lang) => _kNativeScales.containsKey(lang);
+
+/// Languages written without spaces, whose writing is counted in characters.
+bool countsCharacters(String? lang) => lang == 'zh' || lang == 'ja';
+
+/// How to show an exam / certificate level for a language: Mandarin and
+/// Japanese learners see the level they know ("HSK 1 · A1", "JLPT N5 · A1");
+/// everyone else sees CEFR. Mirrors frontend/lib/languages.ts `levelDisplay`.
 String levelDisplay(String level, String? lang) {
-  final hsk = _kHsk[level];
-  if (lang == 'zh' && hsk != null) return level == 'FINAL' ? '$hsk (Advanced)' : '$hsk · $level';
+  final native = _kNativeScales[lang]?[level];
+  if (native != null) return level == 'FINAL' ? '$native (Advanced)' : '$native · $level';
   return level == 'FINAL' ? 'Final Mastery' : level;
 }

@@ -116,7 +116,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                                 ),
                                 const Spacer(),
                                 Text(levelDisplay(c.level, c.language), maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: c.language == 'zh' ? 16 : 20, fontWeight: FontWeight.w800)),
+                                    style: TextStyle(fontSize: hasNativeLevels(c.language) ? 16 : 20, fontWeight: FontWeight.w800)),
                                 Text(languageName(c.language), style: const TextStyle(color: LumoraColors.slatey, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text('${c.score}% score', style: const TextStyle(color: LumoraColors.teal, fontSize: 11, fontWeight: FontWeight.w700)),

@@ -159,14 +159,18 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _LevelCard(
-                code: l.$1, name: _lang == 'zh' ? '${levelDisplay(l.$1, _lang).split(' · ').first} · ${l.$2}' : l.$2, done: _completed.contains(l.$1),
+                code: l.$1, name: hasNativeLevels(_lang) ? '${levelDisplay(l.$1, _lang).split(' · ').first} · ${l.$2}' : l.$2, done: _completed.contains(l.$1),
                 price: _payStatus?.prices[l.$1], usd: _payStatus?.pricesUsd[l.$1], paid: _paid(l.$1),
                 onTap: () => setState(() => _level = l.$1),
               ),
             ),
           const Divider(height: 32),
           _LevelCard(
-            code: _kFinalCode, name: _lang == 'zh' ? 'Final — HSK 7–9 advanced band' : 'Final Mastery — comprehensive A1→C2', done: _completed.contains(_kFinalCode),
+            code: _kFinalCode, name: switch (_lang) {
+              'zh' => 'Final — HSK 7–9 advanced band',
+              'ja' => 'Final — JLPT N1+ comprehensive mastery',
+              _ => 'Final Mastery — comprehensive A1→C2',
+            }, done: _completed.contains(_kFinalCode),
             price: _payStatus?.prices[_kFinalCode], usd: _payStatus?.pricesUsd[_kFinalCode], paid: _paid(_kFinalCode),
             onTap: () => setState(() => _level = _kFinalCode),
           ),

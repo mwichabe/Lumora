@@ -169,13 +169,21 @@ List<String> issueLines(List<GradeIssue> issues) => [
         },
     ];
 
-final _tok = RegExp(r"[\p{L}\p{N}'’-]+", unicode: true);
+// Words, or single characters in Chinese/Japanese (no spaces to split on).
+final _tok = RegExp(
+    r"[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー\p{P}\p{S}]+",
+    unicode: true);
 
 /// Client-side copy check for free writing, matching the server's rule
 /// (backend/controllers/lesson_writing.go `copiesText`).
 bool copiesExample(String answer, String example) {
-  final a = _tok.allMatches(answer.toLowerCase()).map((m) => m.group(0)!).toList();
-  final s = _tok.allMatches(example.toLowerCase()).map((m) => m.group(0)!).toList();
+  List<String> toks(String t) => _tok
+      .allMatches(t.toLowerCase())
+      .map((m) => m.group(0)!.replaceAll(RegExp(r"^['’-]+|['’-]+$"), ''))
+      .where((w) => w.isNotEmpty)
+      .toList();
+  final a = toks(answer);
+  final s = toks(example);
   if (a.isEmpty || s.length < 3) return false;
   final aj = ' ${a.join(' ')} ', sj = ' ${s.join(' ')} ';
   if (aj.contains(sj)) return true;

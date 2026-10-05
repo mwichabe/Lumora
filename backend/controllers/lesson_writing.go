@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -34,14 +33,17 @@ func InitWritingCoach(c *utils.WritingCoach) { coach = c }
 //     produce the language, not recognise it.
 //   - At A1 they alternate — pick, type, pick, type — so beginners practise
 //     writing from their first lesson without being thrown in at the deep end.
-//   - Chinese stays multiple choice throughout: answers are characters, and a
-//     learner can't be assumed to have a Chinese keyboard set up.
+//   - Chinese and Japanese stay multiple choice throughout: answers are
+//     characters, and a learner can't be assumed to have the keyboard set up.
+//     (Their free-writing tasks are still typed.)
 //
 // Two typed exercises are then added from the lesson's vocabulary (see
 // vocabWriting), so every lesson includes writing.
 func applyAnswerModes(lesson *models.Lesson, lang, level string) {
-	if lang == "zh" {
-		addChoiceOptions(lesson)
+	if lang == "zh" || lang == "ja" {
+		// Their exercises are all authored with options; this only fills any
+		// gaps.
+		addChoiceOptions(lesson, lang)
 		return
 	}
 	advanced := cefrIndex(level) >= 1
@@ -62,21 +64,21 @@ func applyAnswerModes(lesson *models.Lesson, lang, level string) {
 		}
 	}
 	for _, i := range pick {
-		lesson.Exercises[i].Options = choicesFor(lesson, &lesson.Exercises[i])
+		lesson.Exercises[i].Options = choicesFor(lesson, &lesson.Exercises[i], lang)
 	}
 
 	lesson.Exercises = insertBeforeWrapUp(lesson.Exercises, vocabWriting(lesson, lang)...)
 }
 
 // choicesFor builds the multiple-choice options for one exercise.
-func choicesFor(lesson *models.Lesson, e *models.Exercise) []string {
+func choicesFor(lesson *models.Lesson, e *models.Exercise, lang string) []string {
 	tmp := models.Lesson{Vocab: lesson.Vocab, Exercises: []models.Exercise{*e}}
 	for _, other := range lesson.Exercises {
 		if other.Type == e.Type && other.CorrectAnswer != e.CorrectAnswer {
 			tmp.Exercises = append(tmp.Exercises, models.Exercise{Type: other.Type, CorrectAnswer: other.CorrectAnswer})
 		}
 	}
-	addChoiceOptions(&tmp)
+	addChoiceOptions(&tmp, lang)
 	return tmp.Exercises[0].Options
 }
 
@@ -239,30 +241,24 @@ func writingProblems(text, task, example, lang string, minWords int) []writingPr
 	return out
 }
 
-var wordRe = regexp.MustCompile(`[\p{L}\p{N}'’-]+`)
+// A unit is a word in space-separated languages, and a single character in
+// Chinese and Japanese, which don't separate words — otherwise a whole
+// sentence would count as one "word" and copy checks couldn't compare it.
+var wordRe = regexp.MustCompile(`[\p{Han}\p{Hiragana}\p{Katakana}ー]|[^\s\p{Han}\p{Hiragana}\p{Katakana}ー\p{P}\p{S}]+`)
 
 func writingWords(s string) []string {
-	return wordRe.FindAllString(strings.ToLower(s), -1)
-}
-
-// countWritingWords counts words, and each Chinese character as one.
-func countWritingWords(s string) int {
-	n := 0
-	for _, w := range writingWords(s) {
-		han := 0
-		for _, r := range w {
-			if unicode.Is(unicode.Han, r) {
-				han++
-			}
-		}
-		if han > 0 {
-			n += han
-		} else {
-			n++
+	out := []string{}
+	for _, w := range wordRe.FindAllString(strings.ToLower(s), -1) {
+		// Keep apostrophes and hyphens inside Latin words; drop stray ones.
+		if w = strings.Trim(w, "'’-"); w != "" {
+			out = append(out, w)
 		}
 	}
-	return n
+	return out
 }
+
+// countWritingWords counts words, and each Chinese/Japanese character as one.
+func countWritingWords(s string) int { return len(writingWords(s)) }
 
 // copiesText reports whether answer is (largely) a copy of source: it
 // contains source outright, or most of its three-word runs appear in source.
@@ -322,11 +318,12 @@ func isRepetitive(text string) bool {
 	return false
 }
 
-var lengthRange = regexp.MustCompile(`(\d+)\s*(?:[–-]\s*\d+\s*|\+\s*)?words`)
-var approxLength = regexp.MustCompile(`[≈~]\s*(\d+)\s*words`)
+var lengthRange = regexp.MustCompile(`(\d+)\s*(?:[–-]\s*\d+\s*|\+\s*)?(?:words|characters)`)
+var approxLength = regexp.MustCompile(`[≈~]\s*(\d+)\s*(?:words|characters)`)
 
 // minWordsFor reads the length a task asks for ("30–40 words", "≈150 words",
-// "250+ words", "around 200 words") and requires 60% of its lower bound — a
+// "250+ words", "around 200 words", "about 80 characters" for Chinese and
+// Japanese, counted per character) and requires 60% of its lower bound — a
 // lesson is practice, not the exam — and never fewer than 12 words.
 func minWordsFor(task string) int {
 	t := strings.ToLower(task)

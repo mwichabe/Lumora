@@ -11,7 +11,7 @@ export const LANGUAGES: LanguageMeta[] = [
   { code: "es", name: "Spanish", native: "Español", flag: "🇪🇸", available: true },
   { code: "de", name: "German", native: "Deutsch", flag: "🇩🇪", available: true },
   { code: "fr", name: "French", native: "Français", flag: "🇫🇷", available: true },
-  { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵", available: false },
+  { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵", available: true },
   { code: "zh", name: "Mandarin", native: "中文", flag: "🇨🇳", available: true },
   { code: "ar", name: "Arabic", native: "العربية", flag: "🇸🇦", available: false },
   { code: "sw", name: "Swahili", native: "Kiswahili", flag: "🇰🇪", available: false },
@@ -49,13 +49,39 @@ const HSK: Record<string, string> = {
   FINAL: "HSK 7–9",
 };
 
+/** JLPT equivalent of each CEFR level, for Japanese. The JLPT stops at N1, so
+ *  C2 is "Beyond N1" (classical Japanese, literature, dialects, ceremony). */
+const JLPT: Record<string, string> = {
+  A1: "JLPT N5",
+  A2: "JLPT N4",
+  B1: "JLPT N3",
+  B2: "JLPT N2",
+  C1: "JLPT N1",
+  C2: "Beyond N1",
+  FINAL: "JLPT N1+",
+};
+
+const NATIVE_SCALES: Record<string, Record<string, string>> = { zh: HSK, ja: JLPT };
+
+/** Whether a language's levels are shown on its own exam scale (HSK, JLPT). */
+export function hasNativeLevels(lang?: string): boolean {
+  return !!lang && lang in NATIVE_SCALES;
+}
+
+/** Languages written without spaces, whose writing is counted in characters. */
+export function countsCharacters(lang?: string): boolean {
+  return lang === "zh" || lang === "ja";
+}
+
 /**
- * How to show an exam / certificate level for a language: Mandarin learners
- * see the HSK level they know ("HSK 1 · A1"); everyone else sees CEFR.
+ * How to show an exam / certificate level for a language: Mandarin and
+ * Japanese learners see the level they know ("HSK 1 · A1", "JLPT N5 · A1");
+ * everyone else sees CEFR.
  */
 export function levelDisplay(level: string, lang?: string): string {
-  if (lang === "zh" && HSK[level]) {
-    return level === "FINAL" ? `${HSK[level]} (Advanced)` : `${HSK[level]} · ${level}`;
+  const scale = lang ? NATIVE_SCALES[lang] : undefined;
+  if (scale && scale[level]) {
+    return level === "FINAL" ? `${scale[level]} (Advanced)` : `${scale[level]} · ${level}`;
   }
   return level === "FINAL" ? "Final Mastery" : level;
 }

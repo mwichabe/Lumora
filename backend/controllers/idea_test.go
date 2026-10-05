@@ -685,3 +685,26 @@ func imageOfSize(w, h int) image.Image {
 }
 
 var _ = fmt.Sprintf
+
+// Deleting idea #5 must not take idea #50's notifications with it.
+func TestDeletingAnIdeaOnlyRemovesItsOwnNotifications(t *testing.T) {
+	newIdeaDB(t)
+	for _, link := range []string{
+		"/ideas?idea=5", "/ideas?idea=5&message=9", // idea 5's
+		"/ideas?idea=50", "/ideas?idea=55&message=1", "/ideas?idea=500", // others'
+	} {
+		database.DB.Create(&models.Notification{UserID: 1, Kind: "idea", Link: link})
+	}
+	deleteIdeaNotifications(5)
+
+	var left []models.Notification
+	database.DB.Order("id").Find(&left)
+	if len(left) != 3 {
+		t.Fatalf("%d notifications left, want 3 (the other ideas')", len(left))
+	}
+	for _, n := range left {
+		if n.Link == "/ideas?idea=5" || strings.HasPrefix(n.Link, "/ideas?idea=5&") {
+			t.Errorf("idea 5's notification survived: %s", n.Link)
+		}
+	}
+}

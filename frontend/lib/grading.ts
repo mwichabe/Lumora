@@ -194,7 +194,13 @@ function describe(issues: GradeIssue[]): string {
  * straight away; the server still checks.
  */
 export function copiesExample(answer: string, example: string): boolean {
-  const toks = (s: string) => s.toLowerCase().match(/[\p{L}\p{N}'’-]+/gu) ?? [];
+  // Words, or single characters in Chinese/Japanese (no spaces to split on).
+  const toks = (s: string) =>
+    s
+      .toLowerCase()
+      .match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー\p{P}\p{S}]+/gu)
+      ?.map((t) => t.replace(/^['’-]+|['’-]+$/g, ""))
+      .filter(Boolean) ?? [];
   const a = toks(answer);
   const s = toks(example);
   if (!a.length || s.length < 3) return false;

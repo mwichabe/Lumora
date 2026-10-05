@@ -26,7 +26,7 @@ import { SpeakerChip } from "@/components/Speaker";
 import { useAuth } from "@/lib/auth";
 import { useIsHandheld } from "@/lib/device";
 import { api } from "@/lib/api";
-import { languageName, levelDisplay } from "@/lib/languages";
+import { countsCharacters, hasNativeLevels, languageName, levelDisplay } from "@/lib/languages";
 import {
   speakAs,
   speakSequence,
@@ -76,6 +76,7 @@ const LOCALE: Record<string, string> = {
   it: "it-IT",
   pt: "pt-PT",
   zh: "zh-CN",
+  ja: "ja-JP",
 };
 
 const SECTION_PHASES: Phase[] = ["listening", "reading", "writing", "speaking"];
@@ -885,12 +886,12 @@ function LevelSelect({
             >
               <div className="flex items-center justify-between">
                 <span className="text-heading-sm font-extrabold text-ink">
-                  {lang === "zh" ? levelDisplay(l.code, lang).split(" · ")[0] : l.code}
+                  {hasNativeLevels(lang) ? levelDisplay(l.code, lang).split(" · ")[0] : l.code}
                 </span>
                 {done && <Check size={16} className="text-teal" />}
               </div>
               <span className="block text-label-md text-slatey">
-                {lang === "zh" ? `${l.code} · ${l.name}` : l.name}
+                {hasNativeLevels(lang) ? `${l.code} · ${l.name}` : l.name}
               </span>
               {paymentsOn && (
                 <span className="mt-1 block text-label-sm font-bold text-purple">
@@ -1259,9 +1260,9 @@ function WritingSection({
   onDone: (score: number) => void;
 }) {
   const [text, setText] = useState("");
-  // Chinese is counted in characters (it has no spaces between words).
+  // Chinese and Japanese are counted in characters (no spaces between words).
   const words = useMemo(() => countWords(text), [text]);
-  const unit = lang === "zh" ? "characters" : "words";
+  const unit = countsCharacters(lang) ? "characters" : "words";
 
   function finish() {
     const score = Math.min(100, Math.round((words / minWords) * 100));

@@ -179,6 +179,7 @@ func (ec *ExamController) Submit(c *fiber.Ctx) error {
 var examLangDisplay = map[string]string{
 	"es": "Spanish", "de": "German", "fr": "French", "it": "Italian",
 	"pt": "Portuguese", "en": "English", "zh": "Mandarin Chinese",
+	"ja": "Japanese",
 }
 
 func langDisplay(code string) string {

@@ -7,7 +7,7 @@ import { FoxMascot } from "@/components/FoxMascot";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { api } from "@/lib/api";
-import { languageName, languageMeta, levelDisplay } from "@/lib/languages";
+import { hasNativeLevels, languageName, languageMeta, levelDisplay } from "@/lib/languages";
 import type { Certificate } from "@/lib/types";
 
 export default function CertificatePage() {
@@ -194,7 +194,7 @@ export default function CertificatePage() {
                 {cert.level}
               </span>
             </div>
-            {cert.language === "zh" && (
+            {hasNativeLevels(cert.language) && (
               <p className="mt-2 text-heading-sm font-extrabold text-ink">
                 {levelDisplay(cert.level, cert.language)}
               </p>

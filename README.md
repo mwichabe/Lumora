@@ -6,7 +6,9 @@ A gamified, premium language-learning web app — built as a working MVP with a
 Lumora the Fennec Fox guides learners through a galaxy-map skill tree, XP, streaks,
 hearts, gems, leagues, daily quests, and a Fluency Score (0–1000). Seeded courses:
 **Spanish** and **German** (A1 → C2), **Mandarin Chinese** (HSK 1 → HSK 6, mapped onto
-A1 → C2, with Pinyin and tones first), and a short beginner **French** course.
+A1 → C2, with Pinyin and tones first), **Japanese** (JLPT N5 → N1 plus a "Beyond N1"
+level, mapped onto A1 → C2, with hiragana, katakana and pitch accent first), and a short
+beginner **French** course.
 
 ---
 
@@ -95,20 +97,20 @@ constraints required an adapted (not reduced) approach, like exam proctoring.
 
 ## API endpoints
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET  | `/api/health` | — | Service health check |
-| POST | `/api/auth/register` | — | Create account → returns JWT |
-| POST | `/api/auth/login` | — | Log in → returns JWT |
-| GET  | `/api/auth/me` | ✓ | Current user |
-| POST | `/api/auth/setup` | ✓ | Save target language + daily goal |
-| GET  | `/api/skills` | ✓ | Galaxy map (skills with unlock/complete state) |
-| GET  | `/api/lessons/:id` | ✓ | A lesson with its exercises |
-| POST | `/api/lessons/:id/complete` | ✓ | Award XP/gems, update streak & quests |
-| GET  | `/api/home` | ✓ | Home dashboard (user, next lesson, quests) |
-| GET  | `/api/quests/daily` | ✓ | Today's daily quests |
-| GET  | `/api/characters` | ✓ | Companion characters + friendship levels |
-| GET  | `/api/leaderboard` | ✓ | Current league standings |
+| Method | Path                        | Auth | Purpose                                        |
+| ------ | --------------------------- | ---- | ---------------------------------------------- |
+| GET    | `/api/health`               | —    | Service health check                           |
+| POST   | `/api/auth/register`        | —    | Create account → returns JWT                   |
+| POST   | `/api/auth/login`           | —    | Log in → returns JWT                           |
+| GET    | `/api/auth/me`              | ✓    | Current user                                   |
+| POST   | `/api/auth/setup`           | ✓    | Save target language + daily goal              |
+| GET    | `/api/skills`               | ✓    | Galaxy map (skills with unlock/complete state) |
+| GET    | `/api/lessons/:id`          | ✓    | A lesson with its exercises                    |
+| POST   | `/api/lessons/:id/complete` | ✓    | Award XP/gems, update streak & quests          |
+| GET    | `/api/home`                 | ✓    | Home dashboard (user, next lesson, quests)     |
+| GET    | `/api/quests/daily`         | ✓    | Today's daily quests                           |
+| GET    | `/api/characters`           | ✓    | Companion characters + friendship levels       |
+| GET    | `/api/leaderboard`          | ✓    | Current league standings                       |
 
 Protected routes expect an `Authorization: Bearer <token>` header. The frontend
 stores the token in `localStorage` under `lumora_token` and attaches it automatically.
@@ -143,4 +145,5 @@ in a document it should be considered compromised.
 - Audio uses the browser's built-in Speech Synthesis (no external TTS service).
 - The mascot and character art are rendered as inline SVG / emoji — no binary image
   assets are required to run the app.
+
 # Lumora

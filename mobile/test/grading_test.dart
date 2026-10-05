@@ -41,4 +41,10 @@ void main() {
     expect(copiesExample('ich komme am Freitag an. Haben Sie ein Zimmer frei?', ex), isTrue);
     expect(copiesExample('Hallo, mein Name ist Peter und ich brauche ein Einzelzimmer.', ex), isFalse);
   });
+
+  test('copy check works per character in Japanese', () {
+    const ex = 'せんせい、すみません。きのうからねつがあるので、きょうはがっこうをやすみます。';
+    expect(copiesExample(ex, ex), isTrue);
+    expect(copiesExample('たなかせんせい、あたまがいたくて、せきもでるので、びょういんへいきます。', ex), isFalse);
+  });
 }

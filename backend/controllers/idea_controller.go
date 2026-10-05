@@ -531,8 +531,7 @@ func (ic *IdeaController) Delete(c *fiber.Ctx) error {
 	}
 
 	// The notifications pointed at a thread that no longer exists.
-	database.DB.Where("kind = ? AND link LIKE ?", "idea",
-		fmt.Sprintf("%%idea=%d%%", idea.ID)).Delete(&models.Notification{})
+	deleteIdeaNotifications(idea.ID)
 
 	return c.JSON(fiber.Map{"ok": true, "deletedMessages": len(messageIDs)})
 }
@@ -894,6 +893,16 @@ func (ic *IdeaController) load(c *fiber.Ctx) (*models.Idea, bool) {
 		return nil, false
 	}
 	return &idea, true
+}
+
+// deleteIdeaNotifications removes every notification linking to one idea:
+// "/ideas?idea=N" or "/ideas?idea=N&message=M". Matched exactly — a plain
+// LIKE '%idea=N%' would also hit ideas N0–N9, N00… and wipe their
+// notifications too.
+func deleteIdeaNotifications(ideaID uint) {
+	link := "/ideas?idea=" + strconv.Itoa(int(ideaID))
+	database.DB.Where("link = ? OR link LIKE ?", link, link+"&%").
+		Delete(&models.Notification{})
 }
 
 func deref(s *string) string {

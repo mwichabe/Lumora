@@ -108,9 +108,32 @@ func (l *LessonController) GetLesson(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"lesson": lesson})
 }
 
+// choiceFillers pad a lesson's own distractors when it has too few, per
+// language — a German or Swahili question must never be offered Spanish
+// options. Languages without a list get only distractors from the lesson.
+var choiceFillers = map[string]struct{ phrases, words []string }{
+	"es": {
+		[]string{"Buenos días", "Por favor", "Hasta luego", "No lo sé", "Mucho gusto"},
+		[]string{"gracias", "hola", "casa", "agua", "bien", "sí"},
+	},
+	"de": {
+		[]string{"Guten Morgen", "Bitte schön", "Bis später", "Ich weiß nicht", "Freut mich"},
+		[]string{"danke", "hallo", "Haus", "Wasser", "gut", "ja"},
+	},
+	"fr": {
+		[]string{"Bonjour", "S'il vous plaît", "À plus tard", "Je ne sais pas", "Enchanté"},
+		[]string{"merci", "salut", "maison", "eau", "bien", "oui"},
+	},
+	"sw": {
+		[]string{"Habari za asubuhi", "Asante sana", "Tutaonana baadaye", "Sijui", "Nimefurahi kukujua"},
+		[]string{"asante", "jambo", "nyumba", "maji", "nzuri", "ndiyo"},
+	},
+}
+
 // addChoiceOptions gives translate/fill exercises a set of multiple-choice
-// options (correct answer + distractors drawn from the lesson, then padded).
-func addChoiceOptions(lesson *models.Lesson) {
+// options (correct answer + distractors drawn from the lesson, then padded
+// with fillers in the lesson's own language).
+func addChoiceOptions(lesson *models.Lesson, lang string) {
 	var phrasePool, wordPool []string
 	for _, e := range lesson.Exercises {
 		switch e.Type {
@@ -125,8 +148,8 @@ func addChoiceOptions(lesson *models.Lesson) {
 		phrasePool = append(phrasePool, v.Word)
 	}
 
-	phraseFiller := []string{"Buenos días", "Por favor", "Hasta luego", "No lo sé", "Mucho gusto"}
-	wordFiller := []string{"gracias", "hola", "casa", "agua", "bien", "sí"}
+	fillers := choiceFillers[lang]
+	phraseFiller, wordFiller := fillers.phrases, fillers.words
 
 	for i := range lesson.Exercises {
 		e := &lesson.Exercises[i]

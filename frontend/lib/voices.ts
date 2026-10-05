@@ -352,31 +352,35 @@ function normalize(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // strip accents for fair comparison
-    .replace(/[.,!¡¿?"，。！？、；：“”‘’（）《》…—]/g, "")
+    .replace(/[.,!¡¿?"，。！？、；：“”‘’（）《》…—「」『』・]/g, "")
     .trim();
 }
 
-const HAN = /\p{Script=Han}/u;
+// Chinese and Japanese characters (kanji, hiragana, katakana, the long-vowel
+// mark): scripts written without spaces between words.
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]/u;
 
 /**
  * Splits text into the units we compare and count: words for space-separated
- * languages, and individual characters for Chinese, which has no spaces —
- * otherwise a whole Chinese sentence is a single "word".
+ * languages, and individual characters for Chinese and Japanese, which have no
+ * spaces — otherwise a whole sentence is a single "word".
  */
 function units(s: string): string[] {
   const out: string[] = [];
   for (const chunk of s.split(/\s+/).filter(Boolean)) {
-    if (!HAN.test(chunk)) {
+    if (!CJK.test(chunk)) {
       out.push(chunk);
       continue;
     }
-    // Each Han character is its own unit; runs of other letters stay whole.
-    for (const part of chunk.match(/\p{Script=Han}|[^\p{Script=Han}]+/gu) || []) out.push(part);
+    // Each CJK character is its own unit; runs of other letters stay whole.
+    for (const part of
+      chunk.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]|[^\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+/gu) || [])
+      out.push(part);
   }
   return out;
 }
 
-/** Words written, counting each Chinese character as one (for writing tasks). */
+/** Words written, counting each Chinese/Japanese character as one (for writing tasks). */
 export function countWords(text: string): number {
   return units(normalize(text)).length;
 }

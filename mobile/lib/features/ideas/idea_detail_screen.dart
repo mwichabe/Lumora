@@ -195,7 +195,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
     if (!ok) return;
     try {
       await ApiClient.instance.deleteIdea(widget.id);
-      if (mounted) context.pop();
+      if (mounted) context.pop(true); // true = deleted, so the board says so
     } on ApiException catch (e) {
       _toast(e.message, error: true);
     }
@@ -333,6 +333,20 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                         for (final ev in detail.history.take(20)) _HistoryRow(event: ev),
                       ],
                       const SizedBox(height: 24),
+                      if (detail.canEdit)
+                        LumoraButton(
+                          label: 'Delete idea',
+                          full: true,
+                          variant: LumoraButtonVariant.danger,
+                          onPressed: _busy ? null : _delete,
+                        )
+                      else
+                        Text(
+                          'Only ${detail.idea.owner.name.isEmpty ? "the person who posted it" : detail.idea.owner.name} can delete this idea. '
+                          "Archive it from the ⋮ menu if it's no longer relevant.",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: LumoraColors.gray500, fontSize: 12),
+                        ),
                     ],
                   ),
                 ),

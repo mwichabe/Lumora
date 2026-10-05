@@ -38,6 +38,13 @@ function IdeasWorkspace() {
   const [contacts, setContacts] = useState<ChatUser[]>([]);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Brief confirmation after a delete (the idea's panels vanish with it).
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(""), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [boardLoading, setBoardLoading] = useState(true);
   const [ideaLoading, setIdeaLoading] = useState(false);
 
@@ -285,6 +292,7 @@ function IdeasWorkspace() {
               onDeleted={() => {
                 setSelectedId(null);
                 setMobilePane("list");
+                setNotice("Idea deleted");
                 loadBoard();
               }}
               onClose={() => setMobilePane("thread")}
@@ -292,6 +300,15 @@ function IdeasWorkspace() {
           </div>
         </div>
       </div>
+
+      {notice && (
+        <div
+          role="status"
+          className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-label-lg font-bold text-white shadow-card-lg lg:bottom-8"
+        >
+          {notice}
+        </div>
+      )}
 
       <AnimatePresence>
         {showIntro && <IdeasIntro onClose={dismissIntro} />}
